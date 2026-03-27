@@ -7,7 +7,13 @@ type _LocationUrl =
   "/pages/todo" |
   "/pages/index" |
   "/pages/hi" |
-  "/pages/login";
+  "/pages/login" |
+  "/pages/coupon/detail" |
+  "/pages/home/index" |
+  "/pages/merchant/detail" |
+  "/pages/qrcode/index" |
+  "/pages/scan/index" |
+  "/pages/wallet/index";
 
 interface NavigateToOptions {
   url: _LocationUrl;

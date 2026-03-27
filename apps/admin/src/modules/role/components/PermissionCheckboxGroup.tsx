@@ -1,23 +1,9 @@
 // apps/admin/src/modules/role/components/PermissionCheckboxGroup.tsx
 import { useEffect, useState } from "react";
 import { Checkbox, Space, Spin, Alert } from "antd";
-import type { AppRouter } from "../../../types/api";
-import { createTRPCProxyClient, httpLink } from "@trpc/client";
+import { getTrpcClient } from "../../../shared/trpc/trpcClient";
 
-// Create tRPC client for permission loading
-const trpcClient = createTRPCProxyClient<AppRouter>({
-  links: [
-    httpLink({
-      url: "http://localhost:3000/trpc",
-      headers: () => {
-        const token = localStorage.getItem("accessToken");
-        return {
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        };
-      },
-    }),
-  ],
-});
+const trpcClient = getTrpcClient();
 
 interface PermissionCheckboxGroupProps {
   selectedIds: string[];

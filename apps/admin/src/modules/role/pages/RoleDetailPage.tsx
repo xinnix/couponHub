@@ -23,23 +23,9 @@ import {
   SettingOutlined,
 } from "@ant-design/icons";
 import { PermissionCheckboxGroup } from "../components/PermissionCheckboxGroup";
-import type { AppRouter } from "../../../types/api";
-import { createTRPCProxyClient, httpLink } from "@trpc/client";
+import { getTrpcClient } from "../../../shared/trpc/trpcClient";
 
-// Create tRPC client for role operations
-const trpcClient = createTRPCProxyClient<AppRouter>({
-  links: [
-    httpLink({
-      url: "http://localhost:3000/trpc",
-      headers: () => {
-        const token = localStorage.getItem("accessToken");
-        return {
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        };
-      },
-    }),
-  ],
-});
+const trpcClient = getTrpcClient();
 
 interface Permission {
   id: string;

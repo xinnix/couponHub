@@ -11,18 +11,18 @@ datasource db {
 // 管理端用户模型 (Admin)
 // ============================================
 model Admin {
-  id            String              @id @default(cuid())
-  username      String              @unique
-  email         String              @unique
+  id            String    @id @default(cuid())
+  username      String    @unique
+  email         String    @unique
   passwordHash  String
   firstName     String?
   lastName      String?
   avatar        String?
-  isActive      Boolean             @default(true)
+  isActive      Boolean   @default(true)
   emailVerified DateTime?
   lastLoginAt   DateTime?
-  createdAt     DateTime            @default(now())
-  updatedAt     DateTime            @updatedAt
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
   // 关联
   refreshTokens AdminRefreshToken[]
@@ -37,27 +37,29 @@ model Admin {
 // 小程序用户模型 (User)
 // ============================================
 model User {
-  id            String         @id @default(cuid())
-  username      String         @unique
-  email         String         @unique
-  passwordHash  String
+  id           String @id @default(cuid())
+  username     String @unique
+  email        String @unique
+  passwordHash String
 
   // 微信相关字段
-  openid        String?        @unique   // 微信用户唯一标识
-  unionid       String?        @unique   // 开放平台标识（可选）
-  sessionKey    String?                  // 会话密钥（加密存储）
+  openid     String? @unique // 微信用户唯一标识
+  unionid    String? @unique // 开放平台标识（可选）
+  sessionKey String? // 会话密钥（加密存储）
 
-  phone         String?
-  avatar        String?
-  nickname      String?
-  isActive      Boolean        @default(true)
-  lastLoginAt   DateTime?
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
+  phone       String?
+  avatar      String?
+  nickname    String?
+  isActive    Boolean   @default(true)
+  lastLoginAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   // 关联
-  refreshTokens UserRefreshToken[]
-  todos         Todo[]
+  refreshTokens    UserRefreshToken[]
+  todos            Todo[]
+  orders           Order[]
+  merchantHandlers MerchantHandler[]
 
   @@index([openid])
   @@index([email])
@@ -69,14 +71,14 @@ model User {
 // 角色模型 (仅用于 Admin)
 // ============================================
 model Role {
-  id          String           @id @default(cuid())
-  name        String           @unique
-  slug        String           @unique
+  id          String   @id @default(cuid())
+  name        String   @unique
+  slug        String   @unique
   description String?
-  level       Int              @default(0)
-  isSystem    Boolean          @default(false)
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
+  level       Int      @default(0)
+  isSystem    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   // 关联
   permissions RolePermission[]
@@ -90,14 +92,14 @@ model Role {
 // 权限模型
 // ============================================
 model Permission {
-  id          String           @id @default(cuid())
+  id          String   @id @default(cuid())
   resource    String
   action      String
   description String?
-  createdAt   DateTime         @default(now())
+  createdAt   DateTime @default(now())
 
   // 关联
-  roles       RolePermission[]
+  roles RolePermission[]
 
   @@unique([resource, action])
   @@index([resource])
@@ -115,8 +117,8 @@ model AdminRole {
   assignedBy String?
 
   // 关联
-  role       Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
-  admin      Admin    @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  role  Role  @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  admin Admin @relation(fields: [adminId], references: [id], onDelete: Cascade)
 
   @@unique([adminId, roleId])
   @@index([adminId])
@@ -128,14 +130,14 @@ model AdminRole {
 // 角色权限关联
 // ============================================
 model RolePermission {
-  id           String     @id @default(cuid())
+  id           String   @id @default(cuid())
   roleId       String
   permissionId String
-  createdAt    DateTime   @default(now())
+  createdAt    DateTime @default(now())
 
   // 关联
-  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
-  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
 
   @@unique([roleId, permissionId])
   @@index([roleId])
@@ -157,7 +159,7 @@ model AdminRefreshToken {
   userAgent String?
 
   // 关联
-  admin     Admin     @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  admin Admin @relation(fields: [adminId], references: [id], onDelete: Cascade)
 
   @@index([adminId])
   @@index([token])
@@ -178,7 +180,7 @@ model UserRefreshToken {
   userAgent String?
 
   // 关联
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([token])
@@ -199,9 +201,183 @@ model Todo {
   updatedAt   DateTime  @updatedAt
 
   // 创建者 (小程序用户)
-  userId      String
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@map("todos")
+}
+
+// ============================================
+// 商户模型 (Merchant)
+// ============================================
+model Merchant {
+  id          String  @id @default(cuid())
+  name        String
+  logo        String?
+  category    String // 行业分类（餐饮、服装、娱乐等）
+  floor       String? // 楼层
+  phone       String?
+  gallery     Json? // 图片数组
+  description String?
+  status      String  @default("ACTIVE") // ACTIVE, INACTIVE
+
+  // 关联
+  handlers    MerchantHandler[]
+  orders      Order[]
+  settlements Settlement[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([category])
+  @@index([status])
+  @@map("merchants")
+}
+
+// ============================================
+// 商户核销员 (MerchantHandler)
+// ============================================
+model MerchantHandler {
+  id         String  @id @default(cuid())
+  merchantId String
+  userId     String // 关联 User 表
+  name       String
+  phone      String
+  isActive   Boolean @default(true)
+
+  merchant Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([merchantId, userId])
+  @@index([merchantId])
+  @@index([userId])
+  @@map("merchant_handlers")
+}
+
+// ============================================
+// 新闻资讯 (News)
+// ============================================
+model News {
+  id             String  @id @default(cuid())
+  title          String
+  bannerUrl      String?
+  content        String // 富文本内容
+  linkedCouponId String? // 关联的券模板 ID
+
+  viewCount Int    @default(0)
+  status    String @default("DRAFT") // DRAFT, PUBLISHED
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([createdAt])
+  @@map("news")
+}
+
+// ============================================
+// 券模板 (CouponTemplate)
+// ============================================
+model CouponTemplate {
+  id            String   @id @default(cuid())
+  title         String
+  buyPrice      Decimal  @db.Decimal(10, 2) // 购买价格
+  faceValue     Decimal  @db.Decimal(10, 2) // 面值
+  stock         Int
+  merchantScope Json // 适用商户 ID 数组
+  validFrom     DateTime
+  validUntil    DateTime
+  description   String?
+
+  status String @default("ACTIVE") // ACTIVE, EXPIRED, DISABLED
+
+  orders Order[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([validFrom, validUntil])
+  @@map("coupon_templates")
+}
+
+// ============================================
+// 订单（核心流转实体）
+// ============================================
+model Order {
+  id      String @id @default(cuid())
+  orderNo String @unique // 订单号
+
+  userId     String
+  templateId String
+  status     String @default("UNPAID") // UNPAID, PAID, REDEEMED, REFUNDING, REFUNDED, EXPIRED
+
+  // 支付信息
+  payId  String?   @unique // 微信支付订单号
+  paidAt DateTime?
+
+  // 核销信息
+  redeemMerchantId String?
+  redeemedAt       DateTime?
+
+  // 退款信息
+  refundId     String? // 微信退款单号
+  refundReason String?
+  refundedAt   DateTime?
+
+  price     Decimal @db.Decimal(10, 2)
+  faceValue Decimal @db.Decimal(10, 2)
+
+  // 结算锁定标记
+  isLocked Boolean @default(false)
+
+  user     User           @relation(fields: [userId], references: [id])
+  template CouponTemplate @relation(fields: [templateId], references: [id])
+  merchant Merchant?      @relation(fields: [redeemMerchantId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@index([templateId])
+  @@index([payId])
+  @@index([orderNo])
+  @@index([redeemMerchantId])
+  @@map("orders")
+}
+
+// ============================================
+// 结算单 (Settlement)
+// ============================================
+model Settlement {
+  id         String @id @default(cuid())
+  merchantId String
+  period     String // 格式: 2024-03
+
+  totalAmount Decimal @db.Decimal(10, 2)
+  orderCount  Int
+
+  status String @default("PENDING") // PENDING, CONFIRMED, PAID
+
+  // 快照数据
+  snapshotData Json // 订单快照
+
+  confirmedAt DateTime?
+  confirmedBy String?
+  paidAt      DateTime?
+
+  merchant Merchant @relation(fields: [merchantId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([merchantId, period])
+  @@index([status])
+  @@index([merchantId])
+  @@map("settlements")
 }

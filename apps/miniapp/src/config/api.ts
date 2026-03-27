@@ -23,7 +23,7 @@ export const API_ENDPOINTS = {
   login: '/auth/login',
   logout: '/auth/logout',
   register: '/auth/register',
-  profile: '/user/me',
+  profile: '/auth/me',
   wechatLogin: '/auth/wechat/login',
 
   // TODO 相关

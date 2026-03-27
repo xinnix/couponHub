@@ -1,4 +1,4 @@
-import { Injectable, Scope } from '@nestjs/common';
+import { Injectable, Logger, Scope } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as fs from 'fs/promises';
 import * as pathModule from 'path';
@@ -52,6 +52,7 @@ export interface IFileStorage {
 
 @Injectable({ scope: Scope.TRANSIENT })
 export class FileStorageService implements IFileStorage {
+  private readonly logger = new Logger(FileStorageService.name);
   private strategy: IFileStorage;
   private uploadPath: string;
 
@@ -59,16 +60,14 @@ export class FileStorageService implements IFileStorage {
     const provider = config.get<string>('FILE_STORAGE_PROVIDER', 'local');
     this.uploadPath = config.get<string>('UPLOAD_PATH', './uploads') || './uploads';
 
-    console.log('[FileStorage] 初始化:', { provider, uploadPath: this.uploadPath });
-
     // 根据配置选择存储策略
     switch (provider) {
       case 'aliyun-oss':
-        console.log('[FileStorage] 使用阿里云 OSS 存储策略');
+        this.logger.log('Using aliyun-oss storage provider');
         this.strategy = new AliyunOssStrategy(config);
         break;
       default:
-        console.log('[FileStorage] 使用本地存储策略:', provider);
+        this.logger.log(`Using local storage provider: ${provider}`);
         this.strategy = new LocalStorageStrategy(this.uploadPath, config);
     }
   }
@@ -89,14 +88,7 @@ export class FileStorageService implements IFileStorage {
    * 获取上传凭证（用于客户端直传）
    */
   async getUploadCredentials(dirPath: string): Promise<UploadCredentials> {
-    console.log('[FileStorage] 获取上传凭证, dirPath:', dirPath);
-    const credentials = await this.strategy.getUploadCredentials(dirPath);
-    console.log('[FileStorage] 返回凭证:', {
-      bucket: credentials.bucket,
-      region: credentials.region,
-      endpoint: credentials.endpoint,
-    });
-    return credentials;
+    return this.strategy.getUploadCredentials(dirPath);
   }
 
   /**
@@ -199,14 +191,6 @@ class AliyunOssStrategy implements IFileStorage {
     const accessKeySecret = config.get<string>('OSS_ACCESS_KEY_SECRET');
     const bucket = config.get<string>('OSS_BUCKET');
     const region = config.get<string>('OSS_REGION', 'oss-cn-hangzhou');
-
-    console.log('[OSS] 初始化配置:', {
-      endpoint,
-      bucket,
-      region,
-      hasAccessKeyId: !!accessKeyId,
-      hasAccessKeySecret: !!accessKeySecret,
-    });
 
     if (!endpoint || !accessKeyId || !accessKeySecret || !bucket) {
       const missing = [];
@@ -315,13 +299,6 @@ class AliyunOssStrategy implements IFileStorage {
       const signature = crypto.createHmac('sha1', accessKeySecret)
         .update(policyBase64)
         .digest('base64');
-
-      console.log('[OSS] 生成凭证 (V1签名):', {
-        bucket: this.bucket,
-        region: this.client.options.region,
-        policyLength: policyBase64.length,
-        signature: signature.substring(0, 20) + '...',
-      });
 
       return {
         accessKeyId,

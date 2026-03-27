@@ -5,7 +5,7 @@ import { http } from '@/utils/http'
 import { API_ENDPOINTS } from '@/config/api'
 
 export interface LoginParams {
-  username: string
+  email: string
   password: string
 }
 
@@ -30,26 +30,34 @@ export interface WechatLoginResponse {
   refreshToken: string;
 }
 
+export interface AuthResponse {
+  user: UserInfo;
+  accessToken: string;
+  refreshToken: string;
+}
+
 export const authApi = {
   /**
    * 用户登录
    */
   login: (params: LoginParams) => {
-    return http.post<{ token: string; user: UserInfo }>(API_ENDPOINTS.login, params)
+    return http.post<AuthResponse>(API_ENDPOINTS.login, params)
   },
 
   /**
    * 用户注册
    */
   register: (params: RegisterParams) => {
-    return http.post<{ token: string; user: UserInfo }>(API_ENDPOINTS.register, params)
+    return http.post<AuthResponse>(API_ENDPOINTS.register, params)
   },
 
   /**
    * 用户登出
    */
-  logout: () => {
-    return http.post(API_ENDPOINTS.logout)
+  logout: (refreshToken?: string) => {
+    return http.post(API_ENDPOINTS.logout, {
+      refreshToken: refreshToken || uni.getStorageSync('refreshToken') || '',
+    })
   },
 
   /**

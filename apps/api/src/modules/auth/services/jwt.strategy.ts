@@ -12,30 +12,15 @@ interface JwtPayload {
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(private readonly prisma: PrismaService) {
     const secret = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-in-production';
-    console.log('[JwtStrategy] Constructor called');
-    console.log('[JwtStrategy] JWT_SECRET from process.env:', !!process.env.JWT_SECRET);
-    console.log('[JwtStrategy] process.env.JWT_SECRET value:', process.env.JWT_SECRET?.substring(0, 30) + '...');
-    console.log('[JwtStrategy] Using secret:', secret.substring(0, 30) + '...');
 
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
       secretOrKey: secret,
     });
-
-    // 延迟检查 prisma（在 super() 调用之后）
-    console.log('[JwtStrategy] PrismaService injected:', !!prisma);
   }
 
   async validate(payload: any) {
-    console.log('[JwtStrategy] ================================');
-    console.log('[JwtStrategy] validate called');
-    console.log('[JwtStrategy] payload:', JSON.stringify(payload));
-    console.log('[JwtStrategy] payload.sub:', payload?.sub);
-    console.log('[JwtStrategy] payload.type:', payload?.type);
-    console.log('[JwtStrategy] this.prisma:', !!this.prisma);
-    console.log('[JwtStrategy] ================================');
-
     if (!payload || !payload.sub) {
       throw new Error('Invalid token payload');
     }

@@ -2,7 +2,7 @@
 import { useList, useCreate, useUpdate } from "@refinedev/core";
 import { List, DeleteButton } from "@refinedev/antd";
 import { Table, Button, Modal, Form, Input, Select, Space, message, Tag } from "antd";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 
 export const TodoListPage = () => {
   // Use useList instead of useTable
@@ -15,17 +15,6 @@ export const TodoListPage = () => {
       enabled: true, // Explicitly enable the query
     },
   });
-
-  // Debug: Log the query state
-  useEffect(() => {
-    console.log("TodoListPage - query state:", {
-      isLoading: query.isLoading,
-      isError: query.isError,
-      error: query.error,
-      result,
-      queryStatus: query.status,
-    });
-  }, [query.isLoading, query.isError, query.error, result]);
 
   const { mutate: create } = useCreate();
   const { mutate: update } = useUpdate();
@@ -121,8 +110,6 @@ export const TodoListPage = () => {
   const handleSubmit = async () => {
     try {
       const values = await form.validateFields();
-      console.log("Form values:", values);
-      console.log("Editing record:", editingRecord);
 
       if (editingRecord) {
         update(

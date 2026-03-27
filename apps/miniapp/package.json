@@ -36,6 +36,7 @@
     "@dcloudio/uni-quickapp-webview": "3.0.0-4080720251210001",
     "@opencode/shared": "workspace:*",
     "@vueuse/core": "^13.5.0",
+    "uqrcodejs": "^4.0.7",
     "vue": "3.4.21",
     "vue-i18n": "^9.14.5",
     "vue-router": "4.5.1"

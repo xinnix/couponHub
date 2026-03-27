@@ -20,11 +20,7 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
     private readonly wechatService: WechatService,
-  ) {
-    console.log('[AuthService] ================================');
-    console.log('[AuthService] JWT_SECRET from process.env:', !!process.env.JWT_SECRET);
-    console.log('[AuthService] ================================');
-  }
+  ) {}
 
   /**
    * 🔐 注册小程序用户

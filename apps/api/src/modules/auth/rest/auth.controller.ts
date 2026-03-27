@@ -25,11 +25,7 @@ import {
 export class AuthController {
   constructor(
     private readonly authService: AuthService,
-  ) {
-    console.log('[AuthController] Constructor called');
-    console.log('[AuthController] authService:', !!authService);
-    console.log('[AuthController] authService type:', typeof authService);
-  }
+  ) {}
 
   @Public()
   @Post('register')
@@ -40,7 +36,6 @@ export class AuthController {
     description: '用户注册成功',
   })
   async register(@Body() body: typeof RegisterSchema) {
-    console.log('register called - authService:', !!this.authService);
     // ✅ 使用 Zod schema 进行运行时验证
     const validatedData = RegisterSchema.parse(body);
 

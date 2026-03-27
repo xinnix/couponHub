@@ -1,23 +1,14 @@
 // apps/api/src/main.ts
 import dotenv from "dotenv";
 import path from "path";
-import { fileURLToPath } from "url";
 
 // Load .env from apps/api directory
 dotenv.config();
-
-// Also load DATABASE_URL from infra/database/.env
-// For CommonJS compatibility, use relative path directly
-dotenv.config({ path: path.resolve(__dirname, "../../../infra/database/.env") });
 
 import "reflect-metadata";
 import { NestFactory } from "@nestjs/core";
 import { AppModule } from "./app.module";
 import { AllExceptionsFilter } from "./core/filters/http-exception.filter";
-
-// Debug: Check if JWT_SECRET is loaded
-console.log('[main.ts] JWT_SECRET from process.env:', process.env.JWT_SECRET?.substring(0, 20) + '...');
-console.log('[main.ts] PORT:', process.env.PORT);
 
 import { PrismaService } from "./prisma/prisma.service";
 import { appRouter } from "./trpc/app.router";
@@ -60,7 +51,6 @@ async function bootstrap() {
   // Set up tRPC middleware (tRPC handles body parsing internally)
   const prismaService = app.get(PrismaService);
   setPrismaService(prismaService); // 设置 PrismaService 实例
-  console.log('DEBUG: PrismaService set in global:', !!prismaService);
 
   (app as any).use(
     "/trpc",

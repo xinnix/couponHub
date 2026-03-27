@@ -36,9 +36,6 @@ const handleWechatLogin = async () => {
     // uni.login 成功返回格式: { code, errMsg }
     const code = loginRes.code;
 
-    console.log('[微信登录] 获取到的 code:', code);
-    console.log('[微信登录] 完整响应:', loginRes);
-
     if (!code) {
       throw new Error('获取登录凭证失败');
     }

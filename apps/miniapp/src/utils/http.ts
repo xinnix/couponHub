@@ -8,8 +8,8 @@ import { API_CONFIG } from '@/config/api'
 
 interface RequestConfig {
   url: string
-  method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH'
-  data?: unknown
+  method?: UniApp.RequestOptions['method']
+  data?: UniApp.RequestOptions['data']
   header?: Record<string, string>
   timeout?: number
 }
@@ -108,28 +108,28 @@ class HttpClient {
   /**
    * GET 请求
    */
-  get<T = unknown>(url: string, data?: unknown): Promise<Response<T>> {
+  get<T = unknown>(url: string, data?: UniApp.RequestOptions['data']): Promise<Response<T>> {
     return this.request<T>({ url, method: 'GET', data })
   }
 
   /**
    * POST 请求
    */
-  post<T = unknown>(url: string, data?: unknown): Promise<Response<T>> {
+  post<T = unknown>(url: string, data?: UniApp.RequestOptions['data']): Promise<Response<T>> {
     return this.request<T>({ url, method: 'POST', data })
   }
 
   /**
    * PUT 请求
    */
-  put<T = unknown>(url: string, data?: unknown): Promise<Response<T>> {
+  put<T = unknown>(url: string, data?: UniApp.RequestOptions['data']): Promise<Response<T>> {
     return this.request<T>({ url, method: 'PUT', data })
   }
 
   /**
    * DELETE 请求
    */
-  delete<T = unknown>(url: string, data?: unknown): Promise<Response<T>> {
+  delete<T = unknown>(url: string, data?: UniApp.RequestOptions['data']): Promise<Response<T>> {
     return this.request<T>({ url, method: 'DELETE', data })
   }
 }

@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { JwtModule, JwtService } from '@nestjs/jwt';
+import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 
 // 控制器
@@ -11,9 +11,6 @@ import { JwtStrategy } from './services/jwt.strategy';
 
 // 模块
 import { WechatModule } from '../wechat/wechat.module';
-
-// 数据库
-import { PrismaService } from '../../prisma/prisma.service';
 
 @Module({
   imports: [

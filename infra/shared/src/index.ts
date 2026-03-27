@@ -103,6 +103,36 @@ export const PERMISSIONS = {
     READ: 'settings:read',
     UPDATE: 'settings:update',
   },
+  MERCHANT: {
+    CREATE: 'merchant:create',
+    READ: 'merchant:read',
+    UPDATE: 'merchant:update',
+    DELETE: 'merchant:delete',
+  },
+  NEWS: {
+    CREATE: 'news:create',
+    READ: 'news:read',
+    UPDATE: 'news:update',
+    DELETE: 'news:delete',
+  },
+  COUPON_TEMPLATE: {
+    CREATE: 'coupon_template:create',
+    READ: 'coupon_template:read',
+    UPDATE: 'coupon_template:update',
+    DELETE: 'coupon_template:delete',
+  },
+  ORDER: {
+    CREATE: 'order:create',
+    READ: 'order:read',
+    UPDATE: 'order:update',
+    DELETE: 'order:delete',
+  },
+  SETTLEMENT: {
+    CREATE: 'settlement:create',
+    READ: 'settlement:read',
+    UPDATE: 'settlement:update',
+    DELETE: 'settlement:delete',
+  },
 } as const;
 
 export type PermissionString = typeof PERMISSIONS[keyof typeof PERMISSIONS][keyof typeof PERMISSIONS[keyof typeof PERMISSIONS]];
@@ -278,3 +308,268 @@ export type CreateRoleInput = z.infer<typeof CreateRoleSchema>;
 export type UpdateRoleInput = z.infer<typeof UpdateRoleSchema>;
 export type RoleListQueryInput = z.infer<typeof RoleListQuerySchema>;
 export type UpdateRolePermissionsInput = z.infer<typeof UpdateRolePermissionsSchema>;
+
+// ============================================
+// Merchant Schemas
+// ============================================
+
+export const MerchantSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  logo: z.string().url().optional().nullable(),
+  category: z.string(),
+  floor: z.string().optional().nullable(),
+  phone: z.string().optional().nullable(),
+  gallery: z.array(z.string().url()).optional().nullable(),
+  description: z.string().optional().nullable(),
+  status: z.enum(["ACTIVE", "INACTIVE"]),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+});
+
+export const CreateMerchantSchema = z.object({
+  name: z.string().min(1, "商户名称不能为空"),
+  logo: z.string().url("Logo URL格式无效").optional(),
+  category: z.string().min(1, "行业分类不能为空"),
+  floor: z.string().optional(),
+  phone: z.string().optional(),
+  gallery: z.array(z.string().url()).optional(),
+  description: z.string().optional(),
+});
+
+export const UpdateMerchantSchema = CreateMerchantSchema.partial();
+
+export const MerchantListQuerySchema = z.object({
+  page: z.number().int().positive().optional(),
+  pageSize: z.number().int().positive().optional(),
+  category: z.string().optional(),
+  status: z.enum(["ACTIVE", "INACTIVE"]).optional(),
+  search: z.string().optional(),
+});
+
+export type MerchantInput = z.infer<typeof MerchantSchema>;
+export type CreateMerchantInput = z.infer<typeof CreateMerchantSchema>;
+export type UpdateMerchantInput = z.infer<typeof UpdateMerchantSchema>;
+export type MerchantListQueryInput = z.infer<typeof MerchantListQuerySchema>;
+
+// ============================================
+// Merchant Handler Schemas
+// ============================================
+
+export const MerchantHandlerSchema = z.object({
+  id: z.string(),
+  merchantId: z.string(),
+  userId: z.string(),
+  name: z.string(),
+  phone: z.string(),
+  isActive: z.boolean(),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+});
+
+export const CreateMerchantHandlerSchema = z.object({
+  merchantId: z.string().min(1, "请选择商户"),
+  userId: z.string().min(1, "请选择用户"),
+  name: z.string().min(1, "核销员姓名不能为空"),
+  phone: z.string().min(1, "核销员电话不能为空"),
+});
+
+export const UpdateMerchantHandlerSchema = CreateMerchantHandlerSchema.partial().omit({
+  merchantId: true,
+  userId: true,
+});
+
+export type MerchantHandlerInput = z.infer<typeof MerchantHandlerSchema>;
+export type CreateMerchantHandlerInput = z.infer<typeof CreateMerchantHandlerSchema>;
+export type UpdateMerchantHandlerInput = z.infer<typeof UpdateMerchantHandlerSchema>;
+
+// ============================================
+// News Schemas
+// ============================================
+
+export const NewsSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  bannerUrl: z.string().url().optional().nullable(),
+  content: z.string(),
+  linkedCouponId: z.string().optional().nullable(),
+  viewCount: z.number().int(),
+  status: z.enum(["DRAFT", "PUBLISHED"]),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+});
+
+export const CreateNewsSchema = z.object({
+  title: z.string().min(1, "标题不能为空").max(200, "标题最多200字"),
+  bannerUrl: z.string().url("Banner URL格式无效").optional(),
+  content: z.string().min(1, "内容不能为空"),
+  linkedCouponId: z.string().optional(),
+  status: z.enum(["DRAFT", "PUBLISHED"]).default("DRAFT"),
+});
+
+export const UpdateNewsSchema = CreateNewsSchema.partial();
+
+export const NewsListQuerySchema = z.object({
+  page: z.number().int().positive().optional(),
+  pageSize: z.number().int().positive().optional(),
+  status: z.enum(["DRAFT", "PUBLISHED"]).optional(),
+  search: z.string().optional(),
+});
+
+export type NewsInput = z.infer<typeof NewsSchema>;
+export type CreateNewsInput = z.infer<typeof CreateNewsSchema>;
+export type UpdateNewsInput = z.infer<typeof UpdateNewsSchema>;
+export type NewsListQueryInput = z.infer<typeof NewsListQuerySchema>;
+
+// ============================================
+// Coupon Template Schemas
+// ============================================
+
+export const CouponTemplateSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  buyPrice: z.number().positive(),
+  faceValue: z.number().positive(),
+  stock: z.number().int().nonnegative(),
+  merchantScope: z.array(z.string()),
+  validFrom: z.date(),
+  validUntil: z.date(),
+  description: z.string().optional().nullable(),
+  status: z.enum(["ACTIVE", "EXPIRED", "DISABLED"]),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+});
+
+// 基础券模板 Schema（不含 refinement）
+const BaseCouponTemplateSchema = z.object({
+  title: z.string().min(1, "券标题不能为空").max(100, "标题最多100字"),
+  buyPrice: z.number().positive("购买价格必须大于0"),
+  faceValue: z.number().positive("面值必须大于0"),
+  stock: z.number().int().nonnegative("库存不能为负").min(0, "库存不能为负"),
+  merchantScope: z.array(z.string()).min(1, "至少选择一个适用商户"),
+  validFrom: z.date(),
+  validUntil: z.date(),
+  description: z.string().optional(),
+});
+
+// 创建券模板 Schema（包含 refinement）
+export const CreateCouponTemplateSchema = BaseCouponTemplateSchema.refine(
+  (data) => data.validUntil > data.validFrom,
+  {
+    message: "有效期结束时间必须晚于开始时间",
+    path: ["validUntil"],
+  }
+);
+
+// 更新券模板 Schema（使用基础 schema 的 partial）
+export const UpdateCouponTemplateSchema = BaseCouponTemplateSchema.partial().refine(
+  (data) => {
+    // 只有当两个日期都存在时才验证
+    if (data.validFrom && data.validUntil) {
+      return data.validUntil > data.validFrom;
+    }
+    return true;
+  },
+  {
+    message: "有效期结束时间必须晚于开始时间",
+    path: ["validUntil"],
+  }
+);
+
+export const CouponTemplateListQuerySchema = z.object({
+  page: z.number().int().positive().optional(),
+  pageSize: z.number().int().positive().optional(),
+  status: z.enum(["ACTIVE", "EXPIRED", "DISABLED"]).optional(),
+  search: z.string().optional(),
+});
+
+export type CouponTemplateInput = z.infer<typeof CouponTemplateSchema>;
+export type CreateCouponTemplateInput = z.infer<typeof CreateCouponTemplateSchema>;
+export type UpdateCouponTemplateInput = z.infer<typeof UpdateCouponTemplateSchema>;
+export type CouponTemplateListQueryInput = z.infer<typeof CouponTemplateListQuerySchema>;
+
+// ============================================
+// Order Schemas
+// ============================================
+
+export const OrderSchema = z.object({
+  id: z.string(),
+  orderNo: z.string(),
+  userId: z.string(),
+  templateId: z.string(),
+  status: z.enum(["UNPAID", "PAID", "REDEEMED", "REFUNDING", "REFUNDED", "EXPIRED"]),
+  payId: z.string().optional().nullable(),
+  paidAt: z.date().optional().nullable(),
+  redeemMerchantId: z.string().optional().nullable(),
+  redeemedAt: z.date().optional().nullable(),
+  refundId: z.string().optional().nullable(),
+  refundReason: z.string().optional().nullable(),
+  refundedAt: z.date().optional().nullable(),
+  price: z.number().positive(),
+  faceValue: z.number().positive(),
+  isLocked: z.boolean(),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+});
+
+export const CreateOrderSchema = z.object({
+  templateId: z.string().min(1, "请选择券模板"),
+});
+
+export const OrderListQuerySchema = z.object({
+  page: z.number().int().positive().optional(),
+  pageSize: z.number().int().positive().optional(),
+  status: z.enum(["UNPAID", "PAID", "REDEEMED", "REFUNDING", "REFUNDED", "EXPIRED"]).optional(),
+  userId: z.string().optional(),
+});
+
+export const RefundOrderSchema = z.object({
+  orderId: z.string().min(1, "订单ID不能为空"),
+  reason: z.string().min(1, "退款原因不能为空"),
+});
+
+export type OrderInput = z.infer<typeof OrderSchema>;
+export type CreateOrderInput = z.infer<typeof CreateOrderSchema>;
+export type OrderListQueryInput = z.infer<typeof OrderListQuerySchema>;
+export type RefundOrderInput = z.infer<typeof RefundOrderSchema>;
+
+// ============================================
+// Settlement Schemas
+// ============================================
+
+export const SettlementSchema = z.object({
+  id: z.string(),
+  merchantId: z.string(),
+  period: z.string(),
+  totalAmount: z.number().nonnegative(),
+  orderCount: z.number().int().nonnegative(),
+  status: z.enum(["PENDING", "CONFIRMED", "PAID"]),
+  snapshotData: z.any(),
+  confirmedAt: z.date().optional().nullable(),
+  confirmedBy: z.string().optional().nullable(),
+  paidAt: z.date().optional().nullable(),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+});
+
+export const GenerateSettlementSchema = z.object({
+  merchantId: z.string().min(1, "请选择商户"),
+  period: z.string().regex(/^\d{4}-\d{2}$/, "期间格式应为 YYYY-MM"),
+});
+
+export const SettlementListQuerySchema = z.object({
+  page: z.number().int().positive().optional(),
+  pageSize: z.number().int().positive().optional(),
+  merchantId: z.string().optional(),
+  status: z.enum(["PENDING", "CONFIRMED", "PAID"]).optional(),
+  period: z.string().optional(),
+});
+
+export const ConfirmSettlementSchema = z.object({
+  settlementId: z.string().min(1, "结算单ID不能为空"),
+});
+
+export type SettlementInput = z.infer<typeof SettlementSchema>;
+export type GenerateSettlementInput = z.infer<typeof GenerateSettlementSchema>;
+export type SettlementListQueryInput = z.infer<typeof SettlementListQuerySchema>;
+export type ConfirmSettlementInput = z.infer<typeof ConfirmSettlementSchema>;

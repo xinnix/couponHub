@@ -18,8 +18,6 @@ export const queryClient = new QueryClient({
  * Handle tRPC errors with global message notification
  */
 function handleTRPCError(error: unknown) {
-  console.log('[handleTRPCError] Error received:', error);
-
   if (error instanceof TRPCClientError) {
     const errorMessage = error.data?.message || error.message || "操作失败，请稍后重试";
 
@@ -27,12 +25,9 @@ function handleTRPCError(error: unknown) {
     // In tRPC v11, the code can be at error.data.code or directly at error.data
     const errorCode = (error.data as any)?.code || (error.data as any)?.httpStatus;
 
-    console.log('[handleTRPCError] TRPCClientError detected, code:', errorCode, 'data:', error.data);
-
     if (errorCode) {
       switch (errorCode) {
         case "UNAUTHORIZED":
-          console.log('[handleTRPCError] Redirecting to unauthorized page');
           // Clear auth data and redirect to session expired page
           localStorage.removeItem("accessToken");
           localStorage.removeItem("refreshToken");
@@ -67,10 +62,8 @@ function handleTRPCError(error: unknown) {
       }
     }
   } else if (error instanceof Error) {
-    console.log('[handleTRPCError] Generic Error:', error.message);
     message.error(error.message || "操作失败，请稍后重试");
   } else {
-    console.log('[handleTRPCError] Unknown error type');
     message.error("操作失败，请稍后重试");
   }
 }

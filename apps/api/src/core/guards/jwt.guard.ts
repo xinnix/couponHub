@@ -24,14 +24,6 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
   }
 
   handleRequest(err: any, user: any, info: any, context: ExecutionContext) {
-    console.log('[JwtAuthGuard] ================================');
-    console.log('[JwtAuthGuard] Error:', err?.message);
-    console.log('[JwtAuthGuard] Info:', info);
-    console.log('[JwtAuthGuard] Info name:', info?.name);
-    console.log('[JwtAuthGuard] Info message:', info?.message);
-    console.log('[JwtAuthGuard] User:', user);
-    console.log('[JwtAuthGuard] ================================');
-
     if (err || !user) {
       throw err || new UnauthorizedException(`${info?.name || 'Unauthorized'}: ${info?.message || 'Invalid token'}`);
     }

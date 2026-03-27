@@ -79,8 +79,30 @@ pnpm --filter @opencode/miniapp dev:mp-weixin  # 微信小程序
 ```bash
 pnpm --filter @opencode/database prisma generate   # 生成 Client
 pnpm --filter @opencode/database prisma migrate dev # 运行迁移
-pnpm --filter @opencode/database prisma db seed     # 执行 Seed
+pnpm --filter @opencode/database prisma db seed     # 执行 Seed（推荐使用 /seed-data）
 ```
+
+**⚠️ 重要：Prisma Seed 问题解决方案**
+
+由于 Prisma 7.x 和某些 adapter 配置存在兼容性问题，**推荐使用 SQL 脚本直接创建假数据**：
+
+1. 使用 `/seed-data` command 快速创建假数据（推荐）
+2. 或手动执行 SQL 脚本：
+   ```bash
+   # 基础数据（用户、角色、权限）
+   docker exec -i postgres psql -U xinnix -d couponHub < infra/database/prisma/seed-base.sql
+
+   # 业务数据（商户、券模板、订单等）
+   docker exec -i postgres psql -U xinnix -d couponHub < infra/database/prisma/seed-data.sql
+   ```
+
+**Seed 脚本位置：**
+- `infra/database/prisma/seed-base.sql` - 基础数据（Admin、User、Role、Permission、Todo）
+- `infra/database/prisma/seed-data.sql` - 业务数据（Merchant、CouponTemplate、Order、News、Settlement）
+
+**测试账号：**
+- 管理端：superadmin@example.com / password123
+- 小程序：user@example.com / password123
 
 ````
 
@@ -185,7 +207,6 @@ export class ProductService extends BaseService<Product> {
 
 ## 📚 参考文档
 
-- **小程序架构**：`docs/miniapp-architecture.md`
 - **产品愿景**：`docs/product/vision.md`
 - **需求文档**：`docs/prd/*.md`
 - **开发路线**：`docs/product/roadmap.md`
