@@ -47,12 +47,12 @@ export const authRouter = router({
         if (existingUser.email === input.email) {
           throw new TRPCError({
             code: 'CONFLICT',
-            message: '邮箱已被注册',
+            message: '该邮箱已被注册，请直接登录',
           });
         }
         throw new TRPCError({
           code: 'CONFLICT',
-          message: '用户名已存在',
+          message: '用户名已被占用，请更换',
         });
       }
 
@@ -102,27 +102,28 @@ export const authRouter = router({
         where: { email: input.email },
       });
 
+      // 用户不存在
       if (!user) {
         throw new TRPCError({
           code: 'UNAUTHORIZED',
-          message: '无效的凭证',
+          message: '邮箱不存在',
         });
       }
 
-      // Verify password
+      // 验证密码
       const isValidPassword = await bcrypt.compare(input.password, user.passwordHash);
       if (!isValidPassword) {
         throw new TRPCError({
           code: 'UNAUTHORIZED',
-          message: '无效的凭证',
+          message: '密码错误',
         });
       }
 
-      // Check if active
+      // 检查账户是否被禁用
       if (!user.isActive) {
         throw new TRPCError({
-          code: 'UNAUTHORIZED',
-          message: '账户已被禁用',
+          code: 'FORBIDDEN',
+          message: '账户已被禁用，请联系客服',
         });
       }
 
@@ -267,27 +268,28 @@ export const authRouter = router({
         },
       });
 
+      // 用户不存在
       if (!admin) {
         throw new TRPCError({
           code: 'UNAUTHORIZED',
-          message: '无效的凭证',
+          message: '邮箱不存在',
         });
       }
 
-      // Verify password
+      // 验证密码
       const isValidPassword = await bcrypt.compare(input.password, admin.passwordHash);
       if (!isValidPassword) {
         throw new TRPCError({
           code: 'UNAUTHORIZED',
-          message: '无效的凭证',
+          message: '密码错误',
         });
       }
 
-      // Check if active
+      // 检查账户是否被禁用
       if (!admin.isActive) {
         throw new TRPCError({
-          code: 'UNAUTHORIZED',
-          message: '账户已被禁用',
+          code: 'FORBIDDEN',
+          message: '账户已被禁用，请联系管理员',
         });
       }
 

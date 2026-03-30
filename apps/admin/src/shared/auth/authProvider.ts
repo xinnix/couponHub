@@ -7,11 +7,15 @@ const trpcClient = getTrpcClient();
 export const authProvider: AuthProvider = {
   login: async ({ email, password }) => {
     try {
+      console.log("authProvider: 尝试登录", email);
+
       // Use tRPC mutation - returns data directly
       const result = await (trpcClient as any).auth.adminLogin.mutate({
         email,
         password,
       });
+
+      console.log("authProvider: 登录成功");
 
       // Store auth data
       localStorage.setItem("accessToken", result.accessToken);
@@ -22,11 +26,18 @@ export const authProvider: AuthProvider = {
         success: true,
       });
     } catch (error: any) {
+      console.error("authProvider: 登录失败", error);
+
+      // tRPC 错误格式: error.message 包含后端返回的错误信息
+      const errorMessage = error?.message || "登录失败";
+
+      console.error("authProvider: 错误信息 -", errorMessage);
+
       return Promise.resolve({
         success: false,
         error: {
           name: "Login Error",
-          message: error.message || "Login failed",
+          message: errorMessage,
         },
       });
     }
@@ -46,10 +57,24 @@ export const authProvider: AuthProvider = {
     });
   },
 
-  logout: async (_params: any) => {
+  logout: async (params: any) => {
+    try {
+      // Call backend logout API if refresh token is provided
+      if (params?.refreshToken) {
+        await (trpcClient as any).auth.logout.mutate({
+          refreshToken: params.refreshToken,
+        });
+      }
+    } catch (error: any) {
+      console.error("Logout API error:", error);
+      // Continue with local logout even if API fails
+    }
+
+    // Clear localStorage
     localStorage.removeItem("accessToken");
     localStorage.removeItem("refreshToken");
     localStorage.removeItem("user");
+
     return Promise.resolve({
       success: true,
       redirectTo: "/login",

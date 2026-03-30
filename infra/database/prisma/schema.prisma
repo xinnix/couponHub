@@ -222,6 +222,10 @@ model Merchant {
   description String?
   status      String  @default("ACTIVE") // ACTIVE, INACTIVE
 
+  // 创建者和更新者 (Admin)
+  createdById String?
+  updatedById String?
+
   // 关联
   handlers    MerchantHandler[]
   orders      Order[]
@@ -232,6 +236,7 @@ model Merchant {
 
   @@index([category])
   @@index([status])
+  @@index([createdById])
   @@map("merchants")
 }
 
@@ -271,11 +276,16 @@ model News {
   viewCount Int    @default(0)
   status    String @default("DRAFT") // DRAFT, PUBLISHED
 
+  // 创建者和更新者 (Admin)
+  createdById String?
+  updatedById String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([status])
   @@index([createdAt])
+  @@index([createdById])
   @@map("news")
 }
 
@@ -295,6 +305,10 @@ model CouponTemplate {
 
   status String @default("ACTIVE") // ACTIVE, EXPIRED, DISABLED
 
+  // 创建者和更新者 (Admin)
+  createdById String?
+  updatedById String?
+
   orders Order[]
 
   createdAt DateTime @default(now())
@@ -302,6 +316,7 @@ model CouponTemplate {
 
   @@index([status])
   @@index([validFrom, validUntil])
+  @@index([createdById])
   @@map("coupon_templates")
 }
 

@@ -46,7 +46,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Check if login failed
     if (!result.success) {
-      throw new Error(result.error?.message || "登录失败");
+      const errorMessage = result.error?.message || "登录失败";
+      console.error("AuthContext: 登录失败 -", errorMessage);
+      throw new Error(errorMessage);
     }
 
     // Update state directly
@@ -56,10 +58,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const logout = useCallback(async () => {
-    await authProvider.logout?.({});
-    setIsAuthenticated(false);
-    setUser(null);
-    isInitialized.current = false;
+    try {
+      // Get refresh token from localStorage
+      const refreshToken = localStorage.getItem("refreshToken");
+
+      // Call backend logout API to revoke refresh token
+      if (refreshToken) {
+        await authProvider.logout?.({ refreshToken });
+      } else {
+        // If no refresh token, just clear local storage
+        await authProvider.logout?.({});
+      }
+    } catch (error) {
+      console.error("Logout error:", error);
+      // Still clear local state even if API call fails
+    } finally {
+      // Clear local state
+      setIsAuthenticated(false);
+      setUser(null);
+      isInitialized.current = false;
+      // Clear localStorage
+      localStorage.removeItem("accessToken");
+      localStorage.removeItem("refreshToken");
+      localStorage.removeItem("user");
+    }
   }, []);
 
   // Memoize context value to prevent unnecessary re-renders

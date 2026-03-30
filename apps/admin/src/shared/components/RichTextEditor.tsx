@@ -1,0 +1,74 @@
+// apps/admin/src/shared/components/RichTextEditor.tsx
+import { useEffect, useRef } from "react";
+import { useQuill } from "react-quilljs";
+import "quill/dist/quill.snow.css";
+
+interface RichTextEditorProps {
+  value?: string;
+  onChange?: (value: string) => void;
+  placeholder?: string;
+}
+
+export const RichTextEditor: React.FC<RichTextEditorProps> = ({
+  value,
+  onChange,
+  placeholder = "请输入内容...",
+}) => {
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
+  const isInternalChange = useRef(false);
+  const initialized = useRef(false);
+
+  const { quillRef, quill } = useQuill({
+    placeholder,
+    modules: {
+      toolbar: [
+        [{ header: [1, 2, 3, false] }],
+        ["bold", "italic", "underline", "strike"],
+        [{ list: "ordered" }, { list: "bullet" }],
+        [{ color: [] }, { background: [] }],
+        ["link", "image"],
+        [{ align: [] }],
+        ["clean"],
+      ],
+    },
+  });
+
+  // quill 实例就绪后设置初始值和监听
+  useEffect(() => {
+    if (!quill || initialized.current) return;
+    initialized.current = true;
+
+    if (value) {
+      isInternalChange.current = true;
+      quill.root.innerHTML = value;
+      isInternalChange.current = false;
+    }
+
+    quill.on("text-change", () => {
+      if (!isInternalChange.current) {
+        const html = quill.root.innerHTML;
+        onChangeRef.current?.(html === "<p><br></p>" ? "" : html);
+      }
+    });
+  }, [quill]);
+
+  // 外部 value 变化时同步到编辑器
+  useEffect(() => {
+    if (!quill || !initialized.current) return;
+    const currentHtml = quill.root.innerHTML;
+    const normalizedValue = value || "";
+    const normalizedCurrent = currentHtml === "<p><br></p>" ? "" : currentHtml;
+    if (normalizedValue !== normalizedCurrent) {
+      isInternalChange.current = true;
+      quill.root.innerHTML = normalizedValue || "<p><br></p>";
+      isInternalChange.current = false;
+    }
+  }, [quill, value]);
+
+  return (
+    <div style={{ minHeight: 300 }}>
+      <div ref={quillRef} />
+    </div>
+  );
+};

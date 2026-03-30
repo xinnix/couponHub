@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
+import { authApi } from '@/api/auth'
 
 definePage({
   type: 'home',
@@ -94,21 +95,50 @@ async function quickLogin(account: typeof testAccounts[0]) {
 }
 
 // 退出登录
-function logout() {
+async function logout() {
   uni.showModal({
     title: '确认退出',
     content: '确定要退出登录吗？',
-    success: (res) => {
+    success: async (res) => {
       if (res.confirm) {
-        uni.removeStorageSync('token')
-        uni.removeStorageSync('refreshToken')
-        uni.removeStorageSync('userInfo')
-        isLoggedIn.value = false
-        userInfo.value = null
-        uni.showToast({
-          title: '已退出登录',
-          icon: 'success',
-        })
+        try {
+          uni.showLoading({ title: '退出中...' })
+
+          // 调用后端 logout API
+          const refreshToken = uni.getStorageSync('refreshToken')
+          if (refreshToken) {
+            await authApi.logout(refreshToken)
+          }
+
+          uni.hideLoading()
+
+          // 清空本地存储
+          uni.removeStorageSync('token')
+          uni.removeStorageSync('refreshToken')
+          uni.removeStorageSync('userInfo')
+
+          // 更新状态
+          isLoggedIn.value = false
+          userInfo.value = null
+
+          uni.showToast({
+            title: '已退出登录',
+            icon: 'success',
+          })
+        } catch (error: any) {
+          uni.hideLoading()
+          console.error('退出失败:', error)
+          // 即使 API 调用失败，也清空本地状态
+          uni.removeStorageSync('token')
+          uni.removeStorageSync('refreshToken')
+          uni.removeStorageSync('userInfo')
+          isLoggedIn.value = false
+          userInfo.value = null
+          uni.showToast({
+            title: '已退出登录',
+            icon: 'success',
+          })
+        }
       }
     },
   })

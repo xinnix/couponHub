@@ -22,8 +22,10 @@
     "@trpc/server": "^11.8.1",
     "antd": "^5.29.3",
     "dayjs": "^1.11.19",
+    "quill": "^2.0.3",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
+    "react-quilljs": "^2.0.5",
     "react-router-dom": "^7.12.0",
     "recharts": "^3.6.0",
     "superjson": "^2.2.6"

@@ -10,11 +10,11 @@ import {
   Form,
   Input,
   Space,
-  message,
   Tag,
   Card,
   Row,
   Col,
+  App,
 } from "antd";
 import { SearchOutlined, TeamOutlined, KeyOutlined } from "@ant-design/icons";
 import { RoleForm } from "../components/RoleForm";
@@ -48,6 +48,7 @@ export const RoleListPage = () => {
   const [editingRecord, setEditingRecord] = useState<Role | null>(null);
   const [searchText, setSearchText] = useState("");
   const [form] = Form.useForm();
+  const { message } = App.useApp();
 
   const { mutate: update } = useUpdate();
   const { result, query } = useList<Role>({

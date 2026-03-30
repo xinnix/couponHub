@@ -99,15 +99,51 @@ function showQRCode(item: any) {
 
 async function handlePay(item: any) {
   try {
-    uni.showLoading({ title: '支付中...', mask: true });
-    await paymentApi.create({ orderId: item.id });
+    uni.showLoading({ title: '调起支付...', mask: true });
+
+    // 1. 获取微信支付参数
+    const payRes = await paymentApi.create({ orderId: item.id });
+    const payParams = payRes.data?.payParams;
+
+    if (!payParams) {
+      throw new Error('获取支付参数失败');
+    }
+
     uni.hideLoading();
-    uni.showToast({ title: '支付成功', icon: 'success' });
-    await loadOrders();
-  } catch (error: any) {
-    uni.hideLoading();
-    const msg = error?.response?.data?.message || error?.message || '支付失败';
-    uni.showToast({ title: msg, icon: 'none' });
+
+    // 2. 调起微信支付
+    await new Promise<void>((resolve, reject) => {
+      uni.requestPayment({
+        provider: 'wxpay',
+        timeStamp: payParams.timeStamp,
+        nonceStr: payParams.nonceStr,
+        package: payParams.package,
+        signType: payParams.signType as 'MD5' | 'RSA',
+        paySign: payParams.paySign,
+        success: () => resolve(),
+        fail: (err: any) => {
+          if (err.errMsg?.includes('cancel')) {
+            reject(new Error('支付取消'))
+          }
+          else {
+            reject(new Error(err.errMsg || '支付失败'))
+          }
+        },
+      })
+    })
+
+    // 3. 支付成功，轮询等待回调更新
+    uni.showToast({ title: '支付成功', icon: 'success' })
+
+    // 短暂延迟后刷新列表，等待微信回调处理
+    setTimeout(async () => {
+      await loadOrders()
+    }, 1500)
+  }
+  catch (error: any) {
+    uni.hideLoading()
+    const msg = error?.message || '支付失败'
+    uni.showToast({ title: msg, icon: 'none' })
   }
 }
 

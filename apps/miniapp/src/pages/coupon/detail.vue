@@ -73,14 +73,40 @@ async function handleBuy() {
       throw new Error('创建订单失败')
     }
 
-    // 2. 模拟支付
-    uni.showLoading({ title: '支付中...', mask: true })
-    await paymentApi.create({ orderId })
+    // 2. 创建支付，获取微信支付参数
+    uni.showLoading({ title: '调起支付...', mask: true })
+    const payRes = await paymentApi.create({ orderId })
+    const payParams = payRes.data?.payParams
+
+    if (!payParams) {
+      throw new Error('获取支付参数失败')
+    }
 
     uni.hideLoading()
-    uni.showToast({ title: '购买成功', icon: 'success' })
 
-    // 跳转到我的券包
+    // 3. 调起微信支付
+    await new Promise<void>((resolve, reject) => {
+      uni.requestPayment({
+        provider: 'wxpay',
+        timeStamp: payParams.timeStamp,
+        nonceStr: payParams.nonceStr,
+        package: payParams.package,
+        signType: payParams.signType as 'MD5' | 'RSA',
+        paySign: payParams.paySign,
+        success: () => resolve(),
+        fail: (err: any) => {
+          if (err.errMsg?.includes('cancel')) {
+            reject(new Error('支付取消'))
+          }
+          else {
+            reject(new Error(err.errMsg || '支付失败'))
+          }
+        },
+      })
+    })
+
+    // 4. 支付成功，跳转到券包（回调会更新订单状态）
+    uni.showToast({ title: '支付成功', icon: 'success' })
     setTimeout(() => {
       uni.navigateTo({ url: '/pages/wallet/index' })
     }, 1000)

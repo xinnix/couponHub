@@ -1,7 +1,7 @@
 // apps/admin/src/pages/list.tsx
 import { useList, useCreate, useUpdate } from "@refinedev/core";
 import { List, DeleteButton } from "@refinedev/antd";
-import { Table, Button, Modal, Form, Input, Select, Space, message, Tag } from "antd";
+import { Table, Button, Modal, Form, Input, Select, Space, App, Tag } from "antd";
 import { useState } from "react";
 
 export const TodoListPage = () => {
@@ -22,6 +22,7 @@ export const TodoListPage = () => {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editingRecord, setEditingRecord] = useState<any>(null);
   const [form] = Form.useForm();
+  const { message } = App.useApp();
 
   const columns = [
     { title: "ID", dataIndex: "id", width: 200 },

@@ -50,7 +50,7 @@ export interface IFileStorage {
 // 文件存储服务
 // ============================================
 
-@Injectable({ scope: Scope.TRANSIENT })
+@Injectable()
 export class FileStorageService implements IFileStorage {
   private readonly logger = new Logger(FileStorageService.name);
   private strategy: IFileStorage;
@@ -184,6 +184,7 @@ class LocalStorageStrategy implements IFileStorage {
 class AliyunOssStrategy implements IFileStorage {
   private client: any;
   private bucket: string;
+  private logger = console; // 添加 logger
 
   constructor(config: ConfigService) {
     const endpoint = config.get<string>('OSS_ENDPOINT');
@@ -267,55 +268,49 @@ class AliyunOssStrategy implements IFileStorage {
   async getUploadCredentials(dirPath: string): Promise<UploadCredentials> {
     try {
       const timestamp = Date.now();
-      const expiration = new Date(timestamp + 3600 * 1000).toISOString();
+      const expiration = new Date(timestamp + 3600 * 1000).toISOString(); // 1小时有效期
 
-      // 生成临时访问凭证
+      // 获取 OSS 配置
       const accessKeyId = (this.client as any).options.accessKeyId;
       const accessKeySecret = (this.client as any).options.accessKeySecret;
-      const securityToken = `temp-token-${timestamp}`;
 
-      // 获取当前日期（UTC格式，用于credential）
-      const now = new Date();
-      const dateStr = now.toISOString().split('T')[0]; // YYYY-MM-DD
-
-      // 提取region (如 oss-cn-hangzhou -> cn-hangzhou)
-      const region = this.client.options.region.replace('oss-', '');
-
-      // 构建 policy（简化条件，避免V4签名复杂度）
+      // 构建 Post Policy
       const policy = {
         expiration,
         conditions: [
-          { bucket: this.bucket },
+          // 限制上传路径
           ['starts-with', '$key', `${dirPath}/`],
+          // 限制文件大小 (最大 10MB)
+          ['content-length-range', 0, 10485760],
         ],
       };
 
-      // 将policy转为base64
+      // 将 policy转为 base64
       const policyBase64 = Buffer.from(JSON.stringify(policy)).toString('base64');
 
-      // 使用 OSS V1 签名（更简单且兼容性更好）
-      // 签名 = base64(hmac-sha1(accessKeySecret, policyBase64))
+      // 使用 HMAC-SHA1 签名 (OSS Post Policy 签名方式)
       const crypto = require('crypto');
-      const signature = crypto.createHmac('sha1', accessKeySecret)
+      const signature = crypto
+        .createHmac('sha1', accessKeySecret)
         .update(policyBase64)
         .digest('base64');
 
       return {
         accessKeyId,
-        accessKeySecret,
-        securityToken,
+        accessKeySecret: '', // Post Policy 不需要暴露 secret
+        securityToken: '', // 不使用 STS
         expiration,
         bucket: this.bucket,
         region: this.client.options.region,
         endpoint: `https://${this.bucket}.${this.client.options.region}.aliyuncs.com`,
         policy: policyBase64,
         signature,
-        xOssSignatureVersion: 'OSS4-HMAC-SHA256',
-        xOssCredential: `${accessKeyId}/${dateStr}/${region}/oss/aliyun_v4_request`,
+        xOssSignatureVersion: 'OSS_POST_POLICY', // 标记使用 Post Policy
+        xOssCredential: `${accessKeyId}/${expiration}`, // Post Policy 方式
       };
     } catch (error) {
-      console.error('获取上传凭证失败:', error);
-      throw new Error('获取上传凭证失败');
+      this.logger.error('生成上传凭证失败:', error);
+      throw new Error('生成上传凭证失败');
     }
   }
 }

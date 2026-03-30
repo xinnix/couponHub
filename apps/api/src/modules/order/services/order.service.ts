@@ -90,18 +90,6 @@ export class OrderService extends BaseService<'Order'> {
       });
 
       this.logger.log(`订单创建成功: ${orderNo}, 用户: ${userId}`);
-
-      // 8. 发起支付
-      const payment = await this.wechatPayService.createOrder({
-        orderId: order.id,
-        amount: Number(template.buyPrice),
-        description: template.title,
-      });
-
-      return {
-        order,
-        payment,
-      };
     } finally {
       // 9. 释放锁
       await this.redisService.releaseLock(lockKey, lock);
@@ -195,16 +183,16 @@ export class OrderService extends BaseService<'Order'> {
     });
 
     // 调用退款接口
-    const refund = await this.wechatPayService.refund({
-      orderId: order.id,
-      refundId: `refund_${Date.now()}`,
+    const refundTransactionId = await this.wechatPayService.refund({
+      orderNo: order.orderNo,
+      refundNo: `refund_${Date.now()}`,
       totalAmount: Number(order.price),
       refundAmount: Number(order.price),
       reason,
     });
 
     this.logger.log(`订单退款申请: ${order.orderNo}, 原因: ${reason}`);
-    return refund;
+    return { refundId: refundTransactionId };
   }
 
   /**

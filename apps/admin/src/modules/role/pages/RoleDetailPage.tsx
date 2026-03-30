@@ -7,13 +7,13 @@ import {
   Descriptions,
   Button,
   Space,
-  message,
   Tag,
   Modal,
   List,
   Avatar,
   Tabs,
   Spin,
+  App,
 } from "antd";
 import {
   ArrowLeftOutlined,
@@ -67,6 +67,7 @@ export const RoleDetailPage = () => {
   const [isPermissionModalVisible, setIsPermissionModalVisible] = useState(false);
   const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
+  const { message } = App.useApp();
 
   const { result, isLoading, query: roleQuery } = useOne<RoleDetail>({
     resource: "role",

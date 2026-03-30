@@ -17,11 +17,13 @@ import { OrderModule } from "./modules/order/module";
 import { PaymentModule } from "./modules/payment/module";
 import { RedemptionModule } from "./modules/redemption/module";
 import { SettlementModule } from "./modules/settlement/module";
+import { UploadModule } from "./modules/upload/module";
 
 // 全局过滤器/拦截器
 import { APP_FILTER, APP_INTERCEPTOR } from "@nestjs/core";
 import { AllExceptionsFilter } from "./core/filters/http-exception.filter";
 import { TransformInterceptor } from "./core/interceptors/transform.interceptor";
+import { FileStorageService } from "./shared/services/file-storage.service";
 
 @Module({
   imports: [
@@ -44,9 +46,11 @@ import { TransformInterceptor } from "./core/interceptors/transform.interceptor"
     PaymentModule,
     RedemptionModule,
     SettlementModule,
+    UploadModule,
   ],
   providers: [
     Reflector,
+    FileStorageService,
     {
       provide: APP_FILTER,
       useClass: AllExceptionsFilter,

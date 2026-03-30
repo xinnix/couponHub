@@ -13,18 +13,76 @@ const RedeemSchema = z.object({
 const GetRecordsSchema = z.object({
   startDate: z.string().optional(),
   endDate: z.string().optional(),
+  merchantId: z.string().optional(), // 新增：支持按商户筛选
   page: z.number().int().positive().optional(),
   pageSize: z.number().int().positive().optional(),
+});
+
+const GetManySchema = z.object({
+  page: z.number().int().positive().optional().default(1),
+  limit: z.number().int().positive().optional().default(20),
+  where: z.any().optional(),
+  orderBy: z.any().optional(),
+  include: z.any().optional(),
 });
 
 /**
  * Redemption tRPC Router
  *
  * 核销管理路由，提供：
+ * - getMany: 标准列表查询（兼容 Refine）
  * - redeem: 扫码核销
- * - getRecords: 查询核销记录
+ * - getRecords: 查询核销记录（自定义筛选）
  */
 export const redemptionRouter = router({
+  /**
+   * 标准列表查询（兼容 Refine dataProvider）
+   * 默认查询已核销订单
+   */
+  getMany: protectedProcedure
+    .input(GetManySchema)
+    .query(async ({ input, ctx }) => {
+      const { page = 1, limit = 20, where, orderBy, include } = input;
+
+      // 构建查询条件：默认查询已核销订单
+      const baseWhere = {
+        status: 'REDEEMED',
+        redeemedAt: { not: null },
+      };
+
+      // 合并用户传入的 where 条件
+      const finalWhere = where ? { ...baseWhere, ...where } : baseWhere;
+
+      const [items, total] = await Promise.all([
+        ctx.prisma.order.findMany({
+          where: finalWhere,
+          skip: (page - 1) * limit,
+          take: limit,
+          orderBy: orderBy || { redeemedAt: 'desc' },
+          include: include || {
+            template: true,
+            merchant: true,
+            user: {
+              select: {
+                id: true,
+                nickname: true,
+                phone: true,
+              },
+            },
+          },
+        }),
+        ctx.prisma.order.count({ where: finalWhere }),
+      ]);
+
+      return {
+        items,
+        total,
+        page,
+        pageSize: limit,
+        totalPages: Math.ceil(total / limit),
+      };
+    }),
+
   /**
    * 扫码核销
    */
@@ -95,16 +153,26 @@ export const redemptionRouter = router({
   getRecords: protectedProcedure
     .input(GetRecordsSchema)
     .query(async ({ input, ctx }) => {
-      const { startDate, endDate, page = 1, pageSize = 20 } = input;
-
-      // TODO: 从用户信息中获取商户 ID
-      // const merchantId = ...;
+      const { startDate, endDate, merchantId, page = 1, pageSize = 20 } = input;
 
       const where: any = {
         status: 'REDEEMED',
         redeemedAt: { not: null },
       };
 
+      // 根据用户类型筛选
+      // Admin 用户可以查询所有记录，并支持按商户筛选
+      if ((ctx.user as any).type === 'admin') {
+        if (merchantId) {
+          where.redeemMerchantId = merchantId;
+        }
+      } else {
+        // 核销员只能查询自己商户的记录
+        // TODO: 从用户信息中获取商户 ID
+        // where.redeemMerchantId = handler.merchantId;
+      }
+
+      // 日期范围筛选
       if (startDate || endDate) {
         where.redeemedAt = {};
         if (startDate) {
@@ -120,6 +188,7 @@ export const redemptionRouter = router({
           where,
           include: {
             template: true,
+            merchant: true,
             user: {
               select: {
                 id: true,

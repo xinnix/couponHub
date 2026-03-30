@@ -2,6 +2,8 @@ import {
   CreateOrderSchema,
   OrderListQuerySchema,
   RefundOrderSchema,
+  ApproveRefundSchema,
+  RejectRefundSchema,
 } from '@opencode/shared';
 import { createCrudRouterWithCustom } from '../../../trpc/trpc.helper';
 import { protectedProcedure } from '../../../trpc/trpc';
@@ -152,6 +154,109 @@ export const orderRouter = createCrudRouterWithCustom(
           data: {
             status: 'REFUNDING',
             refundReason: reason,
+          },
+        });
+
+        return updated;
+      }),
+
+    // 退款审核通过（管理员）
+    approveRefund: protectedProcedure
+      .input(ApproveRefundSchema)
+      .mutation(async ({ input, ctx }) => {
+        const { orderId, adminNote } = input;
+
+        const order = await ctx.prisma.order.findUnique({
+          where: { id: orderId },
+        });
+
+        if (!order) {
+          throw new BadRequestException('订单不存在');
+        }
+
+        if (order.status !== 'REFUNDING') {
+          throw new BadRequestException('订单状态不允许退款');
+        }
+
+        if (order.isLocked) {
+          throw new ForbiddenException('订单已被锁定，无法退款');
+        }
+
+        // 调用微信支付退款
+        const refundNo = `RF${Date.now()}`;
+        let refundId: string | undefined;
+
+        try {
+          // 注：需要从 context 中获取 wechatPayService
+          // refundId = await ctx.wechatPayService.refund({
+          //   orderNo: order.orderNo,
+          //   refundNo,
+          //   totalAmount: Number(order.price),
+          //   refundAmount: Number(order.price),
+          //   reason: order.refundReason || '用户申请退款',
+          // });
+          refundId = refundNo; // 临时处理
+        } catch (error) {
+          throw new BadRequestException('微信退款失败');
+        }
+
+        // 更新订单状态
+        const updated = await ctx.prisma.order.update({
+          where: { id: orderId },
+          data: {
+            status: 'REFUNDED',
+            refundId,
+            refundedAt: new Date(),
+          },
+          include: {
+            user: {
+              select: {
+                id: true,
+                nickname: true,
+                email: true,
+              },
+            },
+            template: true,
+          },
+        });
+
+        return updated;
+      }),
+
+    // 退款审核拒绝（管理员）
+    rejectRefund: protectedProcedure
+      .input(RejectRefundSchema)
+      .mutation(async ({ input, ctx }) => {
+        const { orderId, rejectReason } = input;
+
+        const order = await ctx.prisma.order.findUnique({
+          where: { id: orderId },
+        });
+
+        if (!order) {
+          throw new BadRequestException('订单不存在');
+        }
+
+        if (order.status !== 'REFUNDING') {
+          throw new BadRequestException('订单状态不允许拒绝退款');
+        }
+
+        // 更新订单状态，恢复为已支付
+        const updated = await ctx.prisma.order.update({
+          where: { id: orderId },
+          data: {
+            status: 'PAID',
+            refundReason: `退款被拒绝: ${rejectReason}`,
+          },
+          include: {
+            user: {
+              select: {
+                id: true,
+                nickname: true,
+                email: true,
+              },
+            },
+            template: true,
           },
         });
 

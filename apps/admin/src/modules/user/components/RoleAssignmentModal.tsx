@@ -1,6 +1,6 @@
 // apps/admin/src/modules/user/components/RoleAssignmentModal.tsx
 import { useState, useEffect } from "react";
-import { Modal, Select, Tag, Space, message, List, Button, Spin } from "antd";
+import { Modal, Select, Tag, Space, List, Button, Spin, App } from "antd";
 import { useList, useUpdate } from "@refinedev/core";
 import { DeleteOutlined, PlusOutlined } from "@ant-design/icons";
 
@@ -29,6 +29,7 @@ interface RoleAssignmentModalProps {
 export const RoleAssignmentModal = ({ open, user, onCancel, onSuccess }: RoleAssignmentModalProps) => {
   const [selectedRoleId, setSelectedRoleId] = useState<string | undefined>(undefined);
   const [loading, setLoading] = useState(false);
+  const { message } = App.useApp();
 
   const { result: allRolesResult, query: rolesQuery } = useList<Role>({
     resource: "role",

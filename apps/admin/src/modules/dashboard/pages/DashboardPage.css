@@ -31,58 +31,14 @@
   transform: translateY(-2px);
 }
 
-.welcome-card {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
+.chart-card {
+  height: 100%;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
-.welcome-card h2 {
-  color: white;
-  margin-bottom: 8px;
-}
-
-.welcome-card p {
-  color: rgba(255, 255, 255, 0.9);
-  margin-bottom: 16px;
-}
-
-.welcome-card .ant-progress-text {
-  color: white !important;
-}
-
-.priority-badge {
-  display: inline-block;
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-size: 12px;
-  font-weight: 500;
-}
-
-.priority-high {
-  background: #fff1f0;
-  color: #ff4d4f;
-  border: 1px solid #ffa39e;
-}
-
-.priority-medium {
-  background: #fff7e6;
-  color: #faad14;
-  border: 1px solid #ffc53d;
-}
-
-.priority-low {
-  background: #f6ffed;
-  color: #52c41a;
-  border: 1px solid #95de64;
-}
-
-.notification-time {
-  font-size: 12px;
-  color: #8c8c8c;
-}
-
-.ant-list-item {
-  padding: 16px 0;
+.chart-card .ant-card-body {
+  padding: 16px;
 }
 
 .ant-card {

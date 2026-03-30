@@ -56,9 +56,9 @@ ON CONFLICT DO NOTHING;
 -- 密码: password123 (bcrypt hash)
 INSERT INTO admins (id, username, email, "passwordHash", "firstName", "lastName", "isActive", "createdAt", "updatedAt")
 VALUES
-  ('a1', 'superadmin', 'superadmin@example.com', '$2a$10$YourHashHere', 'Super', 'Admin', true, NOW(), NOW()),
-  ('a2', 'admin', 'admin@example.com', '$2a$10$YourHashHere', 'Admin', 'User', true, NOW(), NOW()),
-  ('a3', 'viewer', 'viewer@example.com', '$2a$10$YourHashHere', 'Viewer', 'Admin', true, NOW(), NOW())
+  ('a1', 'superadmin', 'superadmin@example.com', '$2a$10$lkkKl9vU1py90sJ/IX25U.idJvyroYi2XkdAbBaxnX4oIY3BTAipa', 'Super', 'Admin', true, NOW(), NOW()),
+  ('a2', 'admin', 'admin@example.com', '$2a$10$lkkKl9vU1py90sJ/IX25U.idJvyroYi2XkdAbBaxnX4oIY3BTAipa', 'Admin', 'User', true, NOW(), NOW()),
+  ('a3', 'viewer', 'viewer@example.com', '$2a$10$lkkKl9vU1py90sJ/IX25U.idJvyroYi2XkdAbBaxnX4oIY3BTAipa', 'Viewer', 'Admin', true, NOW(), NOW())
 ON CONFLICT (email) DO NOTHING;
 
 -- 分配角色给管理员
@@ -74,8 +74,8 @@ ON CONFLICT DO NOTHING;
 -- ============================================
 INSERT INTO users (id, username, email, "passwordHash", nickname, phone, "isActive", "createdAt", "updatedAt")
 VALUES
-  ('u1', 'user', 'user@example.com', '$2a$10$YourHashHere', '测试用户', '13800138000', true, NOW(), NOW()),
-  ('u2', 'user2', 'user2@example.com', '$2a$10$YourHashHere', '测试用户2', NULL, true, NOW(), NOW())
+  ('u1', 'user', 'user@example.com', '$2a$10$lkkKl9vU1py90sJ/IX25U.idJvyroYi2XkdAbBaxnX4oIY3BTAipa', '测试用户', '13800138000', true, NOW(), NOW()),
+  ('u2', 'user2', 'user2@example.com', '$2a$10$lkkKl9vU1py90sJ/IX25U.idJvyroYi2XkdAbBaxnX4oIY3BTAipa', '测试用户2', NULL, true, NOW(), NOW())
 ON CONFLICT (email) DO NOTHING;
 
 -- ============================================

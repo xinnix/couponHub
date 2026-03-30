@@ -11,12 +11,14 @@ import { AppModule } from "./app.module";
 import { AllExceptionsFilter } from "./core/filters/http-exception.filter";
 
 import { PrismaService } from "./prisma/prisma.service";
+import { FileStorageService } from "./shared/services/file-storage.service";
 import { appRouter } from "./trpc/app.router";
-import { createContext, setPrismaService } from "./trpc/trpc";
+import { createContext, setPrismaService, setFileStorageService } from "./trpc/trpc";
 import * as trpcExpress from "@trpc/server/adapters/express";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import { ValidationPipe } from "@nestjs/common";
 import express from "express";
+import { json } from "express";
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -26,6 +28,17 @@ async function bootstrap() {
   app.enableCors({
     origin: corsOrigin === "*" ? "*" : corsOrigin.split(","),
   });
+
+  // 捕获 raw body 用于微信支付回调验签
+  app.use(
+    json({
+      verify: (req: any, _res, buf) => {
+        if (req.url?.includes("/payments/wechat/callback")) {
+          req.rawBody = buf.toString();
+        }
+      },
+    }),
+  );
 
   // 配置静态文件服务（用于访问上传的文件）
   // uploads 目录位于项目根目录
@@ -51,6 +64,9 @@ async function bootstrap() {
   // Set up tRPC middleware (tRPC handles body parsing internally)
   const prismaService = app.get(PrismaService);
   setPrismaService(prismaService); // 设置 PrismaService 实例
+
+  const fileStorageService = app.get(FileStorageService);
+  setFileStorageService(fileStorageService); // 设置 FileStorageService 实例
 
   (app as any).use(
     "/trpc",

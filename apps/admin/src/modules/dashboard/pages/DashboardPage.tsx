@@ -1,38 +1,36 @@
-// apps/admin/src/modules/dashboard/pages/DashboardPage.tsx
-import { Card, Row, Col, Statistic } from "antd";
-import { CheckSquareOutlined, UserOutlined, TeamOutlined } from "@ant-design/icons";
+import './DashboardPage.css';
+import { Row, Col } from 'antd';
+import { OverviewStats } from '../components/OverviewStats';
+import { OrderTrendChart } from '../components/OrderTrendChart';
+import { OrderStatusChart } from '../components/OrderStatusChart';
+import { MerchantCategoryChart } from '../components/MerchantCategoryChart';
+import { RecentOrdersTable } from '../components/RecentOrdersTable';
 
 export function DashboardPage() {
   return (
-    <div>
-      <h2>仪表盘</h2>
-      <Row gutter={16}>
-        <Col span={8}>
-          <Card>
-            <Statistic
-              title="待办事项"
-              value={0}
-              prefix={<CheckSquareOutlined />}
-            />
-          </Card>
+    <div className="dashboard">
+      <div className="dashboard-header">
+        <h1>数据总览</h1>
+        <p>平台核心经营数据实时概览</p>
+      </div>
+
+      <OverviewStats />
+
+      <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
+        <Col xs={24} lg={16}>
+          <OrderTrendChart />
         </Col>
-        <Col span={8}>
-          <Card>
-            <Statistic
-              title="用户总数"
-              value={0}
-              prefix={<UserOutlined />}
-            />
-          </Card>
+        <Col xs={24} lg={8}>
+          <OrderStatusChart />
         </Col>
-        <Col span={8}>
-          <Card>
-            <Statistic
-              title="角色总数"
-              value={0}
-              prefix={<TeamOutlined />}
-            />
-          </Card>
+      </Row>
+
+      <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
+        <Col xs={24} lg={8}>
+          <MerchantCategoryChart />
+        </Col>
+        <Col xs={24} lg={16}>
+          <RecentOrdersTable />
         </Col>
       </Row>
     </div>

@@ -38,9 +38,9 @@ export class AuthService {
 
     if (existingUser) {
       if (existingUser.email === data.email) {
-        throw new ConflictException('邮箱已被注册');
+        throw new ConflictException('该邮箱已被注册，请直接登录');
       }
-      throw new ConflictException('用户名已存在');
+      throw new ConflictException('用户名已被占用，请更换');
     }
 
     // 3️⃣ 哈希密码
@@ -81,27 +81,34 @@ export class AuthService {
       where: { email: data.email },
     });
 
+    // 用户不存在
     if (!user) {
-      throw new UnauthorizedException('无效的凭证');
+      throw new UnauthorizedException('邮箱不存在');
     }
 
     // 3️⃣ 验证密码
     const isPasswordValid = await bcrypt.compare(data.password, user.passwordHash);
 
+    // 密码错误
     if (!isPasswordValid) {
-      throw new UnauthorizedException('无效的凭证');
+      throw new UnauthorizedException('密码错误');
     }
 
-    // 4️⃣ 更新最后登录时间
+    // 4️⃣ 检查账户是否被禁用
+    if (!user.isActive) {
+      throw new UnauthorizedException('账户已被禁用，请联系客服');
+    }
+
+    // 5️⃣ 更新最后登录时间
     await this.prisma.user.update({
       where: { id: user.id },
       data: { lastLoginAt: new Date() },
     });
 
-    // 5️⃣ 生成令牌
+    // 6️⃣ 生成令牌
     const { accessToken, refreshToken } = await this.generateUserTokens(user);
 
-    // 6️⃣ 返回用户信息
+    // 7️⃣ 返回用户信息
     const { passwordHash: _, ...sanitizedUser } = user;
 
     return {
@@ -187,30 +194,37 @@ export class AuthService {
       },
     });
 
+    // 用户不存在
     if (!admin) {
-      throw new UnauthorizedException('无效的凭证');
+      throw new UnauthorizedException('邮箱不存在');
     }
 
     // 3️⃣ 验证密码
     const isPasswordValid = await bcrypt.compare(data.password, admin.passwordHash);
 
+    // 密码错误
     if (!isPasswordValid) {
-      throw new UnauthorizedException('无效的凭证');
+      throw new UnauthorizedException('密码错误');
     }
 
-    // 4️⃣ 更新最后登录时间
+    // 4️⃣ 检查账户是否被禁用
+    if (!admin.isActive) {
+      throw new UnauthorizedException('账户已被禁用，请联系管理员');
+    }
+
+    // 5️⃣ 更新最后登录时间
     await this.prisma.admin.update({
       where: { id: admin.id },
       data: { lastLoginAt: new Date() },
     });
 
-    // 5️⃣ 生成令牌
+    // 6️⃣ 生成令牌
     const { accessToken, refreshToken } = await this.generateAdminTokens(admin);
 
-    // 6️⃣ 返回用户信息
+    // 7️⃣ 返回用户信息
     const { passwordHash: _, ...sanitizedAdmin } = admin;
 
-    // 7️⃣ 扁平化权限
+    // 8️⃣ 扁平化权限
     const permissions = sanitizedAdmin.roles?.flatMap((ar: any) =>
       ar.role.permissions?.map((rp: any) =>
         `${rp.permission.resource}:${rp.permission.action}`,

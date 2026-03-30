@@ -1,4 +1,4 @@
-import { Form, Input, Button, Card, message } from "antd";
+import { Form, Input, Button, Card, App } from "antd";
 import { UserOutlined, LockOutlined } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../../shared/auth/AuthContext";
@@ -10,6 +10,7 @@ export const LoginPage = () => {
   const navigate = useNavigate();
   const [form] = Form.useForm();
   const [isLoading, setIsLoading] = useState(false);
+  const { message } = App.useApp();
 
   const onFinish = async (values: any) => {
     setIsLoading(true);

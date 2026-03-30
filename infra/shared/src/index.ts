@@ -329,7 +329,7 @@ export const MerchantSchema = z.object({
 
 export const CreateMerchantSchema = z.object({
   name: z.string().min(1, "商户名称不能为空"),
-  logo: z.string().url("Logo URL格式无效").optional(),
+  logo: z.string().url("Logo URL格式无效").optional().nullable(),
   category: z.string().min(1, "行业分类不能为空"),
   floor: z.string().optional(),
   phone: z.string().optional(),
@@ -447,8 +447,8 @@ const BaseCouponTemplateSchema = z.object({
   faceValue: z.number().positive("面值必须大于0"),
   stock: z.number().int().nonnegative("库存不能为负").min(0, "库存不能为负"),
   merchantScope: z.array(z.string()).min(1, "至少选择一个适用商户"),
-  validFrom: z.date(),
-  validUntil: z.date(),
+  validFrom: z.coerce.date(), // 自动将字符串转换为 Date
+  validUntil: z.coerce.date(), // 自动将字符串转换为 Date
   description: z.string().optional(),
 });
 
@@ -573,3 +573,39 @@ export type SettlementInput = z.infer<typeof SettlementSchema>;
 export type GenerateSettlementInput = z.infer<typeof GenerateSettlementSchema>;
 export type SettlementListQueryInput = z.infer<typeof SettlementListQuerySchema>;
 export type ConfirmSettlementInput = z.infer<typeof ConfirmSettlementSchema>;
+
+// ============================================
+// 退款审核 Schemas
+// ============================================
+
+export const ApproveRefundSchema = z.object({
+  orderId: z.string().min(1, "订单ID不能为空"),
+  adminNote: z.string().optional(),
+});
+
+export const RejectRefundSchema = z.object({
+  orderId: z.string().min(1, "订单ID不能为空"),
+  rejectReason: z.string().min(1, "拒绝原因不能为空"),
+});
+
+// ============================================
+// 结算单标记已支付 Schema
+// ============================================
+
+export const MarkPaidSchema = z.object({
+  settlementId: z.string().min(1, "结算单ID不能为空"),
+  paymentNote: z.string().optional(),
+});
+
+// ============================================
+// 文件上传 Schemas
+// ============================================
+
+export const UploadImageSchema = z.object({
+  type: z.enum(["merchant_logo", "news_banner", "merchant_gallery"]),
+});
+
+export type ApproveRefundInput = z.infer<typeof ApproveRefundSchema>;
+export type RejectRefundInput = z.infer<typeof RejectRefundSchema>;
+export type MarkPaidInput = z.infer<typeof MarkPaidSchema>;
+export type UploadImageInput = z.infer<typeof UploadImageSchema>;

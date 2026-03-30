@@ -1,13 +1,19 @@
 import { initTRPC, TRPCError } from "@trpc/server";
 import { ZodError } from "zod";
 import { PrismaService } from "../prisma/prisma.service";
+import { FileStorageService } from "../shared/services/file-storage.service";
 import jwt from "jsonwebtoken";
 
 // Global PrismaService reference
 let prismaServiceInstance: PrismaService | null = null;
+let fileStorageServiceInstance: FileStorageService | null = null;
 
 export const setPrismaService = (prisma: PrismaService) => {
   prismaServiceInstance = prisma;
+};
+
+export const setFileStorageService = (fileStorage: FileStorageService) => {
+  fileStorageServiceInstance = fileStorage;
 };
 
 // User interface for context
@@ -96,6 +102,7 @@ async function verifyJwtToken(req: any, prisma: PrismaService): Promise<User | n
 // Create context with optional user (from JWT verification)
 export const createContext = async (opts: any) => {
   const prisma = prismaServiceInstance || opts?.prisma;
+  const fileStorage = fileStorageServiceInstance || opts?.fileStorage;
   const req = opts?.req;
 
   // Verify JWT token and get user
@@ -106,6 +113,7 @@ export const createContext = async (opts: any) => {
 
   return {
     prisma,
+    fileStorage,
     req,
     res: opts?.res,
     user,
