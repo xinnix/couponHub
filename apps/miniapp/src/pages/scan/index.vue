@@ -4,7 +4,7 @@
 
     <button class="scan-btn" @click="handleScan">开始扫码</button>
 
-    <view v-if="result" class="result-box">
+    <view class="result-box" v-show="result">
       <text class="result-title">核销结果</text>
       <text class="result-text">{{ result }}</text>
     </view>
@@ -12,10 +12,25 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 import { redemptionApi } from '@/api/business';
 
 const result = ref('');
+
+// 权限验证
+onMounted(() => {
+  const isHandler = uni.getStorageSync('isHandler');
+  if (!isHandler) {
+    uni.showModal({
+      title: '权限不足',
+      content: '您不是核销员，无法执行核销操作',
+      showCancel: false,
+    });
+    setTimeout(() => {
+      uni.navigateBack();
+    }, 1500);
+  }
+});
 
 async function handleScan() {
   try {
@@ -40,8 +55,17 @@ async function redeemOrder(code: string) {
     uni.showLoading({ title: '核销中...' });
 
     const res = await redemptionApi.redeem({ code });
-    const orderNo = (res.data as any)?.orderNo;
-    result.value = orderNo ? `核销成功（订单号：${orderNo}）` : '核销成功';
+    const data = res.data as any;
+    let orderNo = '';
+    if (data && data.orderNo) {
+      orderNo = data.orderNo;
+    }
+
+    if (orderNo) {
+      result.value = `核销成功（订单号：${orderNo}）`;
+    } else {
+      result.value = '核销成功';
+    }
 
     uni.hideLoading();
     uni.showToast({

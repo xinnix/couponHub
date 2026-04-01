@@ -91,7 +91,7 @@ export const authProvider: AuthProvider = {
     if (trpcCode === "UNAUTHORIZED" || httpStatus === 401 || status === 401) {
       return Promise.resolve({
         logout: true,
-        redirectTo: "/login",
+        redirectTo: "/unauthorized",
       });
     }
     return Promise.resolve({});

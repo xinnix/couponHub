@@ -26,7 +26,7 @@ import { authApi } from '@/api/auth';
 
 const loading = ref(false);
 
-const handleWechatLogin = async () => {
+const handleWechatLogin = async (event: any) => {
   loading.value = true;
 
   try {
@@ -40,23 +40,53 @@ const handleWechatLogin = async () => {
       throw new Error('获取登录凭证失败');
     }
 
-    // 2. 发送到后端
+    // 2. 处理手机号授权（新增）
+    let phoneData = null;
+    if (event.detail && event.detail.encryptedData && event.detail.iv) {
+      try {
+        phoneData = await authApi.getPhoneNumber({
+          code,
+          encryptedData: event.detail.encryptedData,
+          iv: event.detail.iv
+        });
+        // User.phone 已在后端更新，handlerId 也已设置
+      } catch (error) {
+        console.error('手机号授权失败', error);
+        // 继续登录流程，但不关联核销员身份
+      }
+    }
+
+    // 3. 发送到后端
     const res = await authApi.wechatLogin(code);
 
-    // 3. 存储 token
+    // 4. 存储 token
     uni.setStorageSync('token', res.data.accessToken);
     uni.setStorageSync('refreshToken', res.data.refreshToken);
     uni.setStorageSync('userInfo', res.data.user);
 
-    // 4. 提示并跳转
-    uni.showToast({
-      title: '登录成功',
-      icon: 'success',
-    });
+    // 5. 检查核销员身份（新增）
+    try {
+      const handlerRes = await authApi.checkHandlerStatus();
+      uni.setStorageSync('isHandler', handlerRes.data.isHandler);
+      uni.setStorageSync('handlerInfo', handlerRes.data.handler);
 
-    setTimeout(() => {
+      // 6. 提示并跳转
+      uni.showToast({
+        title: '登录成功',
+        icon: 'success',
+      });
+
+      setTimeout(() => {
+        if (handlerRes.data.isHandler) {
+          uni.reLaunch({ url: '/pages/handler/index' });
+        } else {
+          uni.reLaunch({ url: '/pages/index' });
+        }
+      }, 1000);
+    } catch (error) {
+      // 核销员检查失败，默认跳转首页
       uni.reLaunch({ url: '/pages/index' });
-    }, 1000);
+    }
   } catch (error: any) {
     uni.showToast({
       title: error.message || '登录失败',

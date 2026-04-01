@@ -318,6 +318,7 @@ export const MerchantSchema = z.object({
   name: z.string(),
   logo: z.string().url().optional().nullable(),
   category: z.string(),
+  area: z.string().optional().nullable(),
   floor: z.string().optional().nullable(),
   phone: z.string().optional().nullable(),
   gallery: z.array(z.string().url()).optional().nullable(),
@@ -331,20 +332,35 @@ export const CreateMerchantSchema = z.object({
   name: z.string().min(1, "商户名称不能为空"),
   logo: z.string().url("Logo URL格式无效").optional().nullable(),
   category: z.string().min(1, "行业分类不能为空"),
+  area: z.string().optional(),
   floor: z.string().optional(),
   phone: z.string().optional(),
   gallery: z.array(z.string().url()).optional(),
   description: z.string().optional(),
+  status: z.enum(["ACTIVE", "INACTIVE"]).optional(), // 创建时可选，默认为 ACTIVE
 });
 
-export const UpdateMerchantSchema = CreateMerchantSchema.partial();
+export const UpdateMerchantSchema = z.object({
+  name: z.string().min(1, "商户名称不能为空").optional(),
+  logo: z.string().url("Logo URL格式无效").optional().nullable(),
+  category: z.string().min(1, "行业分类不能为空").optional(),
+  area: z.string().optional(),
+  floor: z.string().optional(),
+  phone: z.string().optional(),
+  gallery: z.array(z.string().url()).optional(),
+  description: z.string().optional(),
+  status: z.enum(["ACTIVE", "INACTIVE"]).optional(), // 更新时可以修改状态
+});
 
 export const MerchantListQuerySchema = z.object({
   page: z.number().int().positive().optional(),
-  pageSize: z.number().int().positive().optional(),
-  category: z.string().optional(),
-  status: z.enum(["ACTIVE", "INACTIVE"]).optional(),
-  search: z.string().optional(),
+  limit: z.number().int().positive().optional(), // 改为 limit 与 Refine 保持一致
+  skip: z.number().int().optional(),
+  take: z.number().int().optional(),
+  where: z.any().optional(), // 支持通用的 where 对象格式
+  orderBy: z.any().optional(),
+  include: z.any().optional(),
+  select: z.any().optional(),
 });
 
 export type MerchantInput = z.infer<typeof MerchantSchema>;
@@ -382,6 +398,38 @@ export const UpdateMerchantHandlerSchema = CreateMerchantHandlerSchema.partial()
 export type MerchantHandlerInput = z.infer<typeof MerchantHandlerSchema>;
 export type CreateMerchantHandlerInput = z.infer<typeof CreateMerchantHandlerSchema>;
 export type UpdateMerchantHandlerInput = z.infer<typeof UpdateMerchantHandlerSchema>;
+
+// ============================================
+// Handler Schemas (核销员)
+// ============================================
+
+export const HandlerSchema = z.object({
+  id: z.string(),
+  name: z.string().min(1, "核销员姓名不能为空"),
+  phone: z.string()
+    .regex(/^1[3-9]\d{9}$/, "手机号格式不正确")
+    .min(11, "手机号必须是11位"),
+  merchantId: z.string(),
+  isActive: z.boolean().default(true),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+});
+
+export const CreateHandlerSchema = HandlerSchema.omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const UpdateHandlerSchema = HandlerSchema.partial().omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type Handler = z.infer<typeof HandlerSchema>;
+export type CreateHandler = z.infer<typeof CreateHandlerSchema>;
+export type UpdateHandler = z.infer<typeof UpdateHandlerSchema>;
 
 // ============================================
 // News Schemas

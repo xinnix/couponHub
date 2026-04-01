@@ -453,4 +453,113 @@ export const authRouter = router({
 
       return { success: true };
     }),
+
+  // 解密微信手机号并更新 User.phone
+  getPhoneNumber: publicProcedure
+    .input(z.object({
+      code: z.string(),
+      encryptedData: z.string(),
+      iv: z.string(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      // 1. 获取 session_key
+      const appId = process.env.WX_APP_ID;
+      const appSecret = process.env.WX_APP_SECRET;
+      const url = `https://api.weixin.qq.com/sns/jscode2session?appid=${appId}&secret=${appSecret}&js_code=${input.code}&grant_type=authorization_code`;
+
+      const wechatRes = await fetch(url);
+      const wechatData = await wechatRes.json();
+
+      if (wechatData.errcode) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: `微信登录失败: ${wechatData.errmsg}`,
+        });
+      }
+
+      const { session_key, openid } = wechatData;
+
+      // 2. 解密手机号
+      const crypto = require('crypto');
+      const decipher = crypto.createDecipheriv(
+        'aes-128-cbc',
+        Buffer.from(session_key, 'base64'),
+        Buffer.from(input.iv, 'base64'),
+      );
+
+      let decoded = decipher.update(Buffer.from(input.encryptedData, 'base64'));
+      decoded = Buffer.concat([decoded, decipher.final()]);
+
+      const phoneData = JSON.parse(decoded.toString());
+
+      // 3. 更新 User.phone
+      const user = await ctx.prisma.user.update({
+        where: { openid },
+        data: { phone: phoneData.phoneNumber },
+      });
+
+      // 4. 匹配核销员身份
+      const handler = await ctx.prisma.handler.findUnique({
+        where: { phone: phoneData.phoneNumber },
+        include: { merchant: true },
+      });
+
+      // 5. 如果匹配，设置 User.handlerId
+      if (handler && handler.isActive) {
+        await ctx.prisma.user.update({
+          where: { id: user.id },
+          data: { handlerId: handler.id },
+        });
+      }
+
+      return {
+        phoneNumber: phoneData.phoneNumber,
+        isHandler: handler && handler.isActive,
+        handler: handler ? {
+          id: handler.id,
+          name: handler.name,
+          merchantId: handler.merchantId,
+          merchantName: handler.merchant.name,
+        } : null,
+      };
+    }),
+
+  // 检查核销员身份
+  checkHandlerStatus: protectedProcedure
+    .query(async ({ ctx }) => {
+      // User 已在 protectedProcedure 中验证
+      const user = ctx.user as any; // 使用 any 类型以支持动态字段
+
+      if (!user.handlerId) {
+        return {
+          isHandler: false,
+          handler: null,
+        };
+      }
+
+      const handler = await ctx.prisma.handler.findUnique({
+        where: { id: user.handlerId },
+        include: { merchant: true },
+      });
+
+      if (!handler || !handler.isActive) {
+        return {
+          isHandler: false,
+          handler: null,
+        };
+      }
+
+      return {
+        isHandler: true,
+        handler: {
+          id: handler.id,
+          name: handler.name,
+          phone: handler.phone,
+          merchantId: handler.merchantId,
+          merchantName: handler.merchant.name,
+          merchantCategory: handler.merchant.category,
+          merchantArea: handler.merchant.area,
+        },
+      };
+    }),
 });

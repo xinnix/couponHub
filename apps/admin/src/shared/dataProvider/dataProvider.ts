@@ -14,10 +14,6 @@ export const queryClient = new QueryClient({
   },
 });
 
-// Token refresh state
-let isRefreshing = false;
-let refreshPromise: Promise<boolean> | null = null;
-
 // Message instance - will be set by the app
 let messageInstance: ReturnType<typeof App.useApp>['message'] | null = null;
 
@@ -39,65 +35,6 @@ const showError = (msg: string) => {
     console.error('[Message not initialized]', msg);
   }
 };
-
-/**
- * Refresh the access token using the refresh token
- * Returns true if refresh was successful, false otherwise
- */
-async function refreshAccessToken(): Promise<boolean> {
-  // If already refreshing, return the existing promise
-  if (isRefreshing && refreshPromise) {
-    return refreshPromise;
-  }
-
-  isRefreshing = true;
-  refreshPromise = (async () => {
-    try {
-      const refreshToken = localStorage.getItem("refreshToken");
-      if (!refreshToken) {
-        return false;
-      }
-
-      // Call refresh token API using tRPC HTTP endpoint
-      const response = await fetch("/trpc/auth.refreshToken", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          refreshToken,
-        }),
-      });
-
-      if (!response.ok) {
-        return false;
-      }
-
-      const result = await response.json();
-      const resultData = result?.result?.data;
-
-      if (!resultData?.accessToken) {
-        return false;
-      }
-
-      // Store new tokens
-      localStorage.setItem("accessToken", resultData.accessToken);
-      if (resultData.refreshToken) {
-        localStorage.setItem("refreshToken", resultData.refreshToken);
-      }
-
-      return true;
-    } catch (error) {
-      console.error("Token refresh failed:", error);
-      return false;
-    } finally {
-      isRefreshing = false;
-      refreshPromise = null;
-    }
-  })();
-
-  return refreshPromise;
-}
 
 /**
  * Extract business-friendly error message from database error
@@ -174,149 +111,70 @@ function extractBusinessErrorMessage(errorMessage: string): string | null {
 }
 
 /**
- * Handle tRPC errors with global message notification
- * For UNAUTHORIZED errors, try to refresh token before redirecting
- * Returns true if the error was handled globally, false if component should handle it
+ * Handle tRPC errors with global message notification.
+ * Note: 401 UNAUTHORIZED is handled at the tRPC client level (trpcClient.ts),
+ * so this function typically won't see 401 errors. The safety net below is kept
+ * in case of edge cases.
+ * Returns true if the operation should be retried, false otherwise.
  */
 async function handleTRPCError(error: unknown): Promise<boolean> {
-  console.log('[handleTRPCError] Called with error:', error);
-
   if (error instanceof TRPCClientError) {
     const errorMessage = error.data?.message || error.message || "操作失败，请稍后重试";
-    console.log('[handleTRPCError] Error message:', errorMessage);
 
     // Try to extract business-friendly message from database error
     const businessMessage = extractBusinessErrorMessage(errorMessage);
-    console.log('[handleTRPCError] Business message:', businessMessage);
 
     if (businessMessage) {
-      console.log('[handleTRPCError] Showing business message');
-      if (messageInstance) {
-        messageInstance.error(businessMessage);
-      } else {
-        console.error('Message instance not set! Call setMessageInstance in your root component.');
-      }
+      showError(businessMessage);
       return false;
     }
 
     // Get error code from different possible locations in tRPC error structure
-    // In tRPC v11, the code can be at error.data.code or directly at error.data
     const errorCode = (error.data as any)?.code || (error.data as any)?.httpStatus;
-
-    // Also check HTTP status code from the error shape
     const httpStatus = (error.shape as any)?.data?.httpStatus || (error.data as any)?.httpStatus;
 
-    if (errorCode) {
-      switch (errorCode) {
-        case "UNAUTHORIZED":
-        case 401:
-          // Try to refresh the token first
-          const refreshed = await refreshAccessToken();
+    // Resolve effective status for error handling
+    const effectiveStatus = errorCode === "UNAUTHORIZED" ? 401
+      : errorCode === "FORBIDDEN" ? 403
+      : errorCode === "NOT_FOUND" ? 404
+      : errorCode === "CONFLICT" ? 409
+      : errorCode === "BAD_REQUEST" ? 400
+      : errorCode === "INTERNAL_SERVER_ERROR" ? 500
+      : typeof errorCode === "number" ? errorCode
+      : httpStatus;
 
-          if (refreshed) {
-            // Token refreshed successfully, return true to retry the operation
-            return true;
-          }
-
-          // Refresh failed, clear auth data and redirect to session expired page
-          localStorage.removeItem("accessToken");
-          localStorage.removeItem("refreshToken");
-          localStorage.removeItem("user");
-          showError("登录已过期，请重新登录");
-          window.location.href = "/unauthorized";
-          return false;
-        case "FORBIDDEN":
-        case 403:
-          showError("没有权限执行此操作");
-          return false;
-        case "NOT_FOUND":
-        case 404:
-          showError("请求的资源不存在");
-          return false;
-        case "CONFLICT":
-        case 409:
-          showError(errorMessage);
-          return false;
-        case "BAD_REQUEST":
-        case 400:
-          showError(errorMessage);
-          return false;
-        case "INTERNAL_SERVER_ERROR":
-        case 500:
-          // Generic server error for unhandled cases
-          showError("服务器错误，请稍后重试");
-          console.error('Server error:', errorMessage);
-          return false;
-        default:
-          // Handle HTTP status codes
-          if (httpStatus) {
-            switch (httpStatus) {
-              case 401:
-                // Already handled above, but just in case
-                const refreshed2 = await refreshAccessToken();
-                if (refreshed2) {
-                  return true;
-                }
-                localStorage.removeItem("accessToken");
-                localStorage.removeItem("refreshToken");
-                localStorage.removeItem("user");
-                showError("登录已过期，请重新登录");
-                window.location.href = "/unauthorized";
-                return false;
-              case 403:
-                showError("没有权限执行此操作");
-                return false;
-              case 404:
-                showError("请求的资源不存在");
-                return false;
-              case 500:
-                showError("服务器错误，请稍后重试");
-                console.error('Server error:', errorMessage);
-                return false;
-              default:
-                showError(errorMessage);
-                return false;
-            }
-          }
-          showError(errorMessage);
-          return false;
-      }
-    } else if (httpStatus) {
-      // No errorCode but has httpStatus
-      switch (httpStatus) {
-        case 401:
-          const refreshed3 = await refreshAccessToken();
-          if (refreshed3) {
-            return true;
-          }
-          localStorage.removeItem("accessToken");
-          localStorage.removeItem("refreshToken");
-          localStorage.removeItem("user");
-          showError("登录已过期，请重新登录");
-          window.location.href = "/unauthorized";
-          return false;
-        case 403:
-          showError("没有权限执行此操作");
-          return false;
-        case 404:
-          showError("请求的资源不存在");
-          return false;
-        case 500:
-          showError("服务器错误，请稍后重试");
-          console.error('Server error:', errorMessage);
-          return false;
-        default:
-          showError(errorMessage);
-          return false;
-      }
-    } else {
-      // Network error or other errors
-      if (error.message.includes("ECONNREFUSED")) {
-        showError("无法连接到服务器，请检查网络连接");
-      } else {
+    switch (effectiveStatus) {
+      case 401:
+        // Safety net: 401 is handled by tRPC client, but clear auth if somehow reaching here
+        localStorage.removeItem("accessToken");
+        localStorage.removeItem("refreshToken");
+        localStorage.removeItem("user");
+        showError("登录已过期，请重新登录");
+        window.location.href = "/unauthorized";
+        return false;
+      case 403:
+        showError("没有权限执行此操作");
+        return false;
+      case 404:
+        showError("请求的资源不存在");
+        return false;
+      case 409:
         showError(errorMessage);
-      }
-      return false;
+        return false;
+      case 400:
+        showError(errorMessage);
+        return false;
+      case 500:
+        showError("服务器错误，请稍后重试");
+        return false;
+      default:
+        // Network error check
+        if (error.message.includes("ECONNREFUSED")) {
+          showError("无法连接到服务器，请检查网络连接");
+        } else {
+          showError(errorMessage);
+        }
+        return false;
     }
   } else if (error instanceof Error) {
     showError(error.message || "操作失败，请稍后重试");
@@ -457,6 +315,7 @@ export const dataProvider = {
    * Create a new record
    *
    * Input format for createCrudRouter: { data, include?, select? }
+   * Note: 401 token refresh is handled at the tRPC client level transparently.
    */
   create: async ({ resource, variables, meta }: any) => {
     try {
@@ -475,25 +334,7 @@ export const dataProvider = {
 
       return { data: result };
     } catch (error) {
-      const shouldRetry = await handleTRPCError(error);
-      if (shouldRetry) {
-        // Token was refreshed, retry the operation
-        try {
-          if (meta?.method) {
-            const result = await (trpcClient as any)[resource][meta.method].mutate(variables);
-            return { data: result };
-          }
-          const result = await (trpcClient as any)[resource].create.mutate({
-            data: variables,
-            include: meta?.include,
-            select: meta?.select,
-          });
-          return { data: result };
-        } catch (retryError) {
-          await handleTRPCError(retryError);
-          throw retryError;
-        }
-      }
+      await handleTRPCError(error);
       throw error;
     }
   },
@@ -502,6 +343,7 @@ export const dataProvider = {
    * Update an existing record
    *
    * Input format for createCrudRouter: { id, data, include?, select? }
+   * Note: 401 token refresh is handled at the tRPC client level transparently.
    */
   update: async ({ resource, id, variables, meta }: any) => {
     try {
@@ -521,74 +363,35 @@ export const dataProvider = {
 
       return { data: result };
     } catch (error) {
-      const shouldRetry = await handleTRPCError(error);
-      if (shouldRetry) {
-        // Token was refreshed, retry the operation
-        try {
-          if (meta?.method) {
-            const result = await (trpcClient as any)[resource][meta.method].mutate({ id, ...variables });
-            return { data: result };
-          }
-          const result = await (trpcClient as any)[resource].update.mutate({
-            id,
-            data: variables,
-            include: meta?.include,
-            select: meta?.select,
-          });
-          return { data: result };
-        } catch (retryError) {
-          await handleTRPCError(retryError);
-          throw retryError;
-        }
-      }
+      await handleTRPCError(error);
       throw error;
     }
   },
 
   /**
    * Delete a single record
+   * Note: 401 token refresh is handled at the tRPC client level transparently.
    */
   deleteOne: async ({ resource, id }: any) => {
     try {
       const result = await (trpcClient as any)[resource].delete.mutate({ id });
       return { data: result };
     } catch (error) {
-      const shouldRetry = await handleTRPCError(error);
-      if (shouldRetry) {
-        // Token was refreshed, retry the operation
-        // The trpcClient headers function will automatically use the new token
-        try {
-          const result = await (trpcClient as any)[resource].delete.mutate({ id });
-          return { data: result };
-        } catch (retryError) {
-          await handleTRPCError(retryError);
-          throw retryError;
-        }
-      }
+      await handleTRPCError(error);
       throw error;
     }
   },
 
   /**
    * Delete multiple records
+   * Note: 401 token refresh is handled at the tRPC client level transparently.
    */
   deleteMany: async ({ resource, ids }: any) => {
     try {
       const result = await (trpcClient as any)[resource].deleteMany.mutate({ ids });
       return { data: result };
     } catch (error) {
-      const shouldRetry = await handleTRPCError(error);
-      if (shouldRetry) {
-        // Token was refreshed, retry the operation
-        // The trpcClient headers function will automatically use the new token
-        try {
-          const result = await (trpcClient as any)[resource].deleteMany.mutate({ ids });
-          return { data: result };
-        } catch (retryError) {
-          await handleTRPCError(retryError);
-          throw retryError;
-        }
-      }
+      await handleTRPCError(error);
       throw error;
     }
   },

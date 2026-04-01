@@ -4,8 +4,8 @@
     <view class="header">
       <text class="title">优惠券商城</text>
       <view class="user-info" @click="handleUserClick">
-        <image v-if="userInfo?.avatar" :src="userInfo.avatar" class="avatar" />
-        <view v-else class="avatar-placeholder">
+        <image v-show="hasAvatar" :src="avatarUrl" class="avatar" />
+        <view v-show="!hasAvatar" class="avatar-placeholder">
           <text class="icon">👤</text>
         </view>
       </view>
@@ -68,17 +68,17 @@
           @click="handleMerchantClick(merchant.id)"
         >
           <image
-            v-if="merchant.logo"
+            v-show="merchant.logo"
             :src="merchant.logo"
             class="merchant-logo"
             mode="aspectFill"
           />
-          <view v-else class="merchant-logo-placeholder">
+          <view v-show="!merchant.logo" class="merchant-logo-placeholder">
             <text>{{ merchant.name.charAt(0) }}</text>
           </view>
           <text class="merchant-name">{{ merchant.name }}</text>
           <text class="merchant-category">{{ merchant.category }}</text>
-          <text v-if="merchant.floor" class="merchant-floor">{{ merchant.floor }}</text>
+          <text v-show="merchant.floor" class="merchant-floor">{{ merchant.floor }}</text>
         </view>
       </view>
     </view>
@@ -96,7 +96,7 @@
           @click="handleNewsClick(news.id)"
         >
           <image
-            v-if="news.bannerUrl"
+            v-show="news.bannerUrl"
             :src="news.bannerUrl"
             class="news-banner"
             mode="aspectFill"
@@ -112,7 +112,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { merchantApi, newsApi, couponApi } from '@/api/business';
 import { authApi } from '@/api/auth';
 
@@ -123,7 +123,27 @@ const couponList = ref<any[]>([]);
 const merchantList = ref<any[]>([]);
 const newsList = ref<any[]>([]);
 
-const toArray = (value: unknown): any[] => (Array.isArray(value) ? value : []);
+// 计算属性 - 简化模板逻辑
+const hasAvatar = computed(() => {
+  if (userInfo.value && userInfo.value.avatar) {
+    return true;
+  }
+  return false;
+});
+
+const avatarUrl = computed(() => {
+  if (userInfo.value && userInfo.value.avatar) {
+    return userInfo.value.avatar;
+  }
+  return '';
+});
+
+function toArray(value: unknown): any[] {
+  if (Array.isArray(value)) {
+    return value;
+  }
+  return [];
+}
 
 onMounted(async () => {
   // 获取用户信息
@@ -190,9 +210,17 @@ const handleNewsClick = (id: string) => {
   newsApi.getDetail(id)
     .then((res) => {
       const news = res.data as any;
+      let title = '新闻详情';
+      if (news && news.title) {
+        title = news.title;
+      }
+      let content = '暂无内容';
+      if (news && news.content) {
+        content = news.content;
+      }
       uni.showModal({
-        title: news?.title || '新闻详情',
-        content: news?.content || '暂无内容',
+        title: title,
+        content: content,
         showCancel: false,
       });
     })
@@ -204,7 +232,9 @@ const handleNewsClick = (id: string) => {
 const handleMoreCoupons = () => {
   couponApi.getList({ limit: 20, status: 'ACTIVE' })
     .then((res) => {
-      couponList.value = Array.isArray(res.data) ? res.data : couponList.value;
+      if (Array.isArray(res.data)) {
+        couponList.value = res.data;
+      }
       uni.showToast({ title: '已加载更多优惠券', icon: 'success' });
     })
     .catch(() => {
@@ -215,7 +245,9 @@ const handleMoreCoupons = () => {
 const handleMoreMerchants = () => {
   merchantApi.getList({ limit: 20, status: 'ACTIVE' })
     .then((res) => {
-      merchantList.value = Array.isArray(res.data) ? res.data : merchantList.value;
+      if (Array.isArray(res.data)) {
+        merchantList.value = res.data;
+      }
       uni.showToast({ title: '已加载更多商户', icon: 'success' });
     })
     .catch(() => {

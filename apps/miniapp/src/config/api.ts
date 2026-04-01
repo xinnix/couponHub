@@ -25,6 +25,8 @@ export const API_ENDPOINTS = {
   register: '/auth/register',
   profile: '/auth/me',
   wechatLogin: '/auth/wechat/login',
+  getPhoneNumber: '/auth/getPhoneNumber',
+  checkHandlerStatus: '/auth/checkHandlerStatus',
 
   // TODO 相关
   todos: '/todo',

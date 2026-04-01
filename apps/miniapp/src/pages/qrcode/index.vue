@@ -10,15 +10,15 @@
       </view>
     </view>
 
-    <view v-if="loading" class="loading">
+    <view v-show="loading" class="loading">
       <text>加载中...</text>
     </view>
 
-    <view v-else-if="error" class="error">
+    <view v-show="!loading && error" class="error">
       <text>{{ error }}</text>
     </view>
 
-    <view v-else class="qrcode-content">
+    <view v-show="!loading && !error" class="qrcode-content">
       <view class="qrcode-box">
         <canvas
           id="qrcode-canvas"
@@ -30,16 +30,16 @@
       </view>
 
       <view class="order-info">
-        <text class="coupon-title">{{ order?.template?.title }}</text>
-        <text class="order-no">订单号: {{ order?.orderNo }}</text>
-        <text class="amount">面值: ¥{{ order?.faceValue }}</text>
+        <text class="coupon-title">{{ orderTitle }}</text>
+        <text class="order-no">订单号: {{ orderNo }}</text>
+        <text class="amount">面值: ¥{{ orderFaceValue }}</text>
       </view>
     </view>
   </view>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { orderApi } from '@/api/business'
 import UQRCode from 'uqrcodejs'
 
@@ -53,6 +53,28 @@ const statusBarHeight = ref(0)
 let timer: any = null
 let qrcode: UQRCode | null = null
 
+// 计算属性 - 简化模板显示
+const orderTitle = computed(() => {
+  if (order.value && order.value.template && order.value.template.title) {
+    return order.value.template.title;
+  }
+  return '未知券';
+});
+
+const orderNo = computed(() => {
+  if (order.value && order.value.orderNo) {
+    return order.value.orderNo;
+  }
+  return '';
+});
+
+const orderFaceValue = computed(() => {
+  if (order.value && order.value.faceValue) {
+    return order.value.faceValue;
+  }
+  return 0;
+});
+
 // 获取状态栏高度
 const sysInfo = uni.getSystemInfoSync()
 statusBarHeight.value = sysInfo.statusBarHeight || 0
@@ -62,7 +84,15 @@ function goBack() {
 }
 
 onLoad(async (options: any) => {
-  const orderId = options?.id || options?.orderId
+  let id1 = '';
+  let id2 = '';
+  if (options && options.id) {
+    id1 = options.id;
+  }
+  if (options && options.orderId) {
+    id2 = options.orderId;
+  }
+  const orderId = id1 || id2;
   if (!orderId) {
     error.value = '缺少订单信息'
     loading.value = false
@@ -84,8 +114,12 @@ async function loadOrder(id: string) {
     const res = await orderApi.getDetail(id)
     order.value = res.data
 
-    if (order.value?.status !== 'PAID') {
-      error.value = '该订单无法核销（状态：' + getStatusText(order.value?.status) + '）'
+    let orderStatus = '';
+    if (order.value && order.value.status) {
+      orderStatus = order.value.status;
+    }
+    if (orderStatus !== 'PAID') {
+      error.value = '该订单无法核销（状态：' + getStatusText(orderStatus) + '）'
       return
     }
 
@@ -95,7 +129,19 @@ async function loadOrder(id: string) {
     startCountdown()
   }
   catch (err: any) {
-    const msg = err?.response?.data?.message || err?.message || '加载失败'
+    let respData = null;
+    if (err && err.response && err.response.data) {
+      respData = err.response.data;
+    }
+    let respMsg = '';
+    if (respData && respData.message) {
+      respMsg = respData.message;
+    }
+    let errMsg = '';
+    if (err && err.message) {
+      errMsg = err.message;
+    }
+    const msg = respMsg || errMsg || '加载失败'
     error.value = msg
   }
   finally {
@@ -104,7 +150,7 @@ async function loadOrder(id: string) {
 }
 
 function generateQRCode() {
-  if (!order.value?.id) return
+  if (!order.value || !order.value.id) return
 
   // 每次刷新生成新的核销码（含时间戳防截屏）
   const code = JSON.stringify({

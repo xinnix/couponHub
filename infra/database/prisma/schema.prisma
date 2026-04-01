@@ -34,6 +34,27 @@ model Admin {
 }
 
 // ============================================
+// 核销员模型 (Handler)
+// ============================================
+model Handler {
+  id         String   @id @default(cuid())
+  name       String // 核销员姓名
+  phone      String   @unique // 手机号（用于匹配 User）
+  merchantId String // 所属商户 ID
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  // 关联关系
+  merchant Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  users    User[]   @relation("HandlerUsers") // 多个 User 可能对应同一个 Handler（手机号相同）
+
+  @@index([phone])
+  @@index([merchantId])
+  @@map("handlers")
+}
+
+// ============================================
 // 小程序用户模型 (User)
 // ============================================
 model User {
@@ -55,6 +76,10 @@ model User {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
+  // 核销员身份关联
+  handlerId String? // 关联 Handler 表
+  handler   Handler? @relation("HandlerUsers", fields: [handlerId], references: [id], onDelete: SetNull)
+
   // 关联
   refreshTokens    UserRefreshToken[]
   todos            Todo[]
@@ -64,6 +89,7 @@ model User {
   @@index([openid])
   @@index([email])
   @@index([username])
+  @@index([handlerId])
   @@map("users")
 }
 
@@ -216,6 +242,7 @@ model Merchant {
   name        String
   logo        String?
   category    String // 行业分类（餐饮、服装、娱乐等）
+  area        String? // 区域（A区、B区、C区）
   floor       String? // 楼层
   phone       String?
   gallery     Json? // 图片数组
@@ -227,14 +254,16 @@ model Merchant {
   updatedById String?
 
   // 关联
-  handlers    MerchantHandler[]
-  orders      Order[]
-  settlements Settlement[]
+  handlers         Handler[] // 商户的核销员列表
+  merchantHandlers MerchantHandler[]
+  orders           Order[]
+  settlements      Settlement[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([category])
+  @@index([area])
   @@index([status])
   @@index([createdById])
   @@map("merchants")

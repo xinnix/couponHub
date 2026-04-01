@@ -1,7 +1,7 @@
 // apps/admin/src/modules/merchant/pages/MerchantListPage.tsx
 import { useState } from "react";
 import { useList, useCreate, useUpdate, useDelete, useDeleteMany } from "@refinedev/core";
-import { List, DeleteButton } from "@refinedev/antd";
+import { List } from "@refinedev/antd";
 import {
   Table,
   Button,
@@ -17,8 +17,9 @@ import {
   Select,
   App,
 } from "antd";
-import { PlusOutlined, SearchOutlined, CheckCircleOutlined, StopOutlined, EyeOutlined } from "@ant-design/icons";
+import { PlusOutlined, SearchOutlined, CheckCircleOutlined, StopOutlined, UserSwitchOutlined } from "@ant-design/icons";
 import { MerchantForm } from "../components/MerchantForm";
+import { HandlerList } from "../components/HandlerList";
 import { useNavigate } from "react-router-dom";
 
 interface Merchant {
@@ -26,6 +27,7 @@ interface Merchant {
   name: string;
   logo?: string;
   category: string;
+  area?: string;
   floor?: string;
   phone?: string;
   gallery?: string[];
@@ -47,12 +49,32 @@ export const MerchantListPage = () => {
   const [searchText, setSearchText] = useState("");
   const [statusFilter, setStatusFilter] = useState<string | undefined>(undefined);
   const [categoryFilter, setCategoryFilter] = useState<string | undefined>(undefined);
+  const [areaFilter, setAreaFilter] = useState<string | undefined>(undefined);
+  const [handlerModalVisible, setHandlerModalVisible] = useState(false);
+  const [handlerMerchant, setHandlerMerchant] = useState<Merchant | null>(null);
   const [form] = Form.useForm();
   const { message } = App.useApp();
 
   const { mutate: create } = useCreate();
   const { mutate: update } = useUpdate();
+  const { mutate: deleteOne } = useDelete();
   const { mutate: deleteMany } = useDeleteMany();
+
+  // 处理删除单个商户
+  const handleDelete = (id: string) => {
+    deleteOne(
+      { resource: "merchant", id },
+      {
+        onSuccess: () => {
+          message.success("删除成功");
+          query.refetch();
+        },
+        onError: () => {
+          message.error("删除失败");
+        },
+      }
+    );
+  };
 
   const { result, query } = useList<Merchant>({
     resource: "merchant",
@@ -63,6 +85,7 @@ export const MerchantListPage = () => {
       ...(searchText ? [{ field: "search", operator: "contains", value: searchText }] as any : []),
       ...(statusFilter ? [{ field: "status", operator: "eq", value: statusFilter }] as any : []),
       ...(categoryFilter ? [{ field: "category", operator: "eq", value: categoryFilter }] as any : []),
+      ...(areaFilter ? [{ field: "area", operator: "eq", value: areaFilter }] as any : []),
     ],
   });
 
@@ -196,6 +219,12 @@ export const MerchantListPage = () => {
       },
     },
     {
+      title: "区域",
+      dataIndex: "area",
+      width: 80,
+      render: (area: string) => area ? <Tag color="geekblue">{area}</Tag> : '-',
+    },
+    {
       title: "楼层",
       dataIndex: "floor",
       width: 80,
@@ -243,30 +272,35 @@ export const MerchantListPage = () => {
     },
     {
       title: "操作",
-      width: 200,
+      width: 150,
       fixed: 'right' as const,
       render: (_: any, record: Merchant) => (
         <Space size="small">
-          <Button
-            size="small"
-            type="link"
-            icon={<EyeOutlined />}
-            onClick={() => navigate(`/merchants/${record.id}`)}
-          >
-            查看
-          </Button>
           <Button size="small" type="link" onClick={() => handleEdit(record)}>
             编辑
           </Button>
-          <DeleteButton
-            hideText
-            recordItemId={record.id}
-            resource="merchant"
-            onSuccess={() => {
-              message.success("删除成功");
-              query.refetch();
+          <Button
+            size="small"
+            type="link"
+            icon={<UserSwitchOutlined />}
+            onClick={() => {
+              setHandlerMerchant(record);
+              setHandlerModalVisible(true);
             }}
-          />
+          >
+            核销员
+          </Button>
+          <Popconfirm
+            title="确认删除？"
+            description="删除后将无法恢复"
+            onConfirm={() => handleDelete(record.id)}
+            okText="确定"
+            cancelText="取消"
+          >
+            <Button size="small" type="link" danger>
+              删除
+            </Button>
+          </Popconfirm>
         </Space>
       ),
     },
@@ -320,6 +354,17 @@ export const MerchantListPage = () => {
               <Select.Option value="美容">美容</Select.Option>
               <Select.Option value="其他">其他</Select.Option>
             </Select>
+            <Select
+              placeholder="筛选区域"
+              value={areaFilter}
+              onChange={setAreaFilter}
+              style={{ width: 120 }}
+              allowClear
+            >
+              <Select.Option value="A区">A区</Select.Option>
+              <Select.Option value="B区">B区</Select.Option>
+              <Select.Option value="C区">C区</Select.Option>
+            </Select>
           </Space>
 
           {/* Batch Actions */}
@@ -370,6 +415,20 @@ export const MerchantListPage = () => {
             width={700}
           >
             <MerchantForm form={form} isEdit={!!editingRecord} />
+          </Modal>
+
+          <Modal
+            title={`核销员管理 - ${handlerMerchant?.name || ''}`}
+            open={handlerModalVisible}
+            onCancel={() => {
+              setHandlerModalVisible(false);
+              setHandlerMerchant(null);
+              query.refetch();
+            }}
+            footer={null}
+            width={800}
+          >
+            {handlerMerchant && <HandlerList merchantId={handlerMerchant.id} />}
           </Modal>
         </Card>
       </List>

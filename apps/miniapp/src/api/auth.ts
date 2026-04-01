@@ -72,4 +72,18 @@ export const authApi = {
    */
   wechatLogin: (code: string) =>
     http.post<WechatLoginResponse>(API_ENDPOINTS.wechatLogin, { code }),
+
+  /**
+   * 获取微信手机号
+   */
+  getPhoneNumber: (data: {
+    code: string;
+    encryptedData: string;
+    iv: string;
+  }) => http.post(API_ENDPOINTS.getPhoneNumber, data),
+
+  /**
+   * 检查核销员身份
+   */
+  checkHandlerStatus: () => http.get(API_ENDPOINTS.checkHandlerStatus),
 }

@@ -1,7 +1,7 @@
 // apps/admin/src/pages/list.tsx
-import { useList, useCreate, useUpdate } from "@refinedev/core";
-import { List, DeleteButton } from "@refinedev/antd";
-import { Table, Button, Modal, Form, Input, Select, Space, App, Tag } from "antd";
+import { useList, useCreate, useUpdate, useDelete } from "@refinedev/core";
+import { List } from "@refinedev/antd";
+import { Table, Button, Modal, Form, Input, Select, Space, App, Tag, Popconfirm } from "antd";
 import { useState } from "react";
 
 export const TodoListPage = () => {
@@ -18,6 +18,23 @@ export const TodoListPage = () => {
 
   const { mutate: create } = useCreate();
   const { mutate: update } = useUpdate();
+  const { mutate: deleteOne } = useDelete();
+
+  // 处理删除单个 Todo
+  const handleDelete = (id: string) => {
+    deleteOne(
+      { resource: "todo", id },
+      {
+        onSuccess: () => {
+          message.success("删除成功");
+          query.refetch();
+        },
+        onError: () => {
+          message.error("删除失败");
+        },
+      }
+    );
+  };
 
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editingRecord, setEditingRecord] = useState<any>(null);
@@ -69,15 +86,20 @@ export const TodoListPage = () => {
           >
             编辑
           </Button>
-          <DeleteButton
-            hideText
-            recordItemId={record.id}
-            resource="todo"
-            onSuccess={() => {
-              message.success("删除成功");
-              query.refetch();
-            }}
-          />
+          <Popconfirm
+            title="确认删除？"
+            description="删除后将无法恢复"
+            onConfirm={() => handleDelete(record.id)}
+            okText="确定"
+            cancelText="取消"
+          >
+            <Button size="small" type="link" danger>
+              删除
+            </Button>
+          </Popconfirm>
+        </Space>
+      ),
+    },
         </Space>
       ),
     },

@@ -1,11 +1,68 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { couponApi, orderApi, paymentApi } from '@/api/business'
 
 const loading = ref(true)
 const coupon = ref<any>(null)
 const buying = ref(false)
 const statusBarHeight = ref(0)
+
+// 计算属性 - 显示数据
+const displayTitle = computed(() => {
+  if (coupon.value && coupon.value.title) {
+    return coupon.value.title;
+  }
+  return '';
+});
+
+const displayBuyPrice = computed(() => {
+  if (coupon.value && coupon.value.buyPrice) {
+    return coupon.value.buyPrice;
+  }
+  return 0;
+});
+
+const displayFaceValue = computed(() => {
+  if (coupon.value && coupon.value.faceValue) {
+    return coupon.value.faceValue;
+  }
+  return 0;
+});
+
+const displayStock = computed(() => {
+  if (coupon.value && coupon.value.stock !== undefined) {
+    return coupon.value.stock;
+  }
+  return 0;
+});
+
+const displayValidFrom = computed(() => {
+  if (coupon.value && coupon.value.validFrom) {
+    return coupon.value.validFrom;
+  }
+  return '';
+});
+
+const displayValidUntil = computed(() => {
+  if (coupon.value && coupon.value.validUntil) {
+    return coupon.value.validUntil;
+  }
+  return '';
+});
+
+const displayButtonText = computed(() => {
+  if (buying.value) {
+    return '处理中...';
+  }
+  if (!coupon.value || displayStock.value <= 0) {
+    return '已售罄';
+  }
+  return '立即购买';
+});
+
+const isButtonDisabled = computed(() => {
+  return buying.value || !coupon.value || displayStock.value <= 0;
+});
 
 // 获取状态栏高度
 const sysInfo = uni.getSystemInfoSync()
@@ -16,7 +73,10 @@ function goBack() {
 }
 
 onLoad(async (options: any) => {
-  const couponId = options?.id
+  let couponId = '';
+  if (options && options.id) {
+    couponId = options.id;
+  }
   if (couponId) {
     await loadCoupon(couponId)
   }
@@ -68,7 +128,11 @@ async function handleBuy() {
 
     // 1. 创建订单
     const orderRes = await orderApi.create({ templateId: coupon.value.id })
-    const orderId = orderRes.data?.order?.id
+    const orderData = orderRes.data as any;
+    let orderId = '';
+    if (orderData && orderData.order && orderData.order.id) {
+      orderId = orderData.order.id;
+    }
     if (!orderId) {
       throw new Error('创建订单失败')
     }
@@ -76,7 +140,11 @@ async function handleBuy() {
     // 2. 创建支付，获取微信支付参数
     uni.showLoading({ title: '调起支付...', mask: true })
     const payRes = await paymentApi.create({ orderId })
-    const payParams = payRes.data?.payParams
+    const payData = payRes.data as any;
+    let payParams = null;
+    if (payData && payData.payParams) {
+      payParams = payData.payParams;
+    }
 
     if (!payParams) {
       throw new Error('获取支付参数失败')
@@ -95,11 +163,16 @@ async function handleBuy() {
         paySign: payParams.paySign,
         success: () => resolve(),
         fail: (err: any) => {
-          if (err.errMsg?.includes('cancel')) {
+          let errMsg = '';
+          if (err && err.errMsg) {
+            errMsg = err.errMsg;
+          }
+          if (errMsg.includes('cancel')) {
             reject(new Error('支付取消'))
           }
           else {
-            reject(new Error(err.errMsg || '支付失败'))
+            const errorMsg = errMsg || '支付失败';
+            reject(new Error(errorMsg))
           }
         },
       })
@@ -113,7 +186,19 @@ async function handleBuy() {
   }
   catch (error: any) {
     uni.hideLoading()
-    const msg = error?.response?.data?.message || error?.message || '购买失败'
+    let respData = null;
+    if (error && error.response && error.response.data) {
+      respData = error.response.data;
+    }
+    let respMsg = '';
+    if (respData && respData.message) {
+      respMsg = respData.message;
+    }
+    let errMsg = '';
+    if (error && error.message) {
+      errMsg = error.message;
+    }
+    const msg = respMsg || errMsg || '购买失败'
     uni.showToast({ title: msg, icon: 'none' })
   }
   finally {
@@ -139,30 +224,19 @@ function formatDate(date: string | Date) {
       </view>
     </view>
 
-    <view v-if="loading" class="loading">
+    <view v-show="loading" class="loading">
       <text>加载中...</text>
     </view>
-    <view v-else-if="coupon" class="content">
+
+    <view v-show="!loading" class="content">
       <view class="info-card">
-        <text class="coupon-title">
-          {{ coupon.title }}
-        </text>
-        <text class="price">
-          ¥{{ coupon.buyPrice }} 购 ¥{{ coupon.faceValue }}
-        </text>
-        <text class="stock">
-          剩余: {{ coupon.stock }}
-        </text>
-        <text class="validity">
-          有效期: {{ formatDate(coupon.validFrom) }} - {{ formatDate(coupon.validUntil) }}
-        </text>
+        <text class="coupon-title">{{ displayTitle }}</text>
+        <text class="price">¥{{ displayBuyPrice }} 购 ¥{{ displayFaceValue }}</text>
+        <text class="stock">剩余: {{ displayStock }}</text>
+        <text class="validity">有效期: {{ formatDate(displayValidFrom) }} - {{ formatDate(displayValidUntil) }}</text>
       </view>
-      <button
-        class="buy-btn"
-        :disabled="buying || !coupon || coupon.stock <= 0"
-        @click="handleBuy"
-      >
-        {{ buying ? '处理中...' : (coupon?.stock <= 0 ? '已售罄' : '立即购买') }}
+      <button class="buy-btn" :disabled="isButtonDisabled" @click="handleBuy">
+        {{ displayButtonText }}
       </button>
     </view>
   </view>

@@ -42,6 +42,14 @@ export const MerchantForm: React.FC<MerchantFormProps> = ({ form, isEdit }) => {
         </Select>
       </Form.Item>
 
+      <Form.Item name="area" label="区域">
+        <Select placeholder="请选择区域" allowClear>
+          <Select.Option value="A区">A区</Select.Option>
+          <Select.Option value="B区">B区</Select.Option>
+          <Select.Option value="C区">C区</Select.Option>
+        </Select>
+      </Form.Item>
+
       <Form.Item name="floor" label="楼层">
         <Input placeholder="例如：1F、2F、B1" />
       </Form.Item>

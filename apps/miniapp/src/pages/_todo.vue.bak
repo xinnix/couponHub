@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { todoApi, type Todo } from '@/api/todo'
 
 definePage({
@@ -18,6 +18,9 @@ const formData = ref({
   description: '',
   priority: 1,
 })
+
+// 弹窗标题
+const modalTitle = computed(() => editingTodo.value ? '编辑 Todo' : '添加 Todo')
 
 // 优先级文本
 const priorityText: Record<number, string> = {
@@ -220,7 +223,7 @@ onMounted(() => {
 
     <!-- 添加/编辑弹窗 -->
     <view v-if="showAddModal" class="modal-mask" @click="showAddModal = false">
-      <view class="modal" @click.stop>
+      <view class="modal" @click.stop="">
         <view class="modal-header">
           <text class="modal-title">{{ editingTodo ? '编辑 Todo' : '添加 Todo' }}</text>
         </view>

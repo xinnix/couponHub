@@ -1,519 +1,808 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
-import { authApi } from '@/api/auth'
+import { ref, computed } from 'vue'
+import CustomTabBar from '@/components/CustomTabBar.vue'
 
 definePage({
   type: 'home',
 })
 
 // 状态
-const isLoggedIn = ref(false)
-const userInfo = ref<any>(null)
+const currentArea = ref('A')
 
-// 测试账号 (小程序用户)
-const testAccounts = [
-  { role: '普通用户', email: 'user@example.com', password: 'password123' },
-  { role: '普通用户2', email: 'user2@example.com', password: 'password123' },
-]
+// 区域列表
+const areas = ['A', 'B', 'C']
 
-// 检查登录状态
-function checkLoginStatus() {
-  const token = uni.getStorageSync('token')
-  const user = uni.getStorageSync('userInfo')
-  isLoggedIn.value = !!token
-  userInfo.value = user
-}
+// 优惠券数据
+const vouchers = ref([
+  { id: 1, price: 50, value: 100, desc: '购100元券\n全场通用' },
+  { id: 2, price: 29, value: 60, desc: '购60元券\n餐饮专享' },
+  { id: 3, price: 9.9, value: 20, desc: '单人下午茶\n限时抢购' },
+])
 
-// 跳转到登录页
-function goToLogin() {
-  uni.navigateTo({ url: '/pages/login' })
-}
+// 分类数据
+const categories = ref([
+  { id: 1, name: '特色餐饮', icon: '🍽️' },
+  { id: 2, name: '休闲娱乐', icon: '🎭' },
+  { id: 3, name: '零售商超', icon: '🛒' },
+  { id: 4, name: '智慧教培', icon: '📚' },
+])
 
-// 跳转到 Todo 页面
-function goToTodo() {
-  if (!isLoggedIn.value) {
-    uni.showModal({
-      title: '提示',
-      content: '请先登录后再访问 Todo List',
-      showCancel: false,
-    })
-    return
-  }
-  uni.navigateTo({
-    url: '/pages/todo',
-  })
-}
+// 商户数据
+const merchants = ref([
+  { id: 1, name: 'Green Life', desc: '轻食主义', image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBvCUwKVaYrs4AnCjSnl42WiuW9fajnK0HRLSorlZBtyRTDS0mvfHPRvSfAL_HAk77RdUDN-A32tYCjrhgDVqlzHjxI3x6cwpzTOFXd1vPicbo_cWzSI0sDdiqPEv98ZCYlrzv_po3GwC_bFaanCY-qfrWeGnm8fDSOs50Zsi3anhlO8X8v-MTgxi_3DoaKmnUVxHxje0iNnLw6UsSZFT-Q_gjt60qm5BC3WdTXFfZ17dECLvJmIZEvoZ3YsXwU8g20MwOXJkf6SOM', area: 'A' },
+  { id: 2, name: '壹碗面道', desc: '手工研磨', image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBrXhiTaCraHXfzWXtaj57KHhXMk3xjMf-g2bvisKUAK9FVaCzQTTRKWpYaf3idBnbJfwi4CjlPRN8twbRn_4411uUJZO-r6dgWaNihxZAfnA2joubvsdeEaAs-W6S5Xe9eHIwYM4WMjo3XwnGFqXctva5mPQ9UqNCMiySrToQotSxzrO1u_gb9IWZZb5OtEJdR5mOammnefXdZ-bYLGBGe26DL1VKdNC7vVKfGpAxO9_KdWkAOeiTtyP4x0tCD18pXe3bFa1kCp4s', area: 'A' },
+  { id: 3, name: 'The Coffee Lab', desc: '精品手冲', image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAUNEmwu__TOkmG9irmGJVjvt8zmUAX9VyWsQA0yfP207ZDKZx_cZLQerf8gNgic1v3vzlHJ5QXcyjHOv73JrjQAh_lPQY2QSCptKR0UepmQu8hSFcexLqr6FV1th7sFGLw2CST6wLQJsxXTnhVvuYnhdmjRPOQqTHnKD3C3_cpZn0k1ddNZ4pGd3zThyd7ecPu0Kvpak2GAgZ16kTVITk3nTPGqY-IyFBijUPL4pp3TNCM2-lBOfbmXWBypmCRKfwfbQkgIonVvxs', area: 'A' },
+  { id: 4, name: '美妆空间', desc: '精致护肤', image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBvCUwKVaYrs4AnCjSnl42WiuW9fajnK0HRLSorlZBtyRTDS0mvfHPRvSfAL_HAk77RdUDN-A32tYCjrhgDVqlzHjxI3x6cwpzTOFXd1vPicbo_cWzSI0sDdiqPEv98ZCYlrzv_po3GwC_bFaanCY-qfrWeGnm8fDSOs50Zsi3anhlO8X8v-MTgxi_3DoaKmnUVxHxje0iNnLw6UsSZFT-Q_gjt60qm5BC3WdTXFfZ17dECLvJmIZEvoZ3YsXwU8g20MwOXJkf6SOM', area: 'A' },
+  { id: 5, name: '潮玩部落', desc: '限量发售', image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBrXhiTaCraHXfzWXtaj57KHhXMk3xjMf-g2bvisKUAK9FVaCzQTTRKWpYaf3idBnbJfwi4CjlPRN8twbRn_4411uUJZO-r6dgWaNihxZAfnA2joubvsdeEaAs-W6S5Xe9eHIwYM4WMjo3XwnGFqXctva5mPQ9UqNCMiySrToQotSxzrO1u_gb9IWZZb5OtEJdR5mOammnefXdZ-bYLGBGe26DL1VKdNC7vVKfGpAxO9_KdWkAOeiTtyP4x0tCD18pXe3bFa1kCp4s', area: 'A' },
+  { id: 6, name: '亲子乐园', desc: '欢聚时光', image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAUNEmwu__TOkmG9irmGJVjvt8zmUAX9VyWsQA0yfP207ZDKZx_cZLQerf8gNgic1v3vzlHJ5QXcyjHOv73JrjQAh_lPQY2QSCptKR0UepmQu8hSFcexLqr6FV1th7sFGLw2CST6wLQJsxXTnhVvuYnhdmjRPOQqTHnKD3C3_cpZn0k1ddNZ4pGd3zThyd7ecPu0Kvpak2GAgZ16kTVITk3nTPGqY-IyFBijUPL4pp3TNCM2-lBOfbmXWBypmCRKfwfbQkgIonVvxs', area: 'A' },
+  { id: 7, name: '悦动健身', desc: '专业私教', image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBvCUwKVaYrs4AnCjSnl42WiuW9fajnK0HRLSorlZBtyRTDS0mvfHPRvSfAL_HAk77RdUDN-A32tYCjrhgDVqlzHjxI3x6cwpzTOFXd1vPicbo_cWzSI0sDdiqPEv98ZCYlrzv_po3GwC_bFaanCY-qfrWeGnm8fDSOs50Zsi3anhlO8X8v-MTgxi_3DoaKmnUVxHxje0iNnLw6UsSZFT-Q_gjt60qm5BC3WdTXFfZ17dECLvJmIZEvoZ3YsXwU8g20MwOXJkf6SOM', area: 'A' },
+  { id: 8, name: '书香一角', desc: '静谧阅读', image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBrXhiTaCraHXfzWXtaj57KHhXMk3xjMf-g2bvisKUAK9FVaCzQTTRKWpYaf3idBnbJfwi4CjlPRN8twbRn_4411uUJZO-r6dgWaNihxZAfnA2joubvsdeEaAs-W6S5Xe9eHIwYM4WMjo3XwnGFqXctva5mPQ9UqNCMiySrToQotSxzrO1u_gb9IWZZb5OtEJdR5mOammnefXdZ-bYLGBGe26DL1VKdNC7vVKfGpAxO9_KdWkAOeiTtyP4x0tCD18pXe3bFa1kCp4s', area: 'A' },
+])
 
-// 快速登录
-async function quickLogin(account: typeof testAccounts[0]) {
-  try {
-    uni.showLoading({ title: '登录中...' })
+// 新闻数据
+const newsList = ref([
+  {
+    id: 1,
+    title: '汉都天地智慧停车系统全面升级',
+    date: '2023-11-20',
+    tag: '公告',
+    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBvCUwKVaYrs4AnCjSnl42WiuW9fajnK0HRLSorlZBtyRTDS0mvfHPRvSfAL_HAk77RdUDN-A32tYCjrhgDVqlzHjxI3x6cwpzTOFXd1vPicbo_cWzSI0sDdiqPEv98ZCYlrzv_po3GwC_bFaanCY-qfrWeGnm8fDSOs50Zsi3anhlO8X8v-MTgxi_3DoaKmnUVxHxje0iNnLw6UsSZFT-Q_gjt60qm5BC3WdTXFfZ17dECLvJmIZEvoZ3YsXwU8g20MwOXJkf6SOM',
+  },
+  {
+    id: 2,
+    title: '冬日漫游计划：中庭冰雪艺术展启幕',
+    date: '2023-11-18',
+    tag: '活动',
+    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuA7mJHuMWILTiyDVLj7hPfpemu_JwcxVMMIdJPiLn-fXWWoaB0jeEfPjPpckVoq8DGuUTMLmEW1sioMf5rF-Alszf7ueqCfBxbtZxktQOeg-fwlsly-BExX0WTaarT0zLBET3PTgZiS-0j-Igp8I3UCnScIAxeKd5q1a2x7qe_wJTbeVFPnOt0Pi0g3KvZBU91dA7wbvksDHTzP_XAukTEgFVPdai_G6ZLZcSB1FieEbEn5XkAij_r5lghZ_XoijlTZ38ubk-XNVnU',
+  },
+])
 
-    const res = await uni.request({
-      url: 'http://localhost:3000/api/auth/login',
-      method: 'POST',
-      data: {
-        email: account.email,
-        password: account.password,
-      },
-    })
-
-    uni.hideLoading()
-
-    if (res.statusCode === 200 && res.data) {
-      const data = res.data as any
-      if (data.success) {
-        // 保存 token 和用户信息
-        uni.setStorageSync('token', data.data.accessToken)
-        uni.setStorageSync('refreshToken', data.data.refreshToken)
-        uni.setStorageSync('userInfo', data.data.user)
-
-        isLoggedIn.value = true
-        userInfo.value = data.data.user
-
-        uni.showToast({
-          title: '登录成功',
-          icon: 'success',
-        })
-      }
-      else {
-        throw new Error(data.message || '登录失败')
-      }
-    }
-    else {
-      throw new Error('登录失败')
-    }
-  }
-  catch (error: any) {
-    uni.hideLoading()
-    console.error('登录失败:', error)
-    uni.showToast({
-      title: error.message || '登录失败',
-      icon: 'none',
-    })
-  }
-}
-
-// 退出登录
-async function logout() {
-  uni.showModal({
-    title: '确认退出',
-    content: '确定要退出登录吗？',
-    success: async (res) => {
-      if (res.confirm) {
-        try {
-          uni.showLoading({ title: '退出中...' })
-
-          // 调用后端 logout API
-          const refreshToken = uni.getStorageSync('refreshToken')
-          if (refreshToken) {
-            await authApi.logout(refreshToken)
-          }
-
-          uni.hideLoading()
-
-          // 清空本地存储
-          uni.removeStorageSync('token')
-          uni.removeStorageSync('refreshToken')
-          uni.removeStorageSync('userInfo')
-
-          // 更新状态
-          isLoggedIn.value = false
-          userInfo.value = null
-
-          uni.showToast({
-            title: '已退出登录',
-            icon: 'success',
-          })
-        } catch (error: any) {
-          uni.hideLoading()
-          console.error('退出失败:', error)
-          // 即使 API 调用失败，也清空本地状态
-          uni.removeStorageSync('token')
-          uni.removeStorageSync('refreshToken')
-          uni.removeStorageSync('userInfo')
-          isLoggedIn.value = false
-          userInfo.value = null
-          uni.showToast({
-            title: '已退出登录',
-            icon: 'success',
-          })
-        }
-      }
-    },
-  })
-}
-
-// 页面加载
-onMounted(() => {
-  checkLoginStatus()
+// 筛选商户
+const filteredMerchants = computed(() => {
+  return merchants.value.filter(m => m.area === currentArea.value)
 })
+
+// 切换区域
+function switchArea(area: string) {
+  currentArea.value = area
+}
+
+// 抢购优惠券
+function grabVoucher(voucher: any) {
+  uni.showToast({
+    title: `抢购${voucher.price}元券`,
+    icon: 'none',
+  })
+}
+
+// 查看商户详情
+function goToMerchant(merchant: any) {
+  uni.showToast({
+    title: '商户详情功能开发中',
+    icon: 'none',
+  })
+}
 </script>
 
 <template>
-  <view class="home-container">
-    <!-- 头部区域 -->
-    <view class="header">
-      <view class="header-bg" />
-      <view class="header-content">
-        <text class="app-name">
-          OpenCode
-        </text>
-        <text class="app-desc">
-          全栈开发模板
-        </text>
+  <view class="index-page">
+    <!-- 背景品牌图案 - The Curated Canvas -->
+    <view class="brand-pattern" />
+
+    <!-- 顶部导航栏 - Glassmorphism -->
+    <view class="top-bar">
+      <view class="logo-wrapper">
+        <image
+          class="logo"
+          src="https://lh3.googleusercontent.com/aida/ADBb0uiV675zUJL7aB66Qy8xbacdQP9XwJJGccu19iTA4HF-V-V0orowAFerT_eGhlHkKtVqdMMkF27ofkIQoDGnVJ5GSHoYVTS0I_tDTNbTAs-HgklMFAtncUmAgCGQ5kEWYJ7xB6egYkgHU05PCIOEBisBhxzXFXJATQCM5LHA9VdUwRALZoH-_wwPRdpXs4GHe5tuyodsdH8C_92xXqqj4t5N3qihxRY3jBHNpz1rm5ZmNOIOGKL2mZwZnlxRTd1jurMJhRc8Q_V0"
+          mode="heightFix"
+        />
+      </view>
+      <view class="search-bar">
+        <text class="search-icon">🔍</text>
+        <text class="search-text">搜索商户或优惠</text>
       </view>
     </view>
 
-    <!-- 用户信息卡片 -->
-    <view class="user-card">
-      <view v-if="isLoggedIn && userInfo" class="user-info">
-        <view class="avatar">
-          <text class="avatar-text">
-            {{ userInfo.username?.charAt(0).toUpperCase() || 'U' }}
-          </text>
-        </view>
-        <view class="info">
-          <text class="username">
-            {{ userInfo.username }}
-          </text>
-          <text class="email">
-            {{ userInfo.email }}
-          </text>
-        </view>
-        <button class="logout-btn" @click="logout">
-          退出
-        </button>
-      </view>
-      <view v-else class="login-tip">
-        <text class="tip-text">
-          未登录，请点击下方按钮登录
-        </text>
-        <button class="go-login-btn" @click="goToLogin">
-          去登录
-        </button>
-      </view>
-    </view>
-
-    <!-- 功能入口 -->
-    <view class="feature-section">
-      <text class="section-title">
-        功能入口
-      </text>
-
-      <view class="feature-card" @click="goToTodo">
-        <view class="card-icon">
-          📋
-        </view>
-        <view class="card-content">
-          <text class="card-title">
-            Todo List
-          </text>
-          <text class="card-desc">
-            管理待办事项，测试 CRUD 操作
-          </text>
-        </view>
-        <view class="card-arrow">
-          <text>→</text>
-        </view>
-      </view>
-    </view>
-
-    <!-- 测试账号 -->
-    <view class="test-section">
-      <text class="section-title">
-        测试账号 (点击快速登录)
-      </text>
-
-      <view class="account-list">
-        <view v-for="(account, index) in testAccounts" :key="index" class="account-card" @click="quickLogin(account)">
-          <view class="account-info">
-            <text class="account-role">
-              {{ account.role }}
-            </text>
-            <text class="account-email">
-              {{ account.email }}
-            </text>
-          </view>
-          <view class="login-btn">
-            <text>登录</text>
+    <!-- 主内容区域 - Architectural Planes -->
+    <view class="main-content">
+      <!-- Hero Section - Tonal Gradient -->
+      <view class="hero-section">
+        <view class="banner-card">
+          <image
+            class="banner-image"
+            src="https://lh3.googleusercontent.com/aida-public/AB6AXuA7mJHuMWILTiyDVLj7hPfpemu_JwcxVMMIdJPiLn-fXWWoaB0jeEfPjPpckVoq8DGuUTMLmEW1sioMf5rF-Alszf7ueqCfBxbtZxktQOeg-fwlsly-BExX0WTaarT0zLBET3PTgZiS-0j-Igp8I3UCnScIAxeKd5q1a2x7qe_wJTbeVFPnOt0Pi0g3KvZBU91dA7wbvksDHTzP_XAukTEgFVPdai_G6ZLZcSB1FieEbEn5XkAij_r5lghZ_XoijlTZ38ubk-XNVnU"
+            mode="aspectFill"
+          />
+          <view class="banner-overlay">
+            <text class="banner-tag">Featured Event</text>
+            <text class="banner-title">悦享邻里味</text>
+            <text class="banner-subtitle">汉都初冬美食季</text>
           </view>
         </view>
       </view>
+
+      <!-- 热门优惠券 - Surface Layering -->
+      <view class="voucher-section">
+        <view class="section-header">
+          <view class="header-left">
+            <text class="section-tag">Limited Offer</text>
+            <text class="section-title">抢购超值券</text>
+          </view>
+          <text class="more-link">更多优惠 →</text>
+        </view>
+        <scroll-view class="voucher-scroll no-scrollbar" scroll-x enable-flex>
+          <view
+            v-for="voucher in vouchers"
+            :key="voucher.id"
+            class="voucher-card"
+            @click="grabVoucher(voucher)"
+          >
+            <view class="voucher-accent" />
+            <view class="voucher-content">
+              <view class="voucher-price">
+                <text class="price-number">{{ voucher.price }}</text>
+                <text class="price-unit">元</text>
+              </view>
+              <text class="voucher-desc">{{ voucher.desc }}</text>
+              <button class="grab-btn">立即抢</button>
+            </view>
+          </view>
+          <view class="scroll-end-spacer" />
+        </scroll-view>
+      </view>
+
+      <!-- 分类图标网格 - Tone Transition -->
+      <view class="category-grid">
+        <view
+          v-for="cat in categories"
+          :key="cat.id"
+          class="category-item"
+        >
+          <view class="category-icon-wrapper">
+            <text class="category-icon">{{ cat.icon }}</text>
+          </view>
+          <text class="category-name">{{ cat.name }}</text>
+        </view>
+      </view>
+
+      <!-- 精选商户 - No-Line Rule -->
+      <view class="merchant-section">
+        <view class="section-header">
+          <text class="section-tag">Selected Stores</text>
+          <text class="section-title">汉都天地 · 严选</text>
+        </view>
+
+        <!-- 区域筛选 - Ghost Border -->
+        <scroll-view class="area-filter no-scrollbar" scroll-x enable-flex>
+          <button
+            v-for="area in areas"
+            :key="area"
+            :class="['area-btn', { active: currentArea === area }]"
+            @click="switchArea(area)"
+          >
+            {{ area }}区
+          </button>
+        </scroll-view>
+
+        <!-- 商户网格 - Ambient Light Shadow -->
+        <view class="merchant-grid">
+          <view
+            v-for="merchant in filteredMerchants"
+            :key="merchant.id"
+            class="merchant-card"
+            @click="goToMerchant(merchant)"
+          >
+            <view class="merchant-image-wrapper">
+              <image
+                class="merchant-image"
+                :src="merchant.image"
+                mode="aspectFill"
+              />
+            </view>
+            <view class="merchant-info">
+              <text class="merchant-name">{{ merchant.name }}</text>
+              <text class="merchant-desc">{{ merchant.desc }}</text>
+            </view>
+          </view>
+        </view>
+
+        <button class="view-all-btn">查看全部</button>
+      </view>
+
+      <!-- 商场快讯 - Asymmetric Layout -->
+      <view class="news-section">
+        <view class="section-header">
+          <text class="section-tag">Latest News</text>
+          <text class="section-title">商场快讯</text>
+        </view>
+        <view class="news-grid">
+          <view
+            v-for="news in newsList"
+            :key="news.id"
+            class="news-card"
+          >
+            <view class="news-image-wrapper">
+              <image
+                class="news-image"
+                :src="news.image"
+                mode="aspectFill"
+              />
+              <view class="news-tag">{{ news.tag }}</view>
+            </view>
+            <view class="news-content">
+              <text class="news-title">{{ news.title }}</text>
+              <text class="news-date">{{ news.date }}</text>
+            </view>
+          </view>
+        </view>
+      </view>
     </view>
 
-    <!-- 开发说明 -->
-    <view class="dev-info">
-      <text class="info-title">
-        开发说明
-      </text>
-      <text class="info-text">
-        • 后端 API: http://localhost:3000/api
-      </text>
-      <text class="info-text">
-        • Todo 功能需要登录后访问
-      </text>
-      <text class="info-text">
-        • 使用测试账号快速体验完整功能
-      </text>
-    </view>
+    <!-- 自定义底部导航栏 -->
+    <CustomTabBar :current="0" />
   </view>
 </template>
 
 <style lang="scss" scoped>
-.home-container {
+.index-page {
   min-height: 100vh;
-  background: #f5f7fa;
-  padding-bottom: 40rpx;
+  background: #f5faff; // surface - Base Canvas
+  padding-bottom: 96px;
+  font-family: sans-serif;
+  color: #171c20; // on-surface - Soft Black (Never 100% Black)
+  -webkit-font-smoothing: antialiased;
+  position: relative;
 }
 
-.header {
-  position: relative;
-  height: 280rpx;
-  margin-bottom: 20rpx;
 
-  .header-bg {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 100%;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+// The Curated Canvas - 背景品牌图案
+.brand-pattern {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+  /* background pattern removed for mp-weixin compatibility */
+
+  opacity: 0.03;
+  pointer-events: none;
+}
+
+// Glassmorphism - 顶部导航栏
+.top-bar {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 24px;
+  background: rgba(245, 250, 255, 0.9); // surface at 90% opacity
+  /* backdrop-filter not supported in mp-weixin */
+
+  .logo-wrapper {
+    display: flex;
+    align-items: center;
+    height: 28px;
+
+    .logo {
+      height: 100%;
+      width: auto;
+      object-fit: contain;
+      mix-blend-mode: multiply;
+    }
   }
 
-  .header-content {
+  .search-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 12px;
+    background: rgba(228, 233, 238, 0.8); // surface-container-high
+    border-radius: 999px; // full - pill
+    transition: all 0.2s;
+
+    &:active {
+      opacity: 0.8;
+      transform: scale(0.95);
+    }
+
+    .search-icon {
+      font-size: 14px;
+      color: #6e7881; // on-surface-variant
+    }
+
+    .search-text {
+      font-size: 10px;
+      color: #6e7881; // on-surface-variant
+      font-weight: 500;
+    }
+  }
+}
+
+// Architectural Planes - 主内容
+.main-content {
+  position: relative;
+  z-index: 10;
+  padding-bottom: 24px;
+}
+
+// Tonal Gradient - Hero Section
+.hero-section {
+  padding: 4px 24px;
+
+  .banner-card {
     position: relative;
-    z-index: 1;
-    height: 100%;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    border-radius: 12px; // lg
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+
+    .banner-image {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .banner-overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to top, rgba(23, 28, 32, 0.4), transparent);
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      padding: 20px;
+
+      .banner-tag {
+        display: block;
+        font-size: 10px;
+        font-weight: 700;
+        color: rgba(255, 255, 255, 0.8);
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        margin-bottom: 2px;
+      }
+
+      .banner-title {
+        display: block;
+        font-size: 24px;
+        font-weight: 800;
+        color: #fff;
+        line-height: 1.2;
+      }
+
+      .banner-subtitle {
+        display: block;
+        font-size: 24px;
+        font-weight: 800;
+        color: #fff;
+        line-height: 1.2;
+      }
+    }
+  }
+}
+
+// Surface Layering - 优惠券区域
+.voucher-section {
+  padding: 16px 0;
+
+  .section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    padding: 0 24px 8px;
+
+    .header-left {
+      .section-tag {
+        display: block;
+        font-size: 10px;
+        font-weight: 800;
+        color: #00AEEF; // primary-container
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        margin-bottom: 2px;
+      }
+
+      .section-title {
+        display: block;
+        font-size: 20px;
+        font-weight: 800;
+        color: #171c20; // on-surface
+      }
+    }
+
+    .more-link {
+      font-size: 12px;
+      font-weight: 700;
+      color: #00AEEF; // primary-container
+      margin-bottom: 2px;
+    }
+  }
+
+  .voucher-scroll {
+    display: flex;
+    gap: 12px;
+    padding: 0 24px;
+    white-space: nowrap;
+
+    .scroll-end-spacer {
+      flex-shrink: 0;
+      width: 8px;
+    }
+  }
+
+  .voucher-card {
+    position: relative;
+    display: inline-flex;
+    flex-direction: column;
+    width: 115px;
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.9); // surface-container-lowest at 90%
+    /* backdrop-filter not supported in mp-weixin */
+    border-radius: 8px; // DEFAULT
+    box-shadow: 0 4px 16px rgba(23, 28, 32, 0.04); // Ambient Light Shadow (4-6% opacity)
+    flex-shrink: 0;
+    overflow: hidden;
+    transition: transform 0.2s;
+
+    &:active {
+      transform: scale(0.95);
+    }
+
+    .voucher-accent {
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 4px;
+      background: linear-gradient(180deg, #00658d, #00aeef); // Tonal Gradient
+    }
+
+    .voucher-content {
+      display: flex;
+      flex-direction: column;
+
+      .voucher-price {
+        display: flex;
+        align-items: baseline;
+        gap: 2px;
+        margin-bottom: 8px;
+
+        .price-number {
+          font-size: 20px;
+          font-weight: 800;
+          color: #00aeef; // primary-container
+        }
+
+        .price-unit {
+          font-size: 10px;
+          font-weight: 700;
+          color: #6e7881; // on-surface-variant
+        }
+      }
+
+      .voucher-desc {
+        display: block;
+        font-size: 9px;
+        font-weight: 500;
+        color: rgba(110, 120, 129, 0.6);
+        line-height: 1.4;
+        white-space: pre-line;
+        margin-bottom: 12px;
+      }
+
+      .grab-btn {
+        width: 100%;
+        padding: 6px 0;
+        background: #00aeef; // primary-container
+        color: #fff; // on-primary
+        font-size: 10px;
+        font-weight: 700;
+        border-radius: 6px;
+        border: none;
+        transition: transform 0.2s;
+
+        &:active {
+          transform: scale(0.95);
+        }
+      }
+    }
+  }
+}
+
+// Tone Transition - 分类网格
+.category-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  padding: 16px 24px;
+
+  .category-item {
     display: flex;
     flex-direction: column;
-    justify-content: center;
     align-items: center;
+    gap: 6px;
+    transition: transform 0.2s;
 
-    .app-name {
-      font-size: 48rpx;
-      font-weight: bold;
-      color: #fff;
-      margin-bottom: 12rpx;
+    &:active {
+      transform: scale(0.95);
     }
 
-    .app-desc {
-      font-size: 28rpx;
-      color: rgba(255, 255, 255, 0.9);
-    }
-  }
-}
-
-.user-card {
-  margin: -60rpx 30rpx 20rpx;
-  background: #fff;
-  border-radius: 16rpx;
-  padding: 30rpx;
-  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.08);
-  position: relative;
-  z-index: 2;
-
-  .user-info {
-    display: flex;
-    align-items: center;
-
-    .avatar {
-      width: 80rpx;
-      height: 80rpx;
-      border-radius: 50%;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    .category-icon-wrapper {
       display: flex;
       align-items: center;
       justify-content: center;
-      margin-right: 20rpx;
+      width: 56px;
+      height: 56px;
+      background: rgba(239, 244, 250, 0.8); // surface-container-low at 80%
+      /* backdrop-filter not supported in mp-weixin */
+      border-radius: 16px;
+      box-shadow: 0 2px 4px rgba(0, 174, 239, 0.1);
+      // Ghost Border (outline-variant at 20% opacity)
+      border: 1px solid rgba(189, 200, 209, 0.2);
 
-      .avatar-text {
-        font-size: 36rpx;
-        font-weight: bold;
-        color: #fff;
+      .category-icon {
+        font-size: 30px;
+        color: #00AEEF; // primary-container
       }
     }
 
-    .info {
-      flex: 1;
-
-      .username {
-        display: block;
-        font-size: 32rpx;
-        font-weight: bold;
-        color: #333;
-        margin-bottom: 8rpx;
-      }
-
-      .email {
-        font-size: 24rpx;
-        color: #999;
-      }
-    }
-
-    .logout-btn {
-      padding: 12rpx 24rpx;
-      background: #f5f5f5;
-      color: #666;
-      border-radius: 8rpx;
-      font-size: 26rpx;
-      border: none;
+    .category-name {
+      font-size: 10px;
+      font-weight: 700;
+      color: #6e7881; // on-surface-variant
+      letter-spacing: 0.5px;
     }
   }
+}
 
-  .login-tip {
-    text-align: center;
-    padding: 20rpx 0;
+// No-Line Rule - 商户区域
+.merchant-section {
+  padding: 0 24px 24px;
 
-    .tip-text {
+  .section-header {
+    margin-bottom: 12px;
+
+    .section-tag {
       display: block;
-      font-size: 28rpx;
-      color: #999;
-      margin-bottom: 20rpx;
+      font-size: 10px;
+      font-weight: 800;
+      color: #00AEEF; // primary-container
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      margin-bottom: 2px;
     }
 
-    .go-login-btn {
-      padding: 16rpx 48rpx;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: #fff;
-      border-radius: 8rpx;
-      font-size: 28rpx;
-      border: none;
+    .section-title {
+      display: block;
+      font-size: 20px;
+      font-weight: 800;
+      color: #171c20; // on-surface
+      line-height: 1.2;
     }
   }
-}
 
-.feature-section {
-  margin: 30rpx;
-
-  .section-title {
-    display: block;
-    font-size: 32rpx;
-    font-weight: bold;
-    color: #333;
-    margin-bottom: 20rpx;
-  }
-
-  .feature-card {
+  .area-filter {
     display: flex;
-    align-items: center;
-    background: #fff;
-    border-radius: 16rpx;
-    padding: 30rpx;
-    margin-bottom: 20rpx;
-    box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.05);
-    transition: all 0.3s;
+    gap: 10px;
+    margin-bottom: 16px;
+    white-space: nowrap;
+    padding: 4px 0;
 
-    &:active {
-      transform: scale(0.98);
-      opacity: 0.9;
-    }
-
-    .card-icon {
-      font-size: 60rpx;
-      margin-right: 24rpx;
-    }
-
-    .card-content {
-      flex: 1;
-
-      .card-title {
-        display: block;
-        font-size: 32rpx;
-        font-weight: bold;
-        color: #333;
-        margin-bottom: 8rpx;
-      }
-
-      .card-desc {
-        font-size: 24rpx;
-        color: #999;
-      }
-    }
-
-    .card-arrow {
-      font-size: 40rpx;
-      color: #ddd;
-    }
-  }
-}
-
-.test-section {
-  margin: 30rpx;
-
-  .section-title {
-    display: block;
-    font-size: 32rpx;
-    font-weight: bold;
-    color: #333;
-    margin-bottom: 20rpx;
-  }
-
-  .account-list {
-    .account-card {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      background: #fff;
-      border-radius: 12rpx;
-      padding: 24rpx;
-      margin-bottom: 16rpx;
-      box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.05);
+    .area-btn {
+      flex-shrink: 0;
+      padding: 6px 20px;
+      background: rgba(228, 233, 238, 0.6); // surface-container-high at 60%
+      color: #6e7881; // on-surface-variant
+      font-size: 10px;
+      font-weight: 700;
+      border-radius: 999px; // full - pill
+      // Ghost Border (outline-variant at 20% opacity)
+      border: 1px solid rgba(189, 200, 209, 0.2);
       transition: all 0.3s;
 
       &:active {
+        transform: scale(0.95);
+      }
+
+      &.active {
+        background: #00AEEF; // primary-container
+        color: #fff; // on-primary
+        box-shadow: 0 4px 8px rgba(0, 174, 239, 0.2);
+      }
+    }
+  }
+
+  // Ambient Light Shadow - 商户网格
+  .merchant-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    margin-bottom: 12px;
+
+    .merchant-card {
+      background: rgba(255, 255, 255, 0.9); // surface-container-lowest at 90%
+      /* backdrop-filter not supported in mp-weixin */
+      border-radius: 8px; // DEFAULT
+      overflow: hidden;
+      // Ambient Shadow: X:0, Y:2-8px, Blur:32px, Color:on-surface at 3-4% opacity
+      box-shadow: 0 2px 8px rgba(23, 28, 32, 0.03);
+      // Ghost Border (outline-variant at 30% opacity - slightly more visible)
+      border: 1px solid rgba(189, 200, 209, 0.3);
+      transition: transform 0.2s;
+      display: flex;
+      flex-direction: column;
+
+      &:active {
         transform: scale(0.98);
-        opacity: 0.9;
       }
 
-      .account-info {
-        flex: 1;
+      .merchant-image-wrapper {
+        position: relative;
+        aspect-ratio: 1;
 
-        .account-role {
+        .merchant-image {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+        }
+      }
+
+      .merchant-info {
+        padding: 6px;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+
+        .merchant-name {
           display: block;
-          font-size: 28rpx;
-          font-weight: bold;
-          color: #333;
-          margin-bottom: 8rpx;
+          font-size: 9px;
+          font-weight: 700;
+          color: #171c20; // on-surface
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
         }
 
-        .account-email {
-          font-size: 24rpx;
-          color: #666;
+        .merchant-desc {
+          display: block;
+          font-size: 8px;
+          font-weight: 500;
+          color: rgba(110, 120, 129, 0.8);
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+      }
+    }
+  }
+
+  .view-all-btn {
+    width: 100%;
+    padding: 8px 32px;
+    background: rgba(0, 174, 239, 0.05); // primary-container at 5%
+    color: #00aeef; // primary-container
+    font-size: 10px;
+    font-weight: 700;
+    border-radius: 999px; // full - pill
+    // Ghost Border (primary-container at 30% opacity)
+    border: 2px solid rgba(0, 174, 239, 0.3);
+    display: flex;
+    justify-content: center;
+    transition: transform 0.2s;
+
+    &:active {
+      transform: scale(0.95);
+    }
+  }
+}
+
+// Asymmetric Layout - 商场快讯
+.news-section {
+  padding: 32px 24px 24px;
+
+  .section-header {
+    margin-bottom: 12px;
+
+    .section-tag {
+      display: block;
+      font-size: 10px;
+      font-weight: 800;
+      color: #00AEEF; // primary-container
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      margin-bottom: 2px;
+    }
+
+    .section-title {
+      display: block;
+      font-size: 20px;
+      font-weight: 800;
+      color: #171c20; // on-surface
+      line-height: 1.2;
+    }
+  }
+
+  .news-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+
+    .news-card {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      transition: transform 0.2s;
+
+      &:active {
+        transform: scale(0.98);
+      }
+
+      .news-image-wrapper {
+        position: relative;
+        aspect-ratio: 4 / 3;
+        border-radius: 12px; // lg
+        overflow: hidden;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+
+        .news-image {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+        }
+
+        .news-tag {
+          position: absolute;
+          top: 8px;
+          left: 8px;
+          padding: 2px 8px;
+          background: #00AEEF; // primary-container
+          color: #fff; // on-primary
+          font-size: 8px;
+          font-weight: 700;
+          border-radius: 4px;
         }
       }
 
-      .login-btn {
-        padding: 12rpx 32rpx;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border-radius: 8rpx;
-        color: #fff;
-        font-size: 26rpx;
+      .news-content {
+        padding: 0 2px;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+
+        .news-title {
+          display: block;
+          font-size: 11px;
+          font-weight: 700;
+          color: #171c20; // on-surface
+          line-height: 1.4;
+          display: -webkit-box;
+          -webkit-box-orient: vertical;
+          -webkit-line-clamp: 2;
+          overflow: hidden;
+        }
+
+        .news-date {
+          display: block;
+          font-size: 9px;
+          font-weight: 500;
+          font-style: italic;
+          color: rgba(110, 120, 129, 0.6);
+        }
       }
     }
   }
 }
 
-.dev-info {
-  margin: 30rpx;
-  padding: 30rpx;
-  background: #fff9e6;
-  border-radius: 12rpx;
-  border-left: 4rpx solid #faad14;
-
-  .info-title {
-    display: block;
-    font-size: 28rpx;
-    font-weight: bold;
-    color: #d48806;
-    margin-bottom: 16rpx;
-  }
-
-  .info-text {
-    display: block;
-    font-size: 24rpx;
-    color: #d48806;
-    line-height: 1.8;
-  }
+// 无滚动条样式
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 </style>

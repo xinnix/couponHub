@@ -49,4 +49,42 @@ export class WechatService {
       throw error;
     }
   }
+
+  /**
+   * 解密微信手机号数据
+   * 文档: https://developers.weixin.qq.com/miniprogram/dev/framework/open-ability/signature.html#%E5%8A%A0%E5%AF%86%E6%95%B0%E6%8D%AE%E8%A7%A3%E5%AF%86%E7%AE%97%E6%B3%95
+   */
+  async decryptPhoneNumber(
+    encryptedData: string,
+    iv: string,
+    sessionKey: string,
+  ): Promise<{ phoneNumber: string; watermark: any }> {
+    const crypto = require('crypto');
+
+    try {
+      const decipher = crypto.createDecipheriv(
+        'aes-128-cbc',
+        Buffer.from(sessionKey, 'base64'),
+        Buffer.from(iv, 'base64'),
+      );
+
+      let decoded = decipher.update(Buffer.from(encryptedData, 'base64'));
+      decoded = Buffer.concat([decoded, decipher.final()]);
+
+      const data = JSON.parse(decoded.toString());
+
+      // 验证 watermark
+      if (data.watermark.appid !== this.appId) {
+        throw new Error('水印验证失败：appid 不匹配');
+      }
+
+      return {
+        phoneNumber: data.phoneNumber,
+        watermark: data.watermark,
+      };
+    } catch (error) {
+      this.logger.error('手机号解密失败', error);
+      throw new Error('手机号解密失败');
+    }
+  }
 }

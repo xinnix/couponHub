@@ -5,41 +5,42 @@
       <view
         v-for="tab in tabs"
         :key="tab.value"
-        class="tab"
-        :class="{ active: currentTab === tab.value }"
+        :class="getTabClass(tab.value)"
         @click="currentTab = tab.value"
       >
         <text>{{ tab.label }}</text>
       </view>
     </view>
 
-    <view v-if="loading" class="loading">
+    <view v-show="loading" class="loading">
       <text>加载中...</text>
     </view>
 
-    <view v-else-if="orderList.length === 0" class="empty">
-      <text>暂无优惠券</text>
-    </view>
+    <view v-show="!loading">
+      <view v-show="displayOrders.length === 0" class="empty">
+        <text>暂无优惠券</text>
+      </view>
 
-    <view v-else class="order-list">
-      <view
-        v-for="item in orderList"
-        :key="item.id"
-        class="order-item"
-        @click="handleOrderClick(item)"
-      >
-        <view class="order-info">
-          <text class="order-title">{{ item.template?.title }}</text>
-          <text class="order-no">{{ item.orderNo }}</text>
-          <text class="order-status">{{ getStatusText(item.status) }}</text>
-        </view>
-        <view class="order-action">
-          <button v-if="item.status === 'UNPAID'" size="mini" @click.stop="handlePay(item)">
-            去支付
-          </button>
-          <button v-if="item.status === 'PAID'" size="mini" @click.stop="showQRCode(item)">
-            出示二维码
-          </button>
+      <view v-show="displayOrders.length > 0">
+        <view
+          v-for="item in displayOrders"
+          :key="item.id"
+          class="order-item"
+          @click="handleOrderClick(item)"
+        >
+          <view class="order-info">
+            <text class="order-title">{{ getTemplateTitle(item) }}</text>
+            <text class="order-no">{{ item.orderNo }}</text>
+            <text class="order-status">{{ getStatusText(item.status) }}</text>
+          </view>
+          <view class="order-action">
+            <button v-show="item.status === 'UNPAID'" size="mini" @click.stop="handlePay(item)">
+              去支付
+            </button>
+            <button v-show="item.status === 'PAID'" size="mini" @click.stop="showQRCode(item)">
+              出示二维码
+            </button>
+          </view>
         </view>
       </view>
     </view>
@@ -47,7 +48,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue';
+import { ref, onMounted, watch, computed } from 'vue';
 import { orderApi, paymentApi } from '@/api/business';
 
 const tabs = [
@@ -61,6 +62,27 @@ const currentTab = ref('PAID');
 const loading = ref(false);
 const orderList = ref<any[]>([]);
 
+// 计算属性 - 用于显示订单项
+const displayOrders = computed(() => {
+  return orderList.value || [];
+});
+
+// 获取模板标题
+const getTemplateTitle = (item: any) => {
+  if (item && item.template && item.template.title) {
+    return item.template.title;
+  }
+  return '未知券';
+};
+
+// 获取 tab 的 class
+const getTabClass = (tabValue: string) => {
+  if (currentTab.value === tabValue) {
+    return 'tab active';
+  }
+  return 'tab';
+};
+
 onMounted(async () => {
   await loadOrders();
 });
@@ -73,7 +95,11 @@ async function loadOrders() {
   try {
     loading.value = true;
     const res = await orderApi.getMyOrders({ status: currentTab.value });
-    orderList.value = Array.isArray(res.data) ? res.data : [];
+    if (Array.isArray(res.data)) {
+      orderList.value = res.data;
+    } else {
+      orderList.value = [];
+    }
   } catch (error) {
     uni.showToast({
       title: '加载订单失败',
@@ -85,7 +111,7 @@ async function loadOrders() {
 }
 
 function handleOrderClick(item: any) {
-  if (!item?.id) {
+  if (!item || !item.id) {
     return;
   }
   uni.navigateTo({ url: `/pages/qrcode/index?orderId=${item.id}` });
@@ -103,7 +129,11 @@ async function handlePay(item: any) {
 
     // 1. 获取微信支付参数
     const payRes = await paymentApi.create({ orderId: item.id });
-    const payParams = payRes.data?.payParams;
+    const data = payRes.data as any;
+    let payParams = null;
+    if (data && data.payParams) {
+      payParams = data.payParams;
+    }
 
     if (!payParams) {
       throw new Error('获取支付参数失败');
@@ -122,7 +152,11 @@ async function handlePay(item: any) {
         paySign: payParams.paySign,
         success: () => resolve(),
         fail: (err: any) => {
-          if (err.errMsg?.includes('cancel')) {
+          let errMsg = '';
+          if (err && err.errMsg) {
+            errMsg = err.errMsg;
+          }
+          if (errMsg.includes('cancel')) {
             reject(new Error('支付取消'))
           }
           else {
@@ -142,7 +176,10 @@ async function handlePay(item: any) {
   }
   catch (error: any) {
     uni.hideLoading()
-    const msg = error?.message || '支付失败'
+    let msg = '支付失败';
+    if (error && error.message) {
+      msg = error.message;
+    }
     uni.showToast({ title: msg, icon: 'none' })
   }
 }

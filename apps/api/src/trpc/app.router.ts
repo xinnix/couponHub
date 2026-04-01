@@ -16,6 +16,7 @@ import { paymentRouter } from "../modules/payment/trpc/payment.router";
 import { redemptionRouter } from "../modules/redemption/trpc/redemption.router";
 import { uploadRouter } from "../modules/upload/trpc/upload.router";
 import { statisticsRouter } from "../modules/statistics/trpc/statistics.router";
+import { handlerRouter } from "../modules/handler/trpc/handler.router";
 
 export const appRouter = router({
   auth: authRouter,
@@ -33,6 +34,7 @@ export const appRouter = router({
   redemption: redemptionRouter,
   upload: uploadRouter,
   statistics: statisticsRouter,
+  handler: handlerRouter,
 });
 
 export type AppRouter = typeof appRouter;

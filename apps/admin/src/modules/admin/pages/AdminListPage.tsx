@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { useList, useCreate, useUpdate, useDeleteMany } from "@refinedev/core";
-import { List, DeleteButton } from "@refinedev/antd";
+import { useList, useCreate, useUpdate, useDelete, useDeleteMany } from "@refinedev/core";
+import { List } from "@refinedev/antd";
 import {
   Table,
   Button,
@@ -67,7 +67,24 @@ export const AdminListPage = () => {
 
   const { mutate: create } = useCreate();
   const { mutate: update } = useUpdate();
+  const { mutate: deleteOne } = useDelete();
   const { mutate: deleteMany } = useDeleteMany();
+
+  // 处理删除单个管理员
+  const handleDelete = (id: string) => {
+    deleteOne(
+      { resource: "admin", id },
+      {
+        onSuccess: () => {
+          message.success("删除成功");
+          query.refetch();
+        },
+        onError: () => {
+          message.error("删除失败");
+        },
+      }
+    );
+  };
 
   const { result, query } = useList<AdminRecord>({
     resource: "admin",
@@ -260,15 +277,17 @@ export const AdminListPage = () => {
           <Button size="small" type="link" icon={<KeyOutlined />} onClick={() => handleResetPassword(record)}>
             重置密码
           </Button>
-          <DeleteButton
-            hideText
-            recordItemId={record.id}
-            resource="admin"
-            onSuccess={() => {
-              message.success("删除成功");
-              query.refetch();
-            }}
-          />
+          <Popconfirm
+            title="确认删除？"
+            description="删除后将无法恢复"
+            onConfirm={() => handleDelete(record.id)}
+            okText="确定"
+            cancelText="取消"
+          >
+            <Button size="small" type="link" danger>
+              删除
+            </Button>
+          </Popconfirm>
         </Space>
       ),
     },

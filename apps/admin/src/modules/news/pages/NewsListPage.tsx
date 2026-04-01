@@ -1,7 +1,7 @@
 // apps/admin/src/modules/news/pages/NewsListPage.tsx
 import { useState } from "react";
 import { useList, useCreate, useUpdate, useDelete, useDeleteMany } from "@refinedev/core";
-import { List, DeleteButton } from "@refinedev/antd";
+import { List } from "@refinedev/antd";
 import {
   Table,
   Button,
@@ -53,7 +53,24 @@ export const NewsListPage = () => {
 
   const { mutate: create } = useCreate();
   const { mutate: update } = useUpdate();
+  const { mutate: deleteOne } = useDelete();
   const { mutate: deleteMany } = useDeleteMany();
+
+  // 处理删除单条新闻
+  const handleDelete = (id: string) => {
+    deleteOne(
+      { resource: "news", id },
+      {
+        onSuccess: () => {
+          message.success("删除成功");
+          query.refetch();
+        },
+        onError: () => {
+          message.error("删除失败");
+        },
+      }
+    );
+  };
 
   const { result, query } = useList<News>({
     resource: "news",
@@ -254,15 +271,17 @@ export const NewsListPage = () => {
           <Button size="small" type="link" onClick={() => handleEdit(record)}>
             编辑
           </Button>
-          <DeleteButton
-            hideText
-            recordItemId={record.id}
-            resource="news"
-            onSuccess={() => {
-              message.success("删除成功");
-              query.refetch();
-            }}
-          />
+          <Popconfirm
+            title="确认删除？"
+            description="删除后将无法恢复"
+            onConfirm={() => handleDelete(record.id)}
+            okText="确定"
+            cancelText="取消"
+          >
+            <Button size="small" type="link" danger>
+              删除
+            </Button>
+          </Popconfirm>
         </Space>
       ),
     },

@@ -4,12 +4,14 @@ import { useOne } from "@refinedev/core";
 import { Card, Descriptions, Tag, Button, Tabs, Table, Space, Spin, Empty, App } from "antd";
 import { ArrowLeftOutlined, CheckCircleOutlined, StopOutlined, EditOutlined } from "@ant-design/icons";
 import { useState } from "react";
+import { HandlerList } from "../components/HandlerList";
 
 interface Merchant {
   id: string;
   name: string;
   logo?: string;
   category: string;
+  area?: string;
   floor?: string;
   phone?: string;
   gallery?: string[];
@@ -77,6 +79,9 @@ export const MerchantDetailPage = () => {
           <Descriptions.Item label="商户分类">
             <Tag color="blue">{merchant.category}</Tag>
           </Descriptions.Item>
+          <Descriptions.Item label="区域">
+            {merchant.area ? <Tag color="geekblue">{merchant.area}</Tag> : '-'}
+          </Descriptions.Item>
           <Descriptions.Item label="楼层">{merchant.floor || '-'}</Descriptions.Item>
           <Descriptions.Item label="联系电话">{merchant.phone || '-'}</Descriptions.Item>
           <Descriptions.Item label="核销员数量">{merchant._count?.handlers || 0}</Descriptions.Item>
@@ -95,16 +100,9 @@ export const MerchantDetailPage = () => {
     },
     {
       key: 'handlers',
-      label: `核销员管理 (${merchant._count?.handlers || 0})`,
+      label: `核销员管理`,
       children: (
-        <div style={{ padding: '24px 0' }}>
-          <Card>
-            <div style={{ marginBottom: 16, textAlign: 'right' }}>
-              <Button type="primary">添加核销员</Button>
-            </div>
-            <Empty description="核销员管理功能待后端API完善" />
-          </Card>
-        </div>
+        <HandlerList merchantId={merchant.id} />
       ),
     },
     {
@@ -141,6 +139,7 @@ export const MerchantDetailPage = () => {
             <h1 style={{ margin: 0, fontSize: 28, fontWeight: "bold" }}>{merchant.name}</h1>
             <Space style={{ marginTop: 8 }}>
               <Tag color="blue">{merchant.category}</Tag>
+              {merchant.area && <Tag color="geekblue">{merchant.area}</Tag>}
               {merchant.floor && <Tag>{merchant.floor}</Tag>}
               <Tag color={merchant.status === 'ACTIVE' ? 'success' : 'error'}>
                 {merchant.status === 'ACTIVE' ? '激活' : '停用'}

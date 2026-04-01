@@ -51,6 +51,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       throw new Error(errorMessage);
     }
 
+    // Wait a brief moment to ensure localStorage is fully updated
+    // This prevents race conditions when fetching identity immediately after login
+    await new Promise(resolve => setTimeout(resolve, 100));
+
     // Update state directly
     const identity = await authProvider.getIdentity?.();
     setUser(identity);

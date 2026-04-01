@@ -1,12 +1,12 @@
 -- 插入商户假数据
-INSERT INTO merchants (id, name, category, floor, phone, description, status, "createdAt", "updatedAt")
+INSERT INTO merchants (id, name, category, area, floor, phone, description, status, "createdAt", "updatedAt")
 VALUES
-  ('cm1', '海底捞火锅', '餐饮', '3F', '021-12345678', '知名火锅连锁品牌，提供优质服务', 'ACTIVE', NOW(), NOW()),
-  ('cm2', '星巴克咖啡', '餐饮', '1F', '021-23456789', '全球知名咖啡品牌', 'ACTIVE', NOW(), NOW()),
-  ('cm3', '优衣库', '购物', '2F', '021-34567890', '日本知名服装品牌', 'ACTIVE', NOW(), NOW()),
-  ('cm4', '万达影城', '娱乐', '5F', '021-45678901', 'IMAX激光影院', 'ACTIVE', NOW(), NOW()),
-  ('cm5', '肯德基', '餐饮', '1F', '021-56789012', '全球连锁快餐品牌', 'ACTIVE', NOW(), NOW()),
-  ('cm6', '耐克', '购物', '3F', '021-67890123', '运动服装品牌', 'ACTIVE', NOW(), NOW())
+  ('cm1', '海底捞火锅', '餐饮', 'A区', '3F', '021-12345678', '知名火锅连锁品牌，提供优质服务', 'ACTIVE', NOW(), NOW()),
+  ('cm2', '星巴克咖啡', '餐饮', 'A区', '1F', '021-23456789', '全球知名咖啡品牌', 'ACTIVE', NOW(), NOW()),
+  ('cm3', '优衣库', '购物', 'B区', '2F', '021-34567890', '日本知名服装品牌', 'ACTIVE', NOW(), NOW()),
+  ('cm4', '万达影城', '娱乐', 'C区', '5F', '021-45678901', 'IMAX激光影院', 'ACTIVE', NOW(), NOW()),
+  ('cm5', '肯德基', '餐饮', 'B区', '1F', '021-56789012', '全球连锁快餐品牌', 'ACTIVE', NOW(), NOW()),
+  ('cm6', '耐克', '购物', 'C区', '3F', '021-67890123', '运动服装品牌', 'ACTIVE', NOW(), NOW())
 ON CONFLICT DO NOTHING;
 
 -- 插入券模板假数据
