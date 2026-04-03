@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed } from 'vue'
 
 interface TabItem {
   pagePath: string
@@ -41,19 +41,15 @@ const tabBarList = computed(() => {
   }))
 })
 
-onMounted(() => {
-  // 隐藏原生 TabBar
-  uni.hideTabBar()
-})
-
 function toLink(path: string) {
   if (props.current === tabs.findIndex(t => t.pagePath === path)) {
     return
   }
 
   // 使用 reLaunch 切换页面
-  uni.reLaunch({
+  uni.redirectTo({
     url: path,
+
   })
 }
 </script>
@@ -61,17 +57,14 @@ function toLink(path: string) {
 <template>
   <view class="tabbar">
     <view class="tabbar__inner">
-      <view
-        v-for="(item, index) in tabBarList"
-        :key="index"
-        class="tab-item"
-        :class="{ 'is-active': item.active }"
-        @tap="toLink(item.pagePath)"
-      >
+      <view v-for="(item, index) in tabBarList" :key="index" class="tab-item" :class="{ 'is-active': item.active }"
+        @tap="toLink(item.pagePath)">
         <view class="tab-icon">
           <text class="iconfont" :class="tabs[index].icon" />
         </view>
-        <text class="tab-label">{{ item.text }}</text>
+        <text class="tab-label">
+          {{ item.text }}
+        </text>
       </view>
     </view>
   </view>

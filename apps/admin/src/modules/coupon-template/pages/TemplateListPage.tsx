@@ -1,6 +1,7 @@
 // apps/admin/src/modules/coupon-template/pages/TemplateListPage.tsx
 import { useState } from "react";
-import { useList, useCreate, useUpdate, useDelete, useDeleteMany, useCustom } from "@refinedev/core";
+import { useList, useCreate, useUpdate, useDelete, useDeleteMany } from "@refinedev/core";
+import { useMutation } from "@tanstack/react-query";
 import { List } from "@refinedev/antd";
 import {
   Table,
@@ -30,6 +31,7 @@ import {
 import { TemplateForm } from "../components/TemplateForm";
 import dayjs from "dayjs";
 import { createMutationCallbacks, createBatchMutationCallbacks } from "../../../shared/utils/mutationCallbacks";
+import { getTrpcClient } from "../../../shared/trpc/trpcClient";
 
 const { RangePicker } = DatePicker;
 
@@ -77,7 +79,14 @@ export const TemplateListPage = () => {
   const { mutate: update } = useUpdate();
   const { mutate: deleteOne } = useDelete();
   const { mutate: deleteMany } = useDeleteMany();
-  const { mutate: generateQrcode } = useCustom();
+
+  // 直接使用 tRPC mutation 调用生成小程序码
+  const generateQrcodeMutation = useMutation({
+    mutationFn: async (templateId: string) => {
+      const trpcClient = await getTrpcClient();
+      return trpcClient.couponTemplate.generateQrcode.mutate({ id: templateId });
+    },
+  });
 
   // 处理删除单个券模板
   const handleDelete = (id: string) => {
@@ -190,31 +199,23 @@ export const TemplateListPage = () => {
     if (!currentQrcode) return;
 
     setGeneratingQrcode(true);
-    generateQrcode(
-      {
-        method: 'mutation',
-        resource: 'couponTemplate',
-        id: currentQrcode.id,
-        meta: { operation: 'generateQrcode' },
+    generateQrcodeMutation.mutate(currentQrcode.id, {
+      onSuccess: (data) => {
+        setCurrentQrcode({
+          ...currentQrcode,
+          url: data.url,  // 直接使用 data.url，而不是 data.data.url
+          qrcodeGeneratedAt: new Date(),
+        });
+        message.success('小程序码生成成功');
+        query.refetch();
       },
-      {
-        onSuccess: (data) => {
-          setCurrentQrcode({
-            ...currentQrcode,
-            url: data.data.url,
-            qrcodeGeneratedAt: new Date(),
-          });
-          message.success('小程序码生成成功');
-          query.refetch();
-        },
-        onError: (error) => {
-          message.error('生成失败: ' + error.message);
-        },
-        onSettled: () => {
-          setGeneratingQrcode(false);
-        },
-      }
-    );
+      onError: (error: any) => {
+        message.error('生成失败: ' + error.message);
+      },
+      onSettled: () => {
+        setGeneratingQrcode(false);
+      },
+    });
   };
 
   const getStatusTag = (record: CouponTemplate) => {

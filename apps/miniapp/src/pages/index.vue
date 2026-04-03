@@ -341,12 +341,17 @@ function getDefaultImage(type: string, id: string) {
 
       <!-- Merchant List -->
       <view class="px-6">
-        <view class="mb-3 flex flex-col">
-          <text class="text-xl text-on-surface font-extrabold leading-tight">
-            汉都天地 · 严选
-          </text>
-          <text class="text-10px text-primary-container font-extrabold tracking-widest uppercase">
-            Selected Stores
+        <view class="mb-3 flex items-end justify-between">
+          <view class="flex flex-col">
+            <text class="text-xl text-on-surface font-extrabold leading-tight">
+              汉都天地 · 严选
+            </text>
+            <text class="text-10px text-primary-container font-extrabold tracking-widest uppercase">
+              Selected Stores
+            </text>
+          </view>
+          <text class="mb-0.5 text-xs text-primary-container font-bold">
+            查看全部 →
           </text>
         </view>
         <scroll-view class="mb-4 flex no-scrollbar overflow-x-auto py-1" scroll-x enable-flex>
@@ -376,13 +381,6 @@ function getDefaultImage(type: string, id: string) {
             </view>
           </view>
         </view>
-
-        <view class="mt-3 flex justify-center">
-          <button
-            class="view-all-btn border-2 rounded-full px-8 py-2 text-10px text-primary-container font-bold transition-transform active-scale-95">
-            查看全部
-          </button>
-        </view>
       </view>
 
       <!-- Mall News Section -->
@@ -401,10 +399,6 @@ function getDefaultImage(type: string, id: string) {
             <view class="news-image-aspect relative overflow-hidden rounded-xl bg-gray-100 shadow-sm">
               <image class="h-full w-full object-cover" :src="news.image" mode="aspectFill" lazy-load
                 @error="(e) => onImageError(e, '新闻', news.id)" @load="onImageLoad('新闻', news.id)" />
-              <view
-                class="absolute left-2 top-2 z-10 rounded bg-primary-container px-2 py-0.5 text-8px text-white font-bold">
-                {{ news.tag }}
-              </view>
             </view>
             <view class="px-0.5">
               <text class="text-11px text-on-surface font-bold leading-snug line-clamp-2">
@@ -637,12 +631,6 @@ function getDefaultImage(type: string, id: string) {
 /* 边框透明度 */
 .border-outline-variant-30 {
   border-color: rgba(189, 200, 209, 0.3);
-}
-
-/* 查看全部按钮 */
-.view-all-btn {
-  border-color: rgba(0, 174, 239, 0.3);
-  background: rgba(0, 174, 239, 0.05);
 }
 
 /* 新闻日期文字 */
