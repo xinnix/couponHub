@@ -1,5 +1,5 @@
 // apps/admin/src/modules/news/components/NewsForm.tsx
-import { Form, Input, Select } from "antd";
+import { Form, Input, Select, Switch } from "antd";
 import { useList } from "@refinedev/core";
 import { RichTextEditor } from "../../../shared/components/RichTextEditor";
 import { OSSUpload } from "../../../shared/components/OSSUpload";
@@ -55,6 +55,15 @@ export const NewsForm: React.FC<NewsFormProps> = ({ form, isEdit }) => {
             </Select.Option>
           ))}
         </Select>
+      </Form.Item>
+
+      <Form.Item
+        name="isHero"
+        label="头图文章"
+        extra="开启后将在小程序顶部 Hero 区域展示，否则在底部区域展示"
+        initialValue={false}
+      >
+        <Switch />
       </Form.Item>
 
       <Form.Item name="status" label="状态" initialValue="DRAFT">

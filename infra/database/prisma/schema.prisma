@@ -48,6 +48,7 @@ model Handler {
   // 关联关系
   merchant Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
   users    User[]   @relation("HandlerUsers") // 多个 User 可能对应同一个 Handler（手机号相同）
+  orders   Order[]  // 核销的订单
 
   @@index([phone])
   @@index([merchantId])
@@ -302,8 +303,9 @@ model News {
   content        String // 富文本内容
   linkedCouponId String? // 关联的券模板 ID
 
-  viewCount Int    @default(0)
-  status    String @default("DRAFT") // DRAFT, PUBLISHED
+  viewCount Int     @default(0)
+  status    String  @default("DRAFT") // DRAFT, PUBLISHED
+  isHero    Boolean @default(false) // 是否头图文章（小程序顶部展示）
 
   // 创建者和更新者 (Admin)
   createdById String?
@@ -315,6 +317,7 @@ model News {
   @@index([status])
   @@index([createdAt])
   @@index([createdById])
+  @@index([isHero]) // 添加索引便于查询头图文章
   @@map("news")
 }
 
@@ -331,8 +334,13 @@ model CouponTemplate {
   validFrom     DateTime
   validUntil    DateTime
   description   String?
+  usageRules    String? // 使用规则说明（文本描述）
 
   status String @default("ACTIVE") // ACTIVE, EXPIRED, DISABLED
+
+  // 小程序码相关
+  qrcodeUrl        String?   // 小程序码图片 URL
+  qrcodeGeneratedAt DateTime? // 生成时间
 
   // 创建者和更新者 (Admin)
   createdById String?
@@ -366,6 +374,7 @@ model Order {
 
   // 核销信息
   redeemMerchantId String?
+  handlerId        String? // 核销员 ID
   redeemedAt       DateTime?
 
   // 退款信息
@@ -382,6 +391,7 @@ model Order {
   user     User           @relation(fields: [userId], references: [id])
   template CouponTemplate @relation(fields: [templateId], references: [id])
   merchant Merchant?      @relation(fields: [redeemMerchantId], references: [id])
+  handler  Handler?       @relation(fields: [handlerId], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -392,6 +402,7 @@ model Order {
   @@index([payId])
   @@index([orderNo])
   @@index([redeemMerchantId])
+  @@index([handlerId])
   @@map("orders")
 }
 

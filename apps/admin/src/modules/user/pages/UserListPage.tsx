@@ -1,12 +1,10 @@
 // apps/admin/src/modules/user/pages/UserListPage.tsx
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useList } from "@refinedev/core";
 import { List } from "@refinedev/antd";
 import {
   Table,
   Input,
-  Select,
-  Space,
   Tag,
   Card,
   Row,
@@ -18,6 +16,7 @@ interface User {
   id: string;
   username: string;
   email: string;
+  phone?: string;
   firstName?: string;
   lastName?: string;
   isActive: boolean;
@@ -27,17 +26,31 @@ interface User {
 
 export const UserListPage = () => {
   const [searchText, setSearchText] = useState("");
-  const [isActiveFilter, setIsActiveFilter] = useState<boolean | undefined>(undefined);
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+
+  // 防抖：延迟 500ms 更新搜索词
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchText);
+    }, 500);
+
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [searchText]);
 
   const { result, query } = useList<User>({
     resource: "user",
     pagination: {
       pageSize: 10,
     },
-    filters: [
-      ...(searchText ? [{ field: "search", operator: "contains", value: searchText }] as any : []),
-      ...(isActiveFilter !== undefined ? [{ field: "isActive", operator: "eq", value: isActiveFilter }] as any : []),
-    ],
+    filters: debouncedSearch ? [
+      {
+        field: "search",
+        operator: "eq",
+        value: debouncedSearch
+      }
+    ] as any : [],
   });
 
   const columns = [
@@ -53,9 +66,15 @@ export const UserListPage = () => {
       width: 120,
     },
     {
+      title: "手机号",
+      dataIndex: "phone",
+      width: 130,
+      render: (phone: string) => phone || "-",
+    },
+    {
       title: "邮箱",
       dataIndex: "email",
-      width: 180,
+      width: 200,
     },
     {
       title: "姓名",
@@ -70,6 +89,7 @@ export const UserListPage = () => {
       title: "状态",
       dataIndex: "isActive",
       width: 90,
+      align: "center" as const,
       render: (isActive: boolean) => (
         <Tag
           icon={isActive ? <CheckCircleOutlined /> : <StopOutlined />}
@@ -103,26 +123,16 @@ export const UserListPage = () => {
             </Col>
           </Row>
 
-          <Space style={{ marginBottom: 16 }} wrap>
+          <div style={{ marginBottom: 16 }}>
             <Input
-              placeholder="搜索用户名或邮箱"
+              placeholder="搜索用户名、邮箱或手机号"
               prefix={<SearchOutlined />}
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
-              style={{ width: 250 }}
+              style={{ width: 300 }}
               allowClear
             />
-            <Select
-              placeholder="筛选状态"
-              value={isActiveFilter}
-              onChange={setIsActiveFilter}
-              style={{ width: 120 }}
-              allowClear
-            >
-              <Select.Option value={true}>激活</Select.Option>
-              <Select.Option value={false}>停用</Select.Option>
-            </Select>
-          </Space>
+          </div>
 
           <Table
             columns={columns}

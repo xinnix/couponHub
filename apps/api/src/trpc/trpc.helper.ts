@@ -1,6 +1,9 @@
 import { z } from "zod";
 import { router, publicProcedure, protectedProcedure } from "./trpc";
 
+// Re-export protectedProcedure for use in routers
+export { protectedProcedure };
+
 /**
  * Configuration options for createCrudRouter
  */
@@ -167,7 +170,7 @@ export const createCrudRouter = <TModelName extends string>(
               (data.page ? (data.page - 1) * (data.limit || 10) : 0),
             take: data.take ?? data.limit,
             where: data.where,
-            orderBy: data.orderBy,
+            orderBy: data.orderBy ?? { id: 'desc' },
             include: data.include,
             select: data.select,
           }),

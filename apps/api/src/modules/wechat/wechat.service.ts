@@ -15,6 +15,10 @@ export class WechatService {
   private readonly appId: string;
   private readonly appSecret: string;
 
+  // access_token 内存缓存
+  private accessTokenCache?: string;
+  private accessTokenExpiresAt?: number;
+
   constructor(private configService: ConfigService) {
     this.appId = this.configService.get<string>('WX_APP_ID')!;
     this.appSecret = this.configService.get<string>('WX_APP_SECRET')!;
@@ -85,6 +89,90 @@ export class WechatService {
     } catch (error) {
       this.logger.error('手机号解密失败', error);
       throw new Error('手机号解密失败');
+    }
+  }
+
+  /**
+   * 获取微信 access_token（带内存缓存）
+   * 文档: https://developers.weixin.qq.com/miniprogram/dev/OpenApiDoc/mp-access-token/getAccessToken.html
+   */
+  async getAccessToken(): Promise<string> {
+    // 1. 检查内存缓存
+    if (this.accessTokenCache && this.accessTokenExpiresAt && this.accessTokenExpiresAt > Date.now()) {
+      this.logger.debug('使用缓存的 access_token');
+      return this.accessTokenCache;
+    }
+
+    // 2. 调用微信 API 获取新 token
+    const url = `https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid=${this.appId}&secret=${this.appSecret}`;
+
+    try {
+      const response = await fetch(url);
+      const data = await response.json();
+
+      if (data.errcode) {
+        throw new Error(`获取 access_token 失败: ${data.errmsg} (errcode: ${data.errcode})`);
+      }
+
+      // 3. 缓存到内存（提前 10% 过期，留安全余量）
+      const expiresIn = data.expires_in; // 通常 7200 秒
+      const cacheExpiresIn = Math.floor(expiresIn * 0.9);
+      this.accessTokenCache = data.access_token;
+      this.accessTokenExpiresAt = Date.now() + cacheExpiresIn * 1000;
+
+      this.logger.log(`获取新的 access_token 并缓存，有效期 ${cacheExpiresIn} 秒`);
+      return data.access_token;
+    } catch (error) {
+      this.logger.error('获取 access_token 失败', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 生成小程序码（无数量限制版本）
+   * 文档: https://developers.weixin.qq.com/miniprogram/dev/OpenApiDoc/qrcode-link/qr-code/getUnlimitedQRCode.html
+   *
+   * @param templateId 券模板 ID（作为 scene 参数）
+   * @returns 小程序码图片 Buffer
+   */
+  async generateMiniProgramCode(templateId: string): Promise<Buffer> {
+    const accessToken = await this.getAccessToken();
+
+    // 构建请求参数
+    const requestBody = {
+      scene: templateId, // 券模板 ID 作为 scene 参数（最多 32 个可见字符）
+      page: 'pages/coupon/detail', // 扫码后跳转的页面
+      width: 430, // 小程序码宽度
+      auto_color: false,
+      line_color: { r: 0, g: 0, b: 0 },
+      is_hyaline: false, // 不透明背景
+    };
+
+    const url = `https://api.weixin.qq.com/wxa/getwxacodeunlimit?access_token=${accessToken}`;
+
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      // 检查是否返回错误（微信会在 body 中返回 JSON 错误信息）
+      const contentType = response.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        const errorData = await response.json();
+        throw new Error(`生成小程序码失败: ${errorData.errmsg} (errcode: ${errorData.errcode})`);
+      }
+
+      // 返回二进制图片数据
+      const arrayBuffer = await response.arrayBuffer();
+      this.logger.log(`成功生成小程序码，大小: ${arrayBuffer.byteLength} bytes`);
+      return Buffer.from(arrayBuffer);
+    } catch (error) {
+      this.logger.error('生成小程序码失败', error);
+      throw error;
     }
   }
 }

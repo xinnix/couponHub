@@ -24,7 +24,10 @@ export class HandlerService extends BaseService<'Handler'> {
    */
   async getByMerchant(merchantId: string) {
     return this.prisma.handler.findMany({
-      where: { merchantId },
+      where: {
+        merchantId,
+        isActive: true, // 只查询活跃的核销员
+      },
       include: {
         users: {
           select: {

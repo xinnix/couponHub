@@ -21,12 +21,10 @@ export const NewsDetailPage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
-  const { data: newsData, isLoading } = useOne<News>({
+  const { result: news, isLoading } = useOne<News>({
     resource: "news",
     id: id!,
   });
-
-  const news = newsData?.data;
 
   if (isLoading) {
     return (

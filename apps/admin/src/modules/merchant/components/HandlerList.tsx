@@ -14,8 +14,9 @@ interface Handler {
   createdAt: Date;
   users?: Array<{
     id: string;
-    nickname: string;
-    avatar: string;
+    nickname?: string;
+    phone?: string;
+    avatar?: string;
   }>;
 }
 
@@ -55,16 +56,20 @@ export const HandlerList = ({ merchantId }: HandlerListProps) => {
       title: "姓名",
       dataIndex: "name",
       key: "name",
+      width: 120,
     },
     {
       title: "手机号",
       dataIndex: "phone",
       key: "phone",
+      width: 150,
     },
     {
       title: "状态",
       dataIndex: "isActive",
       key: "isActive",
+      width: 100,
+      align: "center" as const,
       render: (isActive: boolean) => (
         <Tag color={isActive ? "success" : "error"}>
           {isActive ? "启用" : "禁用"}
@@ -74,17 +79,22 @@ export const HandlerList = ({ merchantId }: HandlerListProps) => {
     {
       title: "关联用户",
       key: "users",
+      width: 200,
       render: (_: any, record: Handler) => {
         if (!record.users || record.users.length === 0) {
           return <Tag color="default">未关联</Tag>;
         }
         return (
-          <Space>
-            {record.users.map((user) => (
-              <Tag key={user.id} color="blue">
-                {user.nickname || user.id}
-              </Tag>
-            ))}
+          <Space direction="vertical" size="small">
+            {record.users.map((user) => {
+              // 优先显示昵称，其次手机号，最后显示用户ID前8位
+              const displayName = user.nickname || user.phone || `用户 ${user.id.slice(0, 8)}`;
+              return (
+                <Tag key={user.id} color="blue">
+                  {displayName}
+                </Tag>
+              );
+            })}
           </Space>
         );
       },
@@ -93,15 +103,19 @@ export const HandlerList = ({ merchantId }: HandlerListProps) => {
       title: "创建时间",
       dataIndex: "createdAt",
       key: "createdAt",
+      width: 180,
       render: (date: Date) => new Date(date).toLocaleString("zh-CN"),
     },
     {
       title: "操作",
       key: "actions",
+      width: 200,
+      fixed: "right" as const,
       render: (_: any, record: Handler) => (
-        <Space>
+        <Space size="small">
           <Button
             type="link"
+            size="small"
             icon={<EditOutlined />}
             onClick={() => {
               setEditingHandler(record);
@@ -112,6 +126,7 @@ export const HandlerList = ({ merchantId }: HandlerListProps) => {
           </Button>
           <Button
             type="link"
+            size="small"
             icon={record.isActive ? <StopOutlined /> : <CheckOutlined />}
             onClick={() => toggleActive.mutate(record.id)}
           >
@@ -119,12 +134,22 @@ export const HandlerList = ({ merchantId }: HandlerListProps) => {
           </Button>
           <Button
             type="link"
+            size="small"
             danger
             icon={<DeleteOutlined />}
             onClick={() => {
               Modal.confirm({
                 title: "确认删除",
-                content: `确定要删除核销员 "${record.name}" 吗？`,
+                content: (
+                  <div>
+                    <p>确定要删除核销员 "{record.name}" 吗？</p>
+                    <p style={{ color: '#8c8c8c', fontSize: 12, marginTop: 8 }}>
+                      删除后核销员将无法继续核销优惠券，但历史记录将保留
+                    </p>
+                  </div>
+                ),
+                okText: '确认删除',
+                cancelText: '取消',
                 onOk: () => deleteHandler.mutate(record.id),
               });
             }}
@@ -138,9 +163,13 @@ export const HandlerList = ({ merchantId }: HandlerListProps) => {
 
   return (
     <div>
-      <div style={{ marginBottom: 16, textAlign: "right" }}>
+      <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ fontSize: 16, fontWeight: 500, color: '#262626' }}>
+          共 {handlers.length || 0} 位核销员
+        </div>
         <Button
           type="primary"
+          icon={<EditOutlined />}
           onClick={() => {
             setEditingHandler(null);
             setModalVisible(true);
@@ -155,7 +184,15 @@ export const HandlerList = ({ merchantId }: HandlerListProps) => {
         columns={columns}
         rowKey="id"
         loading={isLoading}
-        pagination={{ pageSize: 10 }}
+        pagination={{
+          pageSize: 10,
+          showSizeChanger: true,
+          showTotal: (total) => `共 ${total} 条`,
+          style: { marginTop: 16 }
+        }}
+        scroll={{ x: 1000 }}
+        bordered
+        size="middle"
       />
 
       <Modal
@@ -164,6 +201,8 @@ export const HandlerList = ({ merchantId }: HandlerListProps) => {
         onCancel={() => setModalVisible(false)}
         footer={null}
         width={600}
+        centered
+        destroyOnClose
       >
         <HandlerForm
           merchantId={merchantId}

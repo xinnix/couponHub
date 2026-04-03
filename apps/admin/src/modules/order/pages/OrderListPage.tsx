@@ -1,13 +1,12 @@
 // apps/admin/src/modules/order/pages/OrderListPage.tsx
 import { useState } from "react";
-import { useList, useUpdate, useDelete, useDeleteMany } from "@refinedev/core";
+import { useList, useUpdate } from "@refinedev/core";
 import { List } from "@refinedev/antd";
 import {
   Table,
   Button,
   Space,
   App,
-  Popconfirm,
   Card,
   Row,
   Col,
@@ -26,10 +25,8 @@ import {
   ClockCircleOutlined,
 } from "@ant-design/icons";
 import { OrderStatusTag } from "../components/OrderStatusTag";
-import { RefundModal } from "../components/RefundModal";
-import { BatchRefundModal } from "../components/BatchRefundModal";
-import { useNavigate } from "react-router-dom";
 import { exportOrders } from "../../../shared/utils/export";
+import { getTrpcClient } from "../../../shared/trpc/trpcClient";
 import { toNumber, formatCurrency } from "../../../shared/utils/decimal";
 import dayjs from "dayjs";
 
@@ -69,34 +66,11 @@ interface Order {
 }
 
 export const OrderListPage = () => {
-  const navigate = useNavigate();
   const { message } = App.useApp();
   const [selectedRowKeys, setSelectedRowKeys] = useState<string[]>([]);
   const [searchText, setSearchText] = useState("");
   const [statusFilter, setStatusFilter] = useState<string | undefined>(undefined);
   const [dateRange, setDateRange] = useState<[dayjs.Dayjs, dayjs.Dayjs] | null>(null);
-  const [refundModalVisible, setRefundModalVisible] = useState(false);
-  const [batchRefundModalVisible, setBatchRefundModalVisible] = useState(false);
-  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-
-  const { mutate: deleteOne } = useDelete();
-  const { mutate: deleteMany } = useDeleteMany();
-
-  // 处理删除单个订单
-  const handleDelete = (id: string) => {
-    deleteOne(
-      { resource: "order", id },
-      {
-        onSuccess: () => {
-          message.success("删除成功");
-          query.refetch();
-        },
-        onError: () => {
-          message.error("删除失败");
-        },
-      }
-    );
-  };
 
   const { result, query } = useList<Order>({
     resource: "order",
@@ -111,6 +85,13 @@ export const OrderListPage = () => {
         { field: "createdAt", operator: "lte", value: dateRange[1].endOf('day').toISOString() },
       ] as any : []),
     ],
+    meta: {
+      include: {
+        user: { select: { id: true, nickname: true, email: true } },
+        template: { select: { id: true, title: true } },
+        merchant: { select: { id: true, name: true } },
+      },
+    },
   });
 
   const orders = (result as any)?.data || [];
@@ -121,44 +102,42 @@ export const OrderListPage = () => {
   const refundingCount = orders.filter((o: Order) => o.status === 'REFUNDING').length;
   const totalAmount = orders
     .filter((o: Order) => o.status !== 'UNPAID' && o.status !== 'EXPIRED')
-    .reduce((sum: number, o: Order) => sum + o.price, 0);
+    .reduce((sum: number, o: Order) => sum + toNumber(o.price), 0);
 
-  const handleExport = () => {
-    if (orders.length === 0) {
-      message.warning('没有可导出的订单');
-      return;
-    }
-    exportOrders(orders);
-    message.success('导出成功');
-  };
-
-  const handleRefund = (record: Order) => {
-    setSelectedOrder(record);
-    setRefundModalVisible(true);
-  };
-
-  const handleBatchDelete = () => {
-    if (selectedRowKeys.length === 0) {
-      message.warning("请选择要删除的订单");
-      return;
-    }
-
-    deleteMany(
-      {
-        resource: "order",
-        ids: selectedRowKeys,
-      },
-      {
-        onSuccess: () => {
-          message.success(`成功删除 ${selectedRowKeys.length} 个订单`);
-          setSelectedRowKeys([]);
-          query.refetch();
-        },
-        onError: () => {
-          message.error("批量删除失败");
-        },
+  const handleExport = async () => {
+    try {
+      const where: any = {};
+      if (searchText) where.orderNo = { contains: searchText };
+      if (statusFilter) where.status = statusFilter;
+      if (dateRange && dateRange[0] && dateRange[1]) {
+        where.createdAt = {
+          gte: dateRange[0].startOf('day').toISOString(),
+          lte: dateRange[1].endOf('day').toISOString(),
+        };
       }
-    );
+
+      const trpc = getTrpcClient();
+      const result = await (trpc as any).order.getMany.query({
+        page: 1,
+        limit: 9999,
+        where,
+        include: {
+          user: { select: { id: true, nickname: true, email: true } },
+          template: { select: { id: true, title: true } },
+          merchant: { select: { id: true, name: true } },
+        },
+      });
+
+      const allOrders = result?.items || [];
+      if (allOrders.length === 0) {
+        message.warning('没有可导出的订单');
+        return;
+      }
+      exportOrders(allOrders);
+      message.success(`成功导出 ${allOrders.length} 条订单`);
+    } catch {
+      message.error('导出失败');
+    }
   };
 
   const columns = [
@@ -237,43 +216,6 @@ export const OrderListPage = () => {
       width: 160,
       render: (date: Date) => dayjs(date).format('YYYY-MM-DD HH:mm'),
     },
-    {
-      title: "操作",
-      width: 200,
-      fixed: 'right' as const,
-      render: (_: any, record: Order) => (
-        <Space size="small">
-          <Button
-            size="small"
-            type="link"
-            onClick={() => navigate(`/orders/${record.id}`)}
-          >
-            详情
-          </Button>
-          {record.status === 'REFUNDING' && (
-            <Button
-              size="small"
-              type="link"
-              danger
-              onClick={() => handleRefund(record)}
-            >
-              退款审核
-            </Button>
-          )}
-          <Popconfirm
-            title="确认删除？"
-            description="删除后将无法恢复"
-            onConfirm={() => handleDelete(record.id)}
-            okText="确定"
-            cancelText="取消"
-          >
-            <Button size="small" type="link" danger>
-              删除
-            </Button>
-          </Popconfirm>
-        </Space>
-      ),
-    },
   ];
 
   return (
@@ -291,13 +233,6 @@ export const OrderListPage = () => {
                   onClick={handleExport}
                 >
                   导出订单
-                </Button>
-                <Button
-                  type="primary"
-                  danger
-                  onClick={() => setBatchRefundModalVisible(true)}
-                >
-                  批量退款
                 </Button>
               </Space>
             </Col>
@@ -387,15 +322,6 @@ export const OrderListPage = () => {
               <Button size="small" onClick={() => setSelectedRowKeys([])}>
                 取消选择
               </Button>
-              <Popconfirm
-                title="确认批量删除？"
-                description={`将删除 ${selectedRowKeys.length} 个订单`}
-                onConfirm={handleBatchDelete}
-              >
-                <Button size="small" danger>
-                  批量删除
-                </Button>
-              </Popconfirm>
             </Space>
           )}
 
@@ -415,29 +341,6 @@ export const OrderListPage = () => {
               total: (result as any)?.total || 0,
               showSizeChanger: true,
               showTotal: (total) => `共 ${total} 条`,
-            }}
-          />
-
-          <RefundModal
-            visible={refundModalVisible}
-            order={selectedOrder}
-            onCancel={() => {
-              setRefundModalVisible(false);
-              setSelectedOrder(null);
-            }}
-            onSuccess={() => {
-              setRefundModalVisible(false);
-              setSelectedOrder(null);
-              query.refetch();
-            }}
-          />
-
-          <BatchRefundModal
-            visible={batchRefundModalVisible}
-            onCancel={() => setBatchRefundModalVisible(false)}
-            onSuccess={() => {
-              setBatchRefundModalVisible(false);
-              query.refetch();
             }}
           />
         </Card>

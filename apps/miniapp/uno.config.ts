@@ -1,26 +1,36 @@
 import { presetUni } from '@uni-helper/unocss-preset-uni'
 import {
   defineConfig,
-  presetIcons,
-  presetUno,
   transformerDirectives,
   transformerVariantGroup,
 } from 'unocss'
 
+/**
+ * UnoCSS 配置 - 小程序版本
+ *
+ * 重要说明：
+ * 1. presetUni() 已内置 presetUno + 小程序适配
+ * 2. 自动处理 rpx 转换
+ * 3. 对于特殊字符（如 [、]、/），建议使用自定义 SCSS 类替代
+ * 4. 不使用属性化模式（小程序不支持）
+ */
+
 export default defineConfig({
+  // 预设配置
   presets: [
-    presetUni(),
-    presetUno(),
-    presetIcons({
-      scale: 1.2,
-      warn: true,
-      extraProperties: {
-        'display': 'inline-block',
-        'vertical-align': 'middle',
-      },
+    presetUni({
+      // 小程序自动适配，已内置以下功能：
+      // - presetUno / presetApplet
+      // - presetAttributify (自动适配小程序)
+      // - presetRemRpx (rpx 转换)
     }),
   ],
-  transformers: [transformerDirectives(), transformerVariantGroup()],
+
+  // 转换器配置
+  transformers: [
+    transformerDirectives(),    // 处理 @apply 等指令
+    transformerVariantGroup(),  // 处理变体组语法
+  ],
   theme: {
     colors: {
       surface: '#f5faff',
@@ -79,5 +89,22 @@ export default defineConfig({
   },
   shortcuts: {
     'no-scrollbar': 'overflow-x-auto overflow-y-hidden',
+    // 激活态缩放
+    'active-scale-95': 'transition-transform duration-200',
+    'active-scale-98': 'transition-transform duration-200',
   },
+  rules: [
+    // 自定义阴影
+    ['shadow-ambient', { 'box-shadow': '0 4px 16px rgba(23, 28, 32, 0.04)' }],
+    ['shadow-card', { 'box-shadow': '0 2px 8px rgba(23, 28, 32, 0.03)' }],
+    // mix-blend-mode
+    ['mix-blend-multiply', { 'mix-blend-mode': 'multiply' }],
+    // 文字截断
+    ['line-clamp-2', {
+      'display': '-webkit-box',
+      '-webkit-box-orient': 'vertical',
+      '-webkit-line-clamp': '2',
+      'overflow': 'hidden',
+    }],
+  ],
 })

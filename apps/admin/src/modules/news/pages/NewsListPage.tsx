@@ -24,6 +24,7 @@ import {
   EyeOutlined,
   FileTextOutlined,
   EyeFilled,
+  StarFilled,
 } from "@ant-design/icons";
 import { NewsForm } from "../components/NewsForm";
 import { useNavigate } from "react-router-dom";
@@ -37,6 +38,7 @@ interface News {
   linkedCouponId?: string;
   viewCount: number;
   status: 'DRAFT' | 'PUBLISHED';
+  isHero: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -241,6 +243,16 @@ export const NewsListPage = () => {
       dataIndex: "linkedCouponId",
       width: 100,
       render: (id: string) => id ? <Tag color="blue">已关联</Tag> : '-',
+    },
+    {
+      title: "头图",
+      dataIndex: "isHero",
+      width: 100,
+      render: (isHero: boolean) => (
+        <Tag color={isHero ? 'gold' : 'default'} icon={isHero ? <StarFilled /> : null}>
+          {isHero ? 'Hero' : '普通'}
+        </Tag>
+      ),
     },
     {
       title: "创建时间",

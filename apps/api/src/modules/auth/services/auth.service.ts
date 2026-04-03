@@ -389,6 +389,97 @@ export class AuthService {
   }
 
   /**
+   * ✅ 检查核销员身份
+   */
+  async checkHandlerStatus(userId: string) {
+    // 1. 获取用户信息
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { handlerId: true },
+    });
+
+    if (!user || !user.handlerId) {
+      return {
+        isHandler: false,
+        handler: null,
+      };
+    }
+
+    // 2. 查询核销员信息
+    const handler = await this.prisma.handler.findUnique({
+      where: { id: user.handlerId },
+      include: { merchant: true },
+    });
+
+    if (!handler || !handler.isActive) {
+      return {
+        isHandler: false,
+        handler: null,
+      };
+    }
+
+    // 3. 返回核销员信息
+    return {
+      isHandler: true,
+      handler: {
+        id: handler.id,
+        name: handler.name,
+        phone: handler.phone,
+        merchantId: handler.merchantId,
+        merchantName: handler.merchant.name,
+        merchantCategory: handler.merchant.category,
+        merchantArea: handler.merchant.area,
+      },
+    };
+  }
+
+  /**
+   * 📱 获取微信手机号并关联核销员身份
+   */
+  async getPhoneNumber(data: { code: string; encryptedData: string; iv: string }) {
+    // 1. 获取 session_key 和 openid
+    const { sessionKey, openid } = await this.wechatService.code2Session(data.code);
+
+    // 2. 解密手机号
+    const { phoneNumber } = await this.wechatService.decryptPhoneNumber(
+      data.encryptedData,
+      data.iv,
+      sessionKey,
+    );
+
+    // 3. 更新 User.phone
+    const user = await this.prisma.user.update({
+      where: { openid },
+      data: { phone: phoneNumber },
+    });
+
+    // 4. 匹配核销员身份
+    const handler = await this.prisma.handler.findUnique({
+      where: { phone: phoneNumber },
+      include: { merchant: true },
+    });
+
+    // 5. 如果匹配，设置 User.handlerId
+    if (handler && handler.isActive) {
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: { handlerId: handler.id },
+      });
+    }
+
+    return {
+      phoneNumber,
+      isHandler: handler && handler.isActive,
+      handler: handler ? {
+        id: handler.id,
+        name: handler.name,
+        merchantId: handler.merchantId,
+        merchantName: handler.merchant.name,
+      } : null,
+    };
+  }
+
+  /**
    * 🔐 生成小程序用户令牌
    */
   private async generateUserTokens(user: any) {

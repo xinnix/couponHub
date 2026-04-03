@@ -67,8 +67,17 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
   }, [quill, value]);
 
   return (
-    <div style={{ minHeight: 300 }}>
+    <div style={{ minHeight: 500 }}>
       <div ref={quillRef} />
+      <style>{`
+        .ql-container {
+          min-height: 400px;
+          font-size: 16px;
+        }
+        .ql-editor {
+          min-height: 400px;
+        }
+      `}</style>
     </div>
   );
 };

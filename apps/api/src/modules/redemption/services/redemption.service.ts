@@ -39,7 +39,7 @@ export class RedemptionService {
     }
 
     // 2. 获取核销员信息
-    const handler = await this.prisma.merchantHandler.findUnique({
+    const handler = await this.prisma.handler.findUnique({
       where: { id: handlerId },
       include: { merchant: true },
     });
@@ -80,12 +80,14 @@ export class RedemptionService {
       data: {
         status: 'REDEEMED',
         redeemMerchantId: handler.merchantId,
+        handlerId: handler.id, // 记录核销员 ID
         redeemedAt: new Date(),
       },
       include: {
         template: true,
         merchant: true,
         user: true,
+        handler: true, // 包含核销员信息
       },
     });
 
@@ -134,6 +136,13 @@ export class RedemptionService {
             select: {
               id: true,
               nickname: true,
+              phone: true,
+            },
+          },
+          handler: {
+            select: {
+              id: true,
+              name: true,
               phone: true,
             },
           },

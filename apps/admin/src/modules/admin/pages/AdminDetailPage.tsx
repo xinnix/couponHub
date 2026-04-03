@@ -58,7 +58,7 @@ export const AdminDetailPage = () => {
   const [selectedRoleId, setSelectedRoleId] = useState<string | undefined>(undefined);
   const { message } = App.useApp();
 
-  const { data: adminData, isLoading, query: adminQuery } = useOne<AdminDetail>({
+  const { result: admin, isLoading, query: adminQuery } = useOne<AdminDetail>({
     resource: "admin",
     id: id!,
   });
@@ -67,8 +67,6 @@ export const AdminDetailPage = () => {
     resource: "role",
     pagination: { pageSize: 100 },
   });
-
-  const admin = adminData?.data;
 
   const handleAssignRole = async () => {
     if (!selectedRoleId || !id) return;

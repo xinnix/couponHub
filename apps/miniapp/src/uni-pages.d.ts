@@ -12,6 +12,8 @@ type _LocationUrl =
   "/pages/handler/records" |
   "/pages/home/index" |
   "/pages/merchant/detail" |
+  "/pages/merchant/list" |
+  "/pages/profile/index" |
   "/pages/qrcode/index" |
   "/pages/scan/index" |
   "/pages/wallet/index";

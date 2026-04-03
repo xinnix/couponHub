@@ -158,6 +158,15 @@ export const TemplateForm: React.FC<TemplateFormProps> = ({ form, isEdit }) => {
       <Form.Item name="description" label="券描述">
         <TextArea rows={4} placeholder="请输入券描述" maxLength={500} showCount />
       </Form.Item>
+
+      <Form.Item name="usageRules" label="使用规则">
+        <TextArea
+          rows={6}
+          placeholder="请输入使用规则说明，例如：满100元可用、周末不可用、每人限用1次等"
+          maxLength={1000}
+          showCount
+        />
+      </Form.Item>
     </Form>
   );
 };

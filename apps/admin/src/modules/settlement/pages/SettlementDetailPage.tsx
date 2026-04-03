@@ -36,14 +36,12 @@ export const SettlementDetailPage = () => {
   const [activeTab, setActiveTab] = useState('info');
   const [loading, setLoading] = useState(false);
 
-  const { data: settlementData, isLoading } = useOne<Settlement>({
+  const { result: settlement, isLoading, query } = useOne<Settlement>({
     resource: "settlement",
     id: id!,
   });
 
   const { mutate: update } = useUpdate();
-
-  const settlement = settlementData?.data;
 
   if (isLoading) {
     return (
@@ -70,12 +68,11 @@ export const SettlementDetailPage = () => {
   const handleConfirm = async () => {
     setLoading(true);
     try {
-      // TODO: 后端需要实现 settlement.confirm API
       update(
         {
           resource: "settlement",
           id: settlement.id,
-          values: { status: 'CONFIRMED' },
+          values: { settlementId: settlement.id },
           meta: {
             method: 'confirm',
           },
@@ -84,6 +81,7 @@ export const SettlementDetailPage = () => {
           onSuccess: () => {
             message.success('结算单已确认');
             setLoading(false);
+            query.refetch();
           },
           onError: () => {
             message.error('操作失败');
@@ -100,12 +98,11 @@ export const SettlementDetailPage = () => {
   const handleMarkPaid = async () => {
     setLoading(true);
     try {
-      // TODO: 后端需要实现 settlement.markPaid API
       update(
         {
           resource: "settlement",
           id: settlement.id,
-          values: { status: 'PAID' },
+          values: { settlementId: settlement.id },
           meta: {
             method: 'markPaid',
           },
@@ -114,6 +111,7 @@ export const SettlementDetailPage = () => {
           onSuccess: () => {
             message.success('已标记为已支付');
             setLoading(false);
+            query.refetch();
           },
           onError: () => {
             message.error('操作失败');

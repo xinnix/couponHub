@@ -90,6 +90,9 @@ export class OrderService extends BaseService<'Order'> {
       });
 
       this.logger.log(`订单创建成功: ${orderNo}, 用户: ${userId}`);
+
+      // 8. 返回订单信息
+      return { order };
     } finally {
       // 9. 释放锁
       await this.redisService.releaseLock(lockKey, lock);

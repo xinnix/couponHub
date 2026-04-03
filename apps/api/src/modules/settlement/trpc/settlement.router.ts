@@ -6,7 +6,7 @@ import {
 } from '@opencode/shared';
 import { createCrudRouterWithCustom } from '../../../trpc/trpc.helper';
 import { protectedProcedure } from '../../../trpc/trpc';
-import { ConflictException, BadRequestException } from '@nestjs/common';
+import { TRPCError } from '@trpc/server';
 
 /**
  * Settlement tRPC Router
@@ -39,7 +39,10 @@ export const settlementRouter = createCrudRouterWithCustom(
           });
 
           if (existing) {
-            throw new ConflictException('该商户该月份的结算单已存在');
+            throw new TRPCError({
+              code: 'CONFLICT',
+              message: '该商户该月份的结算单已存在',
+            });
           }
 
           // 查询待结算订单
@@ -65,7 +68,10 @@ export const settlementRouter = createCrudRouterWithCustom(
           });
 
           if (orders.length === 0) {
-            throw new BadRequestException('没有可结算的订单');
+            throw new TRPCError({
+              code: 'BAD_REQUEST',
+              message: '没有可结算的订单',
+            });
           }
 
           // 生成快照数据
@@ -121,11 +127,17 @@ export const settlementRouter = createCrudRouterWithCustom(
         });
 
         if (!settlement) {
-          throw new BadRequestException('结算单不存在');
+          throw new TRPCError({
+            code: 'NOT_FOUND',
+            message: '结算单不存在',
+          });
         }
 
         if (settlement.status !== 'PENDING') {
-          throw new BadRequestException('结算单状态不允许确认');
+          throw new TRPCError({
+            code: 'BAD_REQUEST',
+            message: '结算单状态不允许确认',
+          });
         }
 
         const updated = await ctx.prisma.settlement.update({
@@ -141,6 +153,39 @@ export const settlementRouter = createCrudRouterWithCustom(
         return updated;
       }),
 
+    // 结算统计
+    getStats: protectedProcedure
+      .query(async ({ ctx }) => {
+        const [pendingStats, confirmedStats, paidStats, totalCount] = await Promise.all([
+          ctx.prisma.settlement.aggregate({
+            _count: true,
+            _sum: { totalAmount: true },
+            where: { status: 'PENDING' },
+          }),
+          ctx.prisma.settlement.aggregate({
+            _count: true,
+            _sum: { totalAmount: true },
+            where: { status: 'CONFIRMED' },
+          }),
+          ctx.prisma.settlement.aggregate({
+            _count: true,
+            _sum: { totalAmount: true },
+            where: { status: 'PAID' },
+          }),
+          ctx.prisma.settlement.count(),
+        ]);
+
+        return {
+          pendingCount: pendingStats._count,
+          confirmedCount: confirmedStats._count,
+          paidCount: paidStats._count,
+          totalPaidAmount: Number(paidStats._sum.totalAmount ?? 0),
+          totalPendingAmount: Number(pendingStats._sum.totalAmount ?? 0),
+          totalConfirmedAmount: Number(confirmedStats._sum.totalAmount ?? 0),
+          totalCount,
+        };
+      }),
+
     // 标记已支付
     markPaid: protectedProcedure
       .input(MarkPaidSchema)
@@ -152,11 +197,17 @@ export const settlementRouter = createCrudRouterWithCustom(
         });
 
         if (!settlement) {
-          throw new BadRequestException('结算单不存在');
+          throw new TRPCError({
+            code: 'NOT_FOUND',
+            message: '结算单不存在',
+          });
         }
 
         if (settlement.status !== 'CONFIRMED') {
-          throw new BadRequestException('结算单状态不允许标记已支付');
+          throw new TRPCError({
+            code: 'BAD_REQUEST',
+            message: '结算单状态不允许标记已支付',
+          });
         }
 
         const updated = await ctx.prisma.settlement.update({

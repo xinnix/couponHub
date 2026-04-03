@@ -33,7 +33,17 @@
         <text class="coupon-title">{{ orderTitle }}</text>
         <text class="order-no">订单号: {{ orderNo }}</text>
         <text class="amount">面值: ¥{{ orderFaceValue }}</text>
+        <text class="status">状态: {{ statusText }}</text>
       </view>
+
+      <button
+        v-if="canRefund"
+        class="refund-btn"
+        :disabled="refunding"
+        @click="handleRefund"
+      >
+        {{ refunding ? '处理中...' : '申请退款' }}
+      </button>
     </view>
   </view>
 </template>
@@ -49,6 +59,7 @@ const order = ref<any>(null)
 const countdown = ref(30)
 const canvasSize = ref(200)
 const statusBarHeight = ref(0)
+const refunding = ref(false)
 
 let timer: any = null
 let qrcode: UQRCode | null = null
@@ -73,6 +84,18 @@ const orderFaceValue = computed(() => {
     return order.value.faceValue;
   }
   return 0;
+});
+
+const statusText = computed(() => {
+  if (order.value && order.value.status) {
+    return getStatusText(order.value.status);
+  }
+  return '';
+});
+
+const canRefund = computed(() => {
+  // 只有已支付且未核销的订单才能退款
+  return order.value && order.value.status === 'PAID';
 });
 
 // 获取状态栏高度
@@ -193,6 +216,70 @@ function getStatusText(status: string) {
   }
   return map[status] || status
 }
+
+async function handleRefund() {
+  if (refunding.value) return
+  if (!order.value) return
+
+  // 确认退款
+  await new Promise<void>((resolve) => {
+    uni.showModal({
+      title: '确认退款',
+      content: `确定要退款吗？\n订单号：${order.value.orderNo}\n面值：¥${order.value.faceValue}`,
+      confirmText: '确认退款',
+      confirmColor: '#ff4d4f',
+      success: (res) => {
+        if (res.confirm) resolve()
+      },
+    })
+  })
+
+  try {
+    refunding.value = true
+    uni.showLoading({ title: '处理中...', mask: true })
+
+    // 调用退款API
+    await orderApi.requestRefund({
+      orderId: order.value.id,
+      reason: '用户主动退款',
+    })
+
+    uni.hideLoading()
+    uni.showToast({
+      title: '退款申请已提交',
+      icon: 'success',
+      duration: 2000,
+    })
+
+    // 延迟后返回上一页
+    setTimeout(() => {
+      uni.navigateBack({ delta: 1 })
+    }, 2000)
+  }
+  catch (err: any) {
+    uni.hideLoading()
+    let respData = null;
+    if (err && err.response && err.response.data) {
+      respData = err.response.data;
+    }
+    let respMsg = '';
+    if (respData && respData.message) {
+      respMsg = respData.message;
+    }
+    let errMsg = '';
+    if (err && err.message) {
+      errMsg = err.message;
+    }
+    const msg = respMsg || errMsg || '退款失败'
+    uni.showToast({
+      title: msg,
+      icon: 'none',
+    })
+  }
+  finally {
+    refunding.value = false
+  }
+}
 </script>
 
 <style scoped>
@@ -278,6 +365,7 @@ function getStatusText(status: string) {
   background: #fff;
   padding: 30rpx;
   border-radius: 12rpx;
+  margin-bottom: 20rpx;
 }
 
 .coupon-title {
@@ -287,10 +375,27 @@ function getStatusText(status: string) {
   margin-bottom: 10rpx;
 }
 
-.order-no, .amount {
+.order-no, .amount, .status {
   display: block;
   font-size: 28rpx;
   color: #666;
   margin-bottom: 10rpx;
+}
+
+.refund-btn {
+  width: 100%;
+  padding: 24rpx;
+  background: #ff4d4f;
+  color: #fff;
+  border-radius: 12rpx;
+  font-size: 32rpx;
+  font-weight: bold;
+  border: none;
+  margin-top: 20rpx;
+}
+
+.refund-btn[disabled] {
+  background: #ccc;
+  color: #fff;
 }
 </style>

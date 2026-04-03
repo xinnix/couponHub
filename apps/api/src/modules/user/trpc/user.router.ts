@@ -35,12 +35,15 @@ export const userRouter = router({
       // Build Prisma where clause
       const prismaWhere: any = { ...restWhere };
 
-      if (search) {
+      // 确保 search 是字符串类型
+      const searchStr = typeof search === 'string' ? search : String(search || '');
+
+      if (searchStr) {
         prismaWhere.OR = [
-          { username: { contains: search, mode: "insensitive" } },
-          { email: { contains: search, mode: "insensitive" } },
-          { nickname: { contains: search, mode: "insensitive" } },
-          { phone: { contains: search, mode: "insensitive" } },
+          { username: { contains: searchStr, mode: "insensitive" } },
+          { email: { contains: searchStr, mode: "insensitive" } },
+          { nickname: { contains: searchStr, mode: "insensitive" } },
+          { phone: { contains: searchStr, mode: "insensitive" } },
         ];
       }
 

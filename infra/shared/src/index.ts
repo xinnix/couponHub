@@ -443,16 +443,18 @@ export const NewsSchema = z.object({
   linkedCouponId: z.string().optional().nullable(),
   viewCount: z.number().int(),
   status: z.enum(["DRAFT", "PUBLISHED"]),
+  isHero: z.boolean(),
   createdAt: z.date(),
   updatedAt: z.date(),
 });
 
 export const CreateNewsSchema = z.object({
   title: z.string().min(1, "标题不能为空").max(200, "标题最多200字"),
-  bannerUrl: z.string().url("Banner URL格式无效").optional(),
+  bannerUrl: z.string().url("Banner URL格式无效").optional().nullable(),
   content: z.string().min(1, "内容不能为空"),
-  linkedCouponId: z.string().optional(),
+  linkedCouponId: z.string().optional().nullable(),
   status: z.enum(["DRAFT", "PUBLISHED"]).default("DRAFT"),
+  isHero: z.boolean().default(false),
 });
 
 export const UpdateNewsSchema = CreateNewsSchema.partial();
@@ -483,6 +485,7 @@ export const CouponTemplateSchema = z.object({
   validFrom: z.date(),
   validUntil: z.date(),
   description: z.string().optional().nullable(),
+  usageRules: z.string().optional().nullable(), // 使用规则说明
   status: z.enum(["ACTIVE", "EXPIRED", "DISABLED"]),
   createdAt: z.date(),
   updatedAt: z.date(),
@@ -497,7 +500,9 @@ const BaseCouponTemplateSchema = z.object({
   merchantScope: z.array(z.string()).min(1, "至少选择一个适用商户"),
   validFrom: z.coerce.date(), // 自动将字符串转换为 Date
   validUntil: z.coerce.date(), // 自动将字符串转换为 Date
-  description: z.string().optional(),
+  description: z.string().optional().nullable(),
+  usageRules: z.string().optional().nullable(), // 使用规则说明（可选，可为空）
+  status: z.enum(["ACTIVE", "EXPIRED", "DISABLED"]).optional(),
 });
 
 // 创建券模板 Schema（包含 refinement）

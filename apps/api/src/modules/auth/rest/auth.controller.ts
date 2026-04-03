@@ -70,6 +70,20 @@ export class AuthController {
   }
 
   @Public()
+  @Post('getPhoneNumber')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: '获取微信手机号并关联核销员身份' })
+  @ApiResponse({
+    status: 200,
+    description: '手机号获取成功',
+  })
+  async getPhoneNumber(
+    @Body() body: { code: string; encryptedData: string; iv: string },
+  ) {
+    return this.authService.getPhoneNumber(body);
+  }
+
+  @Public()
   @Post('admin/login')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: '管理端用户登录' })
@@ -143,5 +157,21 @@ export class AuthController {
   ) {
     const validatedData = RefreshTokenSchema.parse(body);
     return this.authService.logout(user.id, validatedData.refreshToken);
+  }
+
+  @Get('checkHandlerStatus')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: '检查核销员身份' })
+  @ApiResponse({
+    status: 200,
+    description: '返回核销员身份信息',
+  })
+  @ApiResponse({
+    status: 401,
+    description: '未授权',
+  })
+  async checkHandlerStatus(@CurrentUser() user: any) {
+    return this.authService.checkHandlerStatus(user.id);
   }
 }

@@ -45,12 +45,10 @@ export const MerchantDetailPage = () => {
   const [activeTab, setActiveTab] = useState('info');
   const { message } = App.useApp();
 
-  const { data: merchantData, isLoading } = useOne<Merchant>({
+  const { result: merchant, isLoading } = useOne<Merchant>({
     resource: "merchant",
     id: id!,
   });
-
-  const merchant = merchantData?.data;
 
   if (isLoading) {
     return (

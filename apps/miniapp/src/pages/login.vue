@@ -31,46 +31,64 @@ const handleWechatLogin = async (event: any) => {
 
   try {
     // 1. 获取微信 code
-    const loginRes = await uni.login({ provider: 'weixin' });
-
-    // uni.login 成功返回格式: { code, errMsg }
-    const code = loginRes.code;
+    const codeRes = await uni.login({ provider: 'weixin' });
+    let code = codeRes.code;
 
     if (!code) {
       throw new Error('获取登录凭证失败');
     }
 
-    // 2. 处理手机号授权（新增）
-    let phoneData = null;
-    if (event.detail && event.detail.encryptedData && event.detail.iv) {
-      try {
-        phoneData = await authApi.getPhoneNumber({
-          code,
-          encryptedData: event.detail.encryptedData,
-          iv: event.detail.iv
-        });
-        // User.phone 已在后端更新，handlerId 也已设置
-      } catch (error) {
-        console.error('手机号授权失败', error);
-        // 继续登录流程，但不关联核销员身份
+    // 2. 处理手机号授权（仅在用户同意时）
+    let needNewCode = false;
+    if (event.detail && event.detail.errMsg === 'getPhoneNumber:ok') {
+      if (event.detail.encryptedData && event.detail.iv) {
+        try {
+          const phoneData = await authApi.getPhoneNumber({
+            code, // 使用当前 code 解密手机号
+            encryptedData: event.detail.encryptedData,
+            iv: event.detail.iv
+          });
+          // User.phone 已在后端更新，handlerId 也已设置
+          console.log('手机号授权成功', phoneData);
+          // ⚠️ 重要：code 已被消耗，需要重新获取
+          needNewCode = true;
+        } catch (error) {
+          console.error('手机号授权失败', error);
+          // 继续登录流程，但不关联核销员身份
+          // code 可能已被消耗，保险起见重新获取
+          needNewCode = true;
+        }
+      }
+    } else if (event.detail && event.detail.errMsg) {
+      console.log('用户拒绝授权手机号', event.detail.errMsg);
+      // 用户拒绝授权，继续登录流程
+    }
+
+    // 3. 如果 code 已被消耗，重新获取
+    if (needNewCode) {
+      const loginRes = await uni.login({ provider: 'weixin' });
+      code = loginRes.code;
+
+      if (!code) {
+        throw new Error('获取登录凭证失败');
       }
     }
 
-    // 3. 发送到后端
+    // 4. 发送到后端进行登录
     const res = await authApi.wechatLogin(code);
 
-    // 4. 存储 token
+    // 5. 存储 token
     uni.setStorageSync('token', res.data.accessToken);
     uni.setStorageSync('refreshToken', res.data.refreshToken);
     uni.setStorageSync('userInfo', res.data.user);
 
-    // 5. 检查核销员身份（新增）
+    // 6. 检查核销员身份
     try {
       const handlerRes = await authApi.checkHandlerStatus();
       uni.setStorageSync('isHandler', handlerRes.data.isHandler);
       uni.setStorageSync('handlerInfo', handlerRes.data.handler);
 
-      // 6. 提示并跳转
+      // 7. 提示并跳转
       uni.showToast({
         title: '登录成功',
         icon: 'success',

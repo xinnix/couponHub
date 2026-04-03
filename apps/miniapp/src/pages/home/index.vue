@@ -108,6 +108,9 @@
         </view>
       </view>
     </view>
+
+    <!-- 自定义底部导航栏 -->
+    <CustomTabBar :current="2" />
   </view>
 </template>
 
@@ -115,6 +118,7 @@
 import { ref, onMounted, computed } from 'vue';
 import { merchantApi, newsApi, couponApi } from '@/api/business';
 import { authApi } from '@/api/auth';
+import CustomTabBar from '@/components/CustomTabBar.vue';
 
 const loading = ref(false);
 const userInfo = ref<any>(null);
@@ -260,7 +264,7 @@ const handleMoreMerchants = () => {
 .home-container {
   min-height: 100vh;
   background: linear-gradient(to bottom, #f5f7fa 0%, #ffffff 100%);
-  padding-bottom: 40rpx;
+  padding-bottom: 200rpx;
 }
 
 /* 头部 */

@@ -1,5 +1,6 @@
 // apps/admin/src/shared/utils/export.ts
 import dayjs from 'dayjs';
+import { toNumber } from './decimal';
 
 interface ExportOrder {
   orderNo: string;
@@ -46,8 +47,8 @@ export const convertToCSV = (orders: ExportOrder[]) => {
     order.orderNo,
     order.user?.nickname || order.user?.email || '',
     order.template?.title || '',
-    order.price.toFixed(2),
-    order.faceValue.toFixed(2),
+    toNumber(order.price).toFixed(2),
+    toNumber(order.faceValue).toFixed(2),
     statusMap[order.status] || order.status,
     order.paidAt ? dayjs(order.paidAt).format('YYYY-MM-DD HH:mm:ss') : '',
     order.redeemedAt ? dayjs(order.redeemedAt).format('YYYY-MM-DD HH:mm:ss') : '',

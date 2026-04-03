@@ -3,7 +3,6 @@ import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import {
   DashboardOutlined,
   UserOutlined,
-  TeamOutlined,
   LogoutOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
@@ -70,6 +69,12 @@ export function AdminLayout() {
           label: "核销记录",
           onClick: () => navigate("/redemptions"),
         },
+        {
+          key: "/users",
+          icon: <UserOutlined />,
+          label: "用户管理",
+          onClick: () => navigate("/users"),
+        },
       ],
     },
     {
@@ -90,18 +95,6 @@ export function AdminLayout() {
       icon: <SettingOutlined />,
       label: "系统管理",
       children: [
-        {
-          key: "/users",
-          icon: <UserOutlined />,
-          label: "用户管理",
-          onClick: () => navigate("/users"),
-        },
-        {
-          key: "/roles",
-          icon: <TeamOutlined />,
-          label: "角色管理",
-          onClick: () => navigate("/roles"),
-        },
         {
           key: "/admins",
           icon: <SafetyCertificateOutlined />,
@@ -146,6 +139,7 @@ export function AdminLayout() {
         "/orders",
         "/settlements",
         "/redemptions",
+        "/users",
       ].includes(path)
     ) {
       return ["business"];
@@ -153,7 +147,7 @@ export function AdminLayout() {
     if (["/news"].includes(path)) {
       return ["content"];
     }
-    if (["/users", "/roles", "/admins"].includes(path)) {
+    if (["/admins"].includes(path)) {
       return ["system"];
     }
     return [];

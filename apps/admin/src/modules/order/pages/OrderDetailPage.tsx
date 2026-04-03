@@ -46,12 +46,10 @@ export const OrderDetailPage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
-  const { data: orderData, isLoading } = useOne<Order>({
+  const { result: order, isLoading } = useOne<Order>({
     resource: "order",
     id: id!,
   });
-
-  const order = orderData?.data;
 
   if (isLoading) {
     return (

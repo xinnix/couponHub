@@ -1,6 +1,6 @@
 // apps/admin/src/modules/coupon-template/pages/TemplateListPage.tsx
 import { useState } from "react";
-import { useList, useCreate, useUpdate, useDelete, useDeleteMany } from "@refinedev/core";
+import { useList, useCreate, useUpdate, useDelete, useDeleteMany, useCustom } from "@refinedev/core";
 import { List } from "@refinedev/antd";
 import {
   Table,
@@ -18,16 +18,16 @@ import {
   DatePicker,
   Statistic,
   App,
+  Image,
 } from "antd";
 import {
   PlusOutlined,
   SearchOutlined,
-  EyeOutlined,
+  QrcodeOutlined,
   DollarOutlined,
   TagOutlined,
 } from "@ant-design/icons";
 import { TemplateForm } from "../components/TemplateForm";
-import { useNavigate } from "react-router-dom";
 import dayjs from "dayjs";
 import { createMutationCallbacks, createBatchMutationCallbacks } from "../../../shared/utils/mutationCallbacks";
 
@@ -43,7 +43,10 @@ interface CouponTemplate {
   validFrom: Date;
   validUntil: Date;
   description?: string;
+  usageRules?: string; // 使用规则说明
   status: 'ACTIVE' | 'EXPIRED' | 'DISABLED';
+  qrcodeUrl?: string; // 小程序码 URL
+  qrcodeGeneratedAt?: Date; // 小程序码生成时间
   createdAt: Date;
   updatedAt: Date;
   _count?: {
@@ -52,7 +55,6 @@ interface CouponTemplate {
 }
 
 export const TemplateListPage = () => {
-  const navigate = useNavigate();
   const { message } = App.useApp();
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editingRecord, setEditingRecord] = useState<CouponTemplate | null>(null);
@@ -61,10 +63,21 @@ export const TemplateListPage = () => {
   const [statusFilter, setStatusFilter] = useState<string | undefined>(undefined);
   const [form] = Form.useForm();
 
+  // 小程序码相关 state
+  const [qrcodeModalVisible, setQrcodeModalVisible] = useState(false);
+  const [currentQrcode, setCurrentQrcode] = useState<{
+    id: string;
+    url?: string;
+    title: string;
+    qrcodeGeneratedAt?: Date;
+  } | null>(null);
+  const [generatingQrcode, setGeneratingQrcode] = useState(false);
+
   const { mutate: create } = useCreate();
   const { mutate: update } = useUpdate();
   const { mutate: deleteOne } = useDelete();
   const { mutate: deleteMany } = useDeleteMany();
+  const { mutate: generateQrcode } = useCustom();
 
   // 处理删除单个券模板
   const handleDelete = (id: string) => {
@@ -80,7 +93,7 @@ export const TemplateListPage = () => {
       pageSize: 10,
     },
     filters: [
-      ...(searchText ? [{ field: "search", operator: "contains", value: searchText }] as any : []),
+      ...(searchText ? [{ field: "title", operator: "contains", value: searchText }] as any : []),
       ...(statusFilter ? [{ field: "status", operator: "eq", value: statusFilter }] as any : []),
     ],
   });
@@ -163,17 +176,58 @@ export const TemplateListPage = () => {
     );
   };
 
-  const getStatusTag = (status: string, validUntil: Date) => {
-    const now = new Date();
-    const isExpired = new Date(validUntil) < now;
+  const handleShowQrcode = (record: CouponTemplate) => {
+    setCurrentQrcode({
+      id: record.id,
+      url: record.qrcodeUrl,
+      title: record.title,
+      qrcodeGeneratedAt: record.qrcodeGeneratedAt,
+    });
+    setQrcodeModalVisible(true);
+  };
+
+  const handleGenerateQrcode = async () => {
+    if (!currentQrcode) return;
+
+    setGeneratingQrcode(true);
+    generateQrcode(
+      {
+        method: 'mutation',
+        resource: 'couponTemplate',
+        id: currentQrcode.id,
+        meta: { operation: 'generateQrcode' },
+      },
+      {
+        onSuccess: (data) => {
+          setCurrentQrcode({
+            ...currentQrcode,
+            url: data.data.url,
+            qrcodeGeneratedAt: new Date(),
+          });
+          message.success('小程序码生成成功');
+          query.refetch();
+        },
+        onError: (error) => {
+          message.error('生成失败: ' + error.message);
+        },
+        onSettled: () => {
+          setGeneratingQrcode(false);
+        },
+      }
+    );
+  };
+
+  const getStatusTag = (record: CouponTemplate) => {
+    const { status, validUntil } = record;
+    const isExpired = new Date(validUntil) < new Date();
 
     if (status === 'DISABLED') {
-      return <Tag color="default">已停用</Tag>;
+      return <Tag color="default" style={{ cursor: 'pointer' }} onClick={() => handleToggleStatus(record)}>已停用</Tag>;
     }
     if (isExpired || status === 'EXPIRED') {
       return <Tag color="error">已过期</Tag>;
     }
-    return <Tag color="success">上架中</Tag>;
+    return <Tag color="success" style={{ cursor: 'pointer' }} onClick={() => handleToggleStatus(record)}>上架中</Tag>;
   };
 
   const columns = [
@@ -236,7 +290,7 @@ export const TemplateListPage = () => {
       title: "状态",
       dataIndex: "status",
       width: 90,
-      render: (status: string, record: CouponTemplate) => getStatusTag(status, record.validUntil),
+      render: (status: string, record: CouponTemplate) => getStatusTag(record),
     },
     {
       title: "创建时间",
@@ -246,23 +300,20 @@ export const TemplateListPage = () => {
     },
     {
       title: "操作",
-      width: 200,
+      width: 280,
       fixed: 'right' as const,
       render: (_: any, record: CouponTemplate) => (
         <Space size="small">
-          <Button
-            size="small"
-            type="link"
-            icon={<EyeOutlined />}
-            onClick={() => navigate(`/coupon-templates/${record.id}`)}
-          >
-            查看
-          </Button>
           <Button size="small" type="link" onClick={() => handleEdit(record)}>
             编辑
           </Button>
-          <Button size="small" type="link" onClick={() => handleToggleStatus(record)}>
-            {record.status === 'ACTIVE' ? '停用' : '启用'}
+          <Button
+            size="small"
+            type="link"
+            icon={<QrcodeOutlined />}
+            onClick={() => handleShowQrcode(record)}
+          >
+            小程序码
           </Button>
           <Popconfirm
             title="确认删除？"
@@ -412,6 +463,70 @@ export const TemplateListPage = () => {
             width={700}
           >
             <TemplateForm form={form} isEdit={!!editingRecord} />
+          </Modal>
+
+          {/* 小程序码 Modal */}
+          <Modal
+            title="小程序码管理"
+            open={qrcodeModalVisible}
+            onCancel={() => setQrcodeModalVisible(false)}
+            footer={[
+              <Button key="close" onClick={() => setQrcodeModalVisible(false)}>
+                关闭
+              </Button>,
+              !currentQrcode?.url && (
+                <Button
+                  key="generate"
+                  type="primary"
+                  loading={generatingQrcode}
+                  onClick={handleGenerateQrcode}
+                >
+                  生成小程序码
+                </Button>
+              ),
+              currentQrcode?.url && (
+                <Button key="regenerate" loading={generatingQrcode} onClick={handleGenerateQrcode}>
+                  重新生成
+                </Button>
+              ),
+              currentQrcode?.url && (
+                <Button
+                  key="download"
+                  type="primary"
+                  onClick={() => {
+                    const link = document.createElement('a');
+                    link.href = currentQrcode.url!;
+                    link.download = `qrcode-${currentQrcode.id}.png`;
+                    link.click();
+                  }}
+                >
+                  下载
+                </Button>
+              ),
+            ]}
+            width={500}
+          >
+            <div style={{ textAlign: 'center' }}>
+              <h3 style={{ marginBottom: 16 }}>{currentQrcode?.title}</h3>
+
+              {currentQrcode?.url ? (
+                <div>
+                  <Image src={currentQrcode.url} width={280} height={280} alt="小程序码" />
+                  <p style={{ marginTop: 12, color: '#666' }}>扫码直接进入券购买页面</p>
+                  {currentQrcode.qrcodeGeneratedAt && (
+                    <p style={{ fontSize: 12, color: '#999' }}>
+                      生成时间: {new Date(currentQrcode.qrcodeGeneratedAt).toLocaleString()}
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <div style={{ padding: '80px 0', color: '#999' }}>
+                  <QrcodeOutlined style={{ fontSize: 48, marginBottom: 16 }} />
+                  <p>暂无小程序码</p>
+                  <p>点击"生成小程序码"按钮创建</p>
+                </div>
+              )}
+            </div>
           </Modal>
         </Card>
       </List>

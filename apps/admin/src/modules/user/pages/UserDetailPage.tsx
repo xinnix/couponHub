@@ -35,12 +35,10 @@ export const UserDetailPage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
-  const { data: result, isLoading } = useOne<UserDetail>({
+  const { result: user, isLoading } = useOne<UserDetail>({
     resource: "user",
     id: id || "",
   });
-
-  const user = result?.data;
 
   if (isLoading) {
     return <div>加载中...</div>;

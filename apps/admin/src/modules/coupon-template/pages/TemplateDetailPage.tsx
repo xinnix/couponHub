@@ -16,6 +16,7 @@ interface CouponTemplate {
   validFrom: Date;
   validUntil: Date;
   description?: string;
+  usageRules?: string; // 使用规则说明
   status: 'ACTIVE' | 'EXPIRED' | 'DISABLED';
   createdAt: Date;
   updatedAt: Date;
@@ -52,20 +53,16 @@ export const TemplateDetailPage = () => {
   const { message } = App.useApp();
   const [activeTab, setActiveTab] = useState('info');
 
-  const { data: templateData, isLoading } = useOne<CouponTemplate>({
+  const { result: template, isLoading } = useOne<CouponTemplate>({
     resource: "couponTemplate",
     id: id!,
   });
 
-  const template = templateData?.data;
-
   // 获取适用商户列表
-  const { data: merchantsData } = useList<Merchant>({
+  const { result: merchants } = useList<Merchant>({
     resource: "merchant",
     pagination: { pageSize: 100 },
   });
-
-  const merchants = merchantsData?.data || [];
 
   if (isLoading) {
     return (
@@ -80,7 +77,7 @@ export const TemplateDetailPage = () => {
   }
 
   // 匹配适用商户
-  const applicableMerchants = merchants.filter(m => template.merchantScope.includes(m.id));
+  const applicableMerchants = (merchants || []).filter(m => template.merchantScope.includes(m.id));
 
   const getStatusTag = () => {
     const now = new Date();
@@ -163,6 +160,9 @@ export const TemplateDetailPage = () => {
             </Descriptions.Item>
             <Descriptions.Item label="券描述" span={2}>
               {template.description || '-'}
+            </Descriptions.Item>
+            <Descriptions.Item label="使用规则" span={2}>
+              {template.usageRules || '-'}
             </Descriptions.Item>
           </Descriptions>
         </div>

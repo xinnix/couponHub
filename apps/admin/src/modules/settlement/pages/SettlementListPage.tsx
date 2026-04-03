@@ -1,6 +1,8 @@
 // apps/admin/src/modules/settlement/pages/SettlementListPage.tsx
 import { useState } from "react";
 import { useList, useCreate, useUpdate, useDelete, useDeleteMany } from "@refinedev/core";
+import { useQuery } from "@tanstack/react-query";
+import { trpcClient } from "../../../shared/dataProvider/dataProvider";
 import { List } from "@refinedev/antd";
 import {
   Table,
@@ -26,6 +28,7 @@ import {
   DollarOutlined,
   CheckCircleOutlined,
   ClockCircleOutlined,
+  PayCircleOutlined,
 } from "@ant-design/icons";
 import { SettlementForm } from "../components/SettlementForm";
 import { useNavigate } from "react-router-dom";
@@ -67,6 +70,7 @@ export const SettlementListPage = () => {
   const { mutate: create } = useCreate();
   const { mutate: deleteOne } = useDelete();
   const { mutate: deleteMany } = useDeleteMany();
+  const { mutate: updateOne } = useUpdate();
 
   // 处理删除单个结算记录
   const handleDelete = (id: string) => {
@@ -79,6 +83,48 @@ export const SettlementListPage = () => {
         },
         onError: () => {
           message.error("删除失败");
+        },
+      }
+    );
+  };
+
+  // 确认结算
+  const handleConfirm = (record: Settlement) => {
+    updateOne(
+      {
+        resource: "settlement",
+        id: record.id,
+        values: { settlementId: record.id },
+        meta: { method: 'confirm' },
+      },
+      {
+        onSuccess: () => {
+          message.success("确认成功");
+          query.refetch();
+        },
+        onError: () => {
+          message.error("确认失败");
+        },
+      }
+    );
+  };
+
+  // 标记已支付
+  const handleMarkPaid = (record: Settlement) => {
+    updateOne(
+      {
+        resource: "settlement",
+        id: record.id,
+        values: { settlementId: record.id },
+        meta: { method: 'markPaid' },
+      },
+      {
+        onSuccess: () => {
+          message.success("已标记为已支付");
+          query.refetch();
+        },
+        onError: () => {
+          message.error("操作失败");
         },
       }
     );
@@ -106,12 +152,17 @@ export const SettlementListPage = () => {
 
   const merchants = (merchantsResult as any)?.data || [];
 
-  // 统计数据
-  const pendingCount = settlements.filter((s: Settlement) => s.status === 'PENDING').length;
-  const confirmedCount = settlements.filter((s: Settlement) => s.status === 'CONFIRMED').length;
-  const totalAmount = settlements
-    .filter((s: Settlement) => s.status === 'PAID')
-    .reduce((sum: number, s: Settlement) => sum + s.totalAmount, 0);
+  // 从后端获取全量统计数据（不受分页影响）
+  const { data: stats } = useQuery({
+    queryKey: ['settlement', 'stats'],
+    queryFn: () => (trpcClient as any).settlement.getStats.query(),
+  });
+  const settlementStats = stats ?? {
+    pendingCount: 0,
+    confirmedCount: 0,
+    totalPaidAmount: 0,
+    totalCount: 0,
+  };
 
   const handleCreate = () => {
     form.resetFields();
@@ -129,8 +180,11 @@ export const SettlementListPage = () => {
         {
           resource: "settlement",
           values: {
-            ...values,
+            merchantId: values.merchantId,
             period,
+          },
+          meta: {
+            method: 'createSettlement',
           },
         },
         {
@@ -248,7 +302,7 @@ export const SettlementListPage = () => {
     },
     {
       title: "操作",
-      width: 150,
+      width: 240,
       fixed: 'right' as const,
       render: (_: any, record: Settlement) => (
         <Space size="small">
@@ -260,6 +314,32 @@ export const SettlementListPage = () => {
           >
             查看
           </Button>
+          {record.status === 'PENDING' && (
+            <Popconfirm
+              title="确认结算？"
+              description="确认后将进入已确认状态"
+              onConfirm={() => handleConfirm(record)}
+              okText="确定"
+              cancelText="取消"
+            >
+              <Button size="small" type="link" icon={<CheckCircleOutlined />}>
+                确认
+              </Button>
+            </Popconfirm>
+          )}
+          {record.status === 'CONFIRMED' && (
+            <Popconfirm
+              title="标记为已支付？"
+              description="确认该结算单已完成支付"
+              onConfirm={() => handleMarkPaid(record)}
+              okText="确定"
+              cancelText="取消"
+            >
+              <Button size="small" type="link" icon={<PayCircleOutlined />} style={{ color: '#52c41a' }}>
+                已支付
+              </Button>
+            </Popconfirm>
+          )}
           <Popconfirm
             title="确认删除？"
             description="删除后将无法恢复"
@@ -297,7 +377,7 @@ export const SettlementListPage = () => {
               <Card>
                 <Statistic
                   title="待确认结算单"
-                  value={pendingCount}
+                  value={settlementStats.pendingCount}
                   prefix={<ClockCircleOutlined />}
                   valueStyle={{ color: '#8c8c8c' }}
                 />
@@ -307,7 +387,7 @@ export const SettlementListPage = () => {
               <Card>
                 <Statistic
                   title="已确认结算单"
-                  value={confirmedCount}
+                  value={settlementStats.confirmedCount}
                   prefix={<CheckCircleOutlined />}
                   valueStyle={{ color: '#1890ff' }}
                 />
@@ -317,7 +397,7 @@ export const SettlementListPage = () => {
               <Card>
                 <Statistic
                   title="已支付总额"
-                  value={totalAmount}
+                  value={settlementStats.totalPaidAmount}
                   prefix={<DollarOutlined />}
                   precision={2}
                   valueStyle={{ color: '#52c41a' }}
@@ -328,7 +408,7 @@ export const SettlementListPage = () => {
               <Card>
                 <Statistic
                   title="总结算单数"
-                  value={settlements.length}
+                  value={settlementStats.totalCount}
                 />
               </Card>
             </Col>

@@ -165,7 +165,8 @@ async function handleTRPCError(error: unknown): Promise<boolean> {
         showError(errorMessage);
         return false;
       case 500:
-        showError("服务器错误，请稍后重试");
+        // 显示实际错误消息（可能是业务异常，如"没有可结算的订单"）
+        showError(errorMessage);
         return false;
       default:
         // Network error check
@@ -280,6 +281,7 @@ export const dataProvider = {
         limit: pageSize,
         where,
         orderBy: Object.keys(orderBy).length > 0 ? orderBy : undefined,
+        include: meta?.include,
       });
 
       // Result format from createCrudRouter: { items, total, page, pageSize, totalPages }

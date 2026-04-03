@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Form, Input, Switch, Button, App } from "antd";
+import { Form, Input, Switch, Button, Space, App } from "antd";
 import { trpcClient } from "../../../shared/dataProvider";
 
 interface Handler {
@@ -65,13 +65,14 @@ export const HandlerForm = ({ merchantId, handler, onSuccess }: HandlerFormProps
       layout="vertical"
       initialValues={handler || { isActive: true }}
       onFinish={onFinish}
+      style={{ paddingTop: 8 }}
     >
       <Form.Item
         label="姓名"
         name="name"
         rules={[{ required: true, message: "请输入核销员姓名" }]}
       >
-        <Input placeholder="请输入姓名" />
+        <Input placeholder="请输入核销员姓名" allowClear />
       </Form.Item>
 
       <Form.Item
@@ -81,27 +82,37 @@ export const HandlerForm = ({ merchantId, handler, onSuccess }: HandlerFormProps
           { required: true, message: "请输入手机号" },
           { pattern: /^1[3-9]\d{9}$/, message: "手机号格式不正确" },
         ]}
+        extra="手机号用于小程序用户关联核销员身份"
       >
-        <Input placeholder="请输入11位手机号" maxLength={11} />
+        <Input
+          placeholder="请输入11位手机号"
+          maxLength={11}
+          allowClear
+        />
       </Form.Item>
 
       <Form.Item
         label="状态"
         name="isActive"
         valuePropName="checked"
+        extra="禁用后核销员将无法核销优惠券"
       >
         <Switch checkedChildren="启用" unCheckedChildren="禁用" />
       </Form.Item>
 
-      <Form.Item>
-        <Button
-          type="primary"
-          htmlType="submit"
-          loading={createMutation.isLoading || updateMutation.isLoading}
-          block
-        >
-          {handler ? "更新" : "创建"}
-        </Button>
+      <Form.Item style={{ marginBottom: 0 }}>
+        <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
+          <Button onClick={onSuccess}>
+            取消
+          </Button>
+          <Button
+            type="primary"
+            htmlType="submit"
+            loading={createMutation.isLoading || updateMutation.isLoading}
+          >
+            {handler ? "更新" : "创建"}
+          </Button>
+        </Space>
       </Form.Item>
     </Form>
   );

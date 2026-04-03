@@ -2,10 +2,10 @@ import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as fs from 'fs';
 import * as path from 'path';
-import WxPay from 'wechatpay-node-v3';
+import { Wechatpay, Formatter, Aes, Rsa } from 'wechatpay-axios-plugin';
 
 /**
- * 微信支付服务（V3 API）
+ * 微信支付服务（V3 API - 使用 wechatpay-axios-plugin）
  *
  * 功能：
  * - JSAPI 下单（小程序支付）
@@ -20,17 +20,26 @@ import WxPay from 'wechatpay-node-v3';
  * - WX_PAY_API_KEY: API v3 密钥
  * - WX_PAY_SERIAL_NO: 商户 API 证书序列号
  * - WX_PAY_PRIVATE_KEY_PATH: 商户私钥路径
+ * - WX_PAY_PUBLIC_KEY_ID: 微信支付公钥 ID（2024年Q3新增，推荐）
+ * - WX_PAY_PUBLIC_KEY_PATH: 微信支付公钥路径（推荐）
  * - WX_PAY_NOTIFY_URL: 回调通知 URL
+ *
+ * 注意：
+ * - 2024年Q3起，微信支付官方推荐使用「微信支付公钥」替代「平台证书」
+ * - 新商户仅需配置 WX_PAY_PUBLIC_KEY_ID 和 WX_PAY_PUBLIC_KEY_PATH
+ * - 旧商户可继续使用平台证书模式，但推荐升级到公钥模式
  */
 @Injectable()
 export class WechatPayService implements OnModuleInit {
   private readonly logger = new Logger(WechatPayService.name);
-  private wxpay: WxPay | null = null;
+  private wxpay: Wechatpay | null = null;
   private readonly appId: string;
   private readonly mchId: string;
   private readonly apiKey: string;
   private readonly serialNo: string;
   private readonly privateKeyPath: string;
+  private readonly publicKeyId: string; // 微信支付公钥 ID（新）
+  private readonly publicKeyPath: string; // 微信支付公钥路径（新）
   private readonly notifyUrl: string;
   private readonly sandbox: boolean;
   private isConfigured = false;
@@ -42,6 +51,10 @@ export class WechatPayService implements OnModuleInit {
     this.serialNo = this.configService.get<string>('WX_PAY_SERIAL_NO') || '';
     this.privateKeyPath =
       this.configService.get<string>('WX_PAY_PRIVATE_KEY_PATH') || '';
+    this.publicKeyId =
+      this.configService.get<string>('WX_PAY_PUBLIC_KEY_ID') || ''; // 新增
+    this.publicKeyPath =
+      this.configService.get<string>('WX_PAY_PUBLIC_KEY_PATH') || '';
     this.notifyUrl =
       this.configService.get<string>('WX_PAY_NOTIFY_URL') || '';
     this.sandbox =
@@ -59,38 +72,73 @@ export class WechatPayService implements OnModuleInit {
     const privateKey = this.readPrivateKey();
     if (!privateKey) {
       this.logger.warn(
-        `微信支付私钥文件不存在或为空: ${this.privateKeyPath}`,
+        `微信支付商户私钥文件不存在或为空: ${this.privateKeyPath}`,
       );
       return;
     }
 
-    this.wxpay = new WxPay({
-      appid: this.appId,
-      mchid: this.mchId,
-      publicKey: null as any, // 平台证书，首次使用会自动下载
-      privateKey: privateKey as any,
-      key: this.apiKey,
-      serial_no: this.serialNo,
-    });
+    // 微信支付公钥模式（推荐）
+    const publicKey = this.readPublicKey();
+    const publicKeyId = this.publicKeyId;
 
-    this.isConfigured = true;
-    this.logger.log(
-      `微信支付 V3 初始化成功 | 商户号: ${this.mchId} | 沙箱: ${this.sandbox}`,
-    );
+    if (publicKey && publicKeyId) {
+      // 使用微信支付公钥模式（2024年Q3新增，推荐）
+      this.wxpay = new Wechatpay({
+        mchid: this.mchId,
+        serial: this.serialNo,
+        privateKey: privateKey,
+        certs: {
+          [publicKeyId]: publicKey, // 微信支付公钥
+        },
+      });
+
+      this.isConfigured = true;
+      this.logger.log(
+        `微信支付 V3 初始化成功 | 商户号: ${this.mchId} | 沙箱: ${this.sandbox} | 验签模式: 微信支付公钥（推荐）`,
+      );
+    } else {
+      // 未配置微信支付公钥，支付功能不可用
+      this.logger.warn(
+        `未配置微信支付公钥（WX_PAY_PUBLIC_KEY_ID / WX_PAY_PUBLIC_KEY_PATH），支付功能将不可用`,
+      );
+      this.logger.warn(
+        `请参考文档配置微信支付公钥: docs/wechatpay-sdk-upgrade-guide.md`,
+      );
+      return;
+    }
   }
 
   /**
    * 读取商户私钥文件
    */
-  private readPrivateKey(): string | null {
+  private readPrivateKey(): Buffer | null {
     try {
       const resolvedPath = path.resolve(this.privateKeyPath);
       if (!fs.existsSync(resolvedPath)) {
         return null;
       }
-      return fs.readFileSync(resolvedPath, 'utf8');
+      return fs.readFileSync(resolvedPath);
     } catch (error) {
-      this.logger.error('读取微信支付私钥失败', error);
+      this.logger.error('读取微信支付商户私钥失败', error);
+      return null;
+    }
+  }
+
+  /**
+   * 读取微信支付公钥文件
+   */
+  private readPublicKey(): Buffer | null {
+    try {
+      if (!this.publicKeyPath) {
+        return null;
+      }
+      const resolvedPath = path.resolve(this.publicKeyPath);
+      if (!fs.existsSync(resolvedPath)) {
+        return null;
+      }
+      return fs.readFileSync(resolvedPath);
+    } catch (error) {
+      this.logger.error('读取微信支付公钥失败', error);
       return null;
     }
   }
@@ -124,25 +172,31 @@ export class WechatPayService implements OnModuleInit {
       `创建支付订单: ${orderNo}, 金额: ${amount}元, openid: ${openid.slice(0, 8)}...`,
     );
 
-    const result: any = await this.wxpay!.transactions_jsapi({
-      description,
-      out_trade_no: orderNo,
-      notify_url: this.notifyUrl,
-      amount: {
-        total: Math.round(amount * 100), // 微信支付金额单位为分
-        currency: 'CNY',
-      },
-      payer: {
-        openid,
-      },
-      // 附加数据，回调时原样返回
-      attach: orderId,
-    });
+    try {
+      const { data } = await this.wxpay!.v3.pay.transactions.jsapi.post({
+        appid: this.appId,
+        mchid: this.mchId,
+        description,
+        out_trade_no: orderNo,
+        notify_url: this.notifyUrl,
+        amount: {
+          total: Math.round(amount * 100), // 微信支付金额单位为分
+          currency: 'CNY',
+        },
+        payer: {
+          openid,
+        },
+        attach: orderId, // 附加数据，回调时原样返回
+      });
 
-    const prepayId = result.prepay_id;
-    this.logger.log(`预支付订单创建成功: ${prepayId}`);
+      const prepayId = (data as any).prepay_id;
+      this.logger.log(`预支付订单创建成功: ${prepayId}`);
 
-    return prepayId;
+      return prepayId;
+    } catch (error: any) {
+      this.logger.error('创建支付订单失败', error.response?.data || error);
+      throw new Error(`创建支付订单失败: ${error.response?.data?.message || error.message}`);
+    }
   }
 
   /**
@@ -160,14 +214,34 @@ export class WechatPayService implements OnModuleInit {
   } {
     this.ensureConfigured();
 
-    const params: any = (this.wxpay as any).getPayParamsForJSAPI(prepayId);
+    // 使用 SDK 的工具类生成签名
+    const appId = this.appId;
+    const timeStamp = `${Formatter.timestamp()}`;
+    const nonceStr = Formatter.nonce();
+    const packageStr = `prepay_id=${prepayId}`;
+    const signType = 'RSA';
+
+    // 读取商户私钥用于签名
+    // 使用 file:// 协议加载私钥文件
+    const privateKey = Rsa.from(`file://${path.resolve(this.privateKeyPath)}`, Rsa.KEY_TYPE_PRIVATE);
+
+    // 生成签名
+    const paySign = Rsa.sign(
+      Formatter.joinedByLineFeed(
+        appId,
+        timeStamp,
+        nonceStr,
+        packageStr,
+      ),
+      privateKey,
+    );
 
     return {
-      timeStamp: params.timeStamp,
-      nonceStr: params.nonceStr,
-      package: params.package,
-      signType: params.signType,
-      paySign: params.paySign,
+      timeStamp,
+      nonceStr,
+      package: packageStr,
+      signType,
+      paySign,
     };
   }
 
@@ -196,17 +270,19 @@ export class WechatPayService implements OnModuleInit {
   }> {
     this.ensureConfigured();
 
-    const { resource } = JSON.parse(body);
+    // SDK 会自动验签，直接解析 JSON
+    const notification = JSON.parse(body);
+    const { resource } = notification;
 
-    // 解密回调数据
-    const decrypted: string = (this.wxpay as any).decipher_gcm(
+    // 解密回调数据（使用 AES-256-GCM）
+    const decrypted = Aes.AesGcm.decrypt(
       resource.ciphertext,
-      resource.associated_data,
-      resource.nonce,
       this.apiKey,
+      resource.nonce,
+      resource.associated_data,
     );
 
-    const payment = JSON.parse(decrypted);
+    const payment = JSON.parse(decrypted.toString());
 
     this.logger.log(
       `支付回调: 订单 ${payment.out_trade_no}, 交易号 ${payment.transaction_id}, 状态 ${payment.trade_state}`,
@@ -245,19 +321,24 @@ export class WechatPayService implements OnModuleInit {
       `发起退款: 订单 ${orderNo}, 退款 ${refundAmount}元, 原因: ${reason}`,
     );
 
-    const result: any = await (this.wxpay as any).refunds({
-      out_trade_no: orderNo,
-      out_refund_no: refundNo,
-      amount: {
-        refund: Math.round(refundAmount * 100),
-        total: Math.round(totalAmount * 100),
-        currency: 'CNY',
-      },
-      reason: reason || '用户申请退款',
-    });
+    try {
+      const { data } = await this.wxpay!.v3.refund.domestic.refunds.post({
+        out_trade_no: orderNo,
+        out_refund_no: refundNo,
+        amount: {
+          refund: Math.round(refundAmount * 100),
+          total: Math.round(totalAmount * 100),
+          currency: 'CNY',
+        },
+        reason: reason || '用户申请退款',
+      });
 
-    this.logger.log(`退款请求成功: 退款单号 ${refundNo}`);
-    return result.refund_id;
+      this.logger.log(`退款请求成功: 退款单号 ${refundNo}, 退款ID ${(data as any).refund_id}`);
+      return (data as any).refund_id;
+    } catch (error: any) {
+      this.logger.error('退款请求失败', error.response?.data || error);
+      throw new Error(`退款请求失败: ${error.response?.data?.message || error.message}`);
+    }
   }
 
   /**
@@ -272,16 +353,23 @@ export class WechatPayService implements OnModuleInit {
 
     this.logger.log(`查询订单支付状态: ${orderNo}`);
 
-    const result: any = await (this.wxpay as any).query({
-      out_trade_no: orderNo,
-    });
+    try {
+      const { data } = await this.wxpay!.v3.pay.transactions.outTradeNo[
+        orderNo
+      ].get({
+        params: {
+          mchid: this.mchId,
+        },
+      });
 
-    return {
-      status: result.trade_state as any,
-      transactionId: result.transaction_id,
-      paidAt: result.success_time
-        ? new Date(result.success_time)
-        : undefined,
-    };
+      return {
+        status: data.trade_state as any,
+        transactionId: data.transaction_id,
+        paidAt: data.success_time ? new Date(data.success_time) : undefined,
+      };
+    } catch (error: any) {
+      this.logger.error('查询订单状态失败', error.response?.data || error);
+      throw new Error(`查询订单状态失败: ${error.response?.data?.message || error.message}`);
+    }
   }
 }

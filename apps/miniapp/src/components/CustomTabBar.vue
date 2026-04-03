@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { computed, onMounted } from 'vue'
+
 interface TabItem {
   pagePath: string
   text: string
@@ -13,85 +15,125 @@ const tabs: TabItem[] = [
   {
     pagePath: '/pages/index',
     text: '首页',
-    icon: '🏠',
+    icon: 'icon-shouye-shouye',
+  },
+  {
+    pagePath: '/pages/merchant/list',
+    text: '品牌',
+    icon: 'icon-shangchao-01',
   },
   {
     pagePath: '/pages/home/index',
     text: '优惠',
-    icon: '🏷️',
+    icon: 'icon-youhuiquan',
   },
   {
-    pagePath: '/pages/wallet/index',
-    text: '订单',
-    icon: '📋',
-  },
-  {
-    pagePath: '/pages/scan/index',
-    text: '我的',
-    icon: '👤',
+    pagePath: '/pages/profile/index',
+    text: '钱包',
+    icon: 'icon-qianbao',
   },
 ]
 
-function switchTab(index: number, path: string) {
-  if (props.current === index)
-    return
+const tabBarList = computed(() => {
+  return tabs.map((item, index) => ({
+    ...item,
+    active: props.current === index,
+  }))
+})
 
-  uni.switchTab({ url: path })
+onMounted(() => {
+  // 隐藏原生 TabBar
+  uni.hideTabBar()
+})
+
+function toLink(path: string) {
+  if (props.current === tabs.findIndex(t => t.pagePath === path)) {
+    return
+  }
+
+  // 使用 reLaunch 切换页面
+  uni.reLaunch({
+    url: path,
+  })
 }
 </script>
 
 <template>
-  <view class="tab-bar">
-    <view
-      v-for="(tab, index) in tabs"
-      :key="index"
-      :class="['tab-item', { active: current === index }]"
-      @click="switchTab(index, tab.pagePath)"
-    >
-      <text class="tab-icon">{{ tab.icon }}</text>
-      <text class="tab-text">{{ tab.text }}</text>
+  <view class="tabbar">
+    <view class="tabbar__inner">
+      <view
+        v-for="(item, index) in tabBarList"
+        :key="index"
+        class="tab-item"
+        :class="{ 'is-active': item.active }"
+        @tap="toLink(item.pagePath)"
+      >
+        <view class="tab-icon">
+          <text class="iconfont" :class="tabs[index].icon" />
+        </view>
+        <text class="tab-label">{{ item.text }}</text>
+      </view>
     </view>
   </view>
 </template>
 
 <style lang="scss" scoped>
-.tab-bar {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  width: 100%;
-  z-index: 50;
-  display: flex;
-  justify-content: space-around;
-  align-items: center;
-  padding: 12px 16px 24px;
-  background: rgba(255, 255, 255, 0.95);
-  border-radius: 16px 16px 0 0;
-  box-shadow: 0 -8px 32px rgba(23, 28, 32, 0.04);
+.tabbar {
+  padding-bottom: env(safe-area-inset-bottom);
+  height: 160rpx;
 
-  .tab-item {
+  &__inner {
+    padding-bottom: inherit;
+    height: inherit;
+    width: 100%;
     display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 8px 16px;
-    border-radius: 12px;
-    color: #94a3b8;
+    background-color: #ffffff;
+    position: fixed;
+    left: 0;
+    bottom: 0;
+    z-index: 399;
+    box-shadow: 0 -8px 32px rgba(23, 28, 32, 0.04);
 
-    &.active {
-      color: #00AEEF;
-      background: rgba(239, 244, 250, 0.8);
-    }
+    .tab-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      flex: 1;
+      position: relative;
+      transition: all 0.3s ease;
 
-    .tab-icon {
-      font-size: 24px;
-      margin-bottom: 4px;
-    }
+      .tab-icon {
+        height: 56rpx;
+        width: 56rpx;
+        display: flex;
+        align-items: center;
+        justify-content: center;
 
-    .tab-text {
-      font-size: 10px;
-      font-weight: 700;
-      letter-spacing: 1px;
+        .iconfont {
+          font-size: 28px;
+          color: #6e7881;
+        }
+      }
+
+      .tab-label {
+        font-size: 20rpx;
+        line-height: 24rpx;
+        color: #6e7881;
+        margin-top: 6rpx;
+        font-weight: 700;
+        letter-spacing: 1px;
+      }
+
+      &.is-active {
+        .tab-icon .iconfont {
+          color: #00AEEF;
+        }
+
+        .tab-label {
+          color: #00AEEF;
+        }
+      }
     }
   }
 }

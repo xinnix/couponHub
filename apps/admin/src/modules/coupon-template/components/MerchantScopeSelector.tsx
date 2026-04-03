@@ -1,6 +1,6 @@
 // apps/admin/src/modules/coupon-template/components/MerchantScopeSelector.tsx
-import { useState, useEffect } from "react";
-import { Select, Spin, Tag } from "antd";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { Select, Tag } from "antd";
 import { useList } from "@refinedev/core";
 
 interface Merchant {
@@ -17,15 +17,29 @@ interface MerchantScopeSelectorProps {
 
 export const MerchantScopeSelector: React.FC<MerchantScopeSelectorProps> = ({ value, onChange }) => {
   const [searchText, setSearchText] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const timerRef = useRef<ReturnType<typeof setTimeout>>();
+
+  const handleSearch = useCallback((text: string) => {
+    setSearchText(text);
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => setDebouncedSearch(text), 300);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, []);
 
   const { result, isLoading } = useList<Merchant>({
     resource: "merchant",
     pagination: {
-      pageSize: 100, // 加载足够多的商户
+      pageSize: 100,
     },
     filters: [
       { field: "status", operator: "eq", value: "ACTIVE" },
-      ...(searchText ? [{ field: "search", operator: "contains", value: searchText }] as any : []),
+      ...(debouncedSearch ? [{ field: "name", operator: "contains", value: debouncedSearch }] as any : []),
     ],
   });
 
@@ -41,12 +55,15 @@ export const MerchantScopeSelector: React.FC<MerchantScopeSelectorProps> = ({ va
       mode="multiple"
       style={{ width: '100%' }}
       value={value}
-      onChange={onChange}
+      onChange={(val) => {
+        handleSearch("");
+        onChange?.(val);
+      }}
       placeholder="请选择适用商户"
       loading={isLoading}
       showSearch
       filterOption={false}
-      onSearch={setSearchText}
+      onSearch={handleSearch}
       options={options}
       maxTagCount="responsive"
       tagRender={(props) => {

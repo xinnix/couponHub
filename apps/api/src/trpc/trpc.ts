@@ -3,10 +3,12 @@ import { ZodError } from "zod";
 import { PrismaService } from "../prisma/prisma.service";
 import { FileStorageService } from "../shared/services/file-storage.service";
 import jwt from "jsonwebtoken";
+import { INestApplication } from "@nestjs/common";
 
-// Global PrismaService reference
+// Global service references
 let prismaServiceInstance: PrismaService | null = null;
 let fileStorageServiceInstance: FileStorageService | null = null;
+let appInstance: INestApplication | null = null;
 
 export const setPrismaService = (prisma: PrismaService) => {
   prismaServiceInstance = prisma;
@@ -14,6 +16,10 @@ export const setPrismaService = (prisma: PrismaService) => {
 
 export const setFileStorageService = (fileStorage: FileStorageService) => {
   fileStorageServiceInstance = fileStorage;
+};
+
+export const setAppInstance = (app: INestApplication) => {
+  appInstance = app;
 };
 
 // User interface for context
@@ -103,6 +109,7 @@ async function verifyJwtToken(req: any, prisma: PrismaService): Promise<User | n
 export const createContext = async (opts: any) => {
   const prisma = prismaServiceInstance || opts?.prisma;
   const fileStorage = fileStorageServiceInstance || opts?.fileStorage;
+  const app = appInstance || opts?.app;
   const req = opts?.req;
 
   // Verify JWT token and get user
@@ -114,6 +121,7 @@ export const createContext = async (opts: any) => {
   return {
     prisma,
     fileStorage,
+    app,
     req,
     res: opts?.res,
     user,
