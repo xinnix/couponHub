@@ -176,6 +176,95 @@ export class PaymentController {
   }
 
   /**
+   * 微信退款回调通知
+   *
+   * 微信服务器在退款状态变更后主动调用此接口。
+   * 无需 JWT 认证，通过签名验证确保请求来自微信。
+   */
+  @Post('wechat/refund-callback')
+  @ApiOperation({ summary: '微信退款回调通知（微信服务器调用）' })
+  async refundCallback(
+    @Req() req: Request,
+    @Headers() headers: Record<string, string>,
+  ) {
+    const rawBody = (req as any).rawBody;
+
+    if (!rawBody) {
+      this.logger.error('退款回调缺少 rawBody');
+      throw new BadRequestException('Invalid request');
+    }
+
+    try {
+      // 解密回调数据
+      const refund = await this.wechatPayService.handleRefundCallback(
+        rawBody,
+        {
+          'wechatpay-timestamp': headers['wechatpay-timestamp'],
+          'wechatpay-nonce': headers['wechatpay-nonce'],
+          'wechatpay-signature': headers['wechatpay-signature'],
+          'wechatpay-serial': headers['wechatpay-serial'],
+        },
+      );
+
+      // 根据订单号查询订单
+      const order = await this.prisma.order.findUnique({
+        where: { orderNo: refund.orderNo },
+      });
+
+      if (!order) {
+        this.logger.error(`退款回调对应的订单不存在: ${refund.orderNo}`);
+        throw new BadRequestException('Order not found');
+      }
+
+      // 检查订单状态是否为 REFUNDING
+      if (order.status !== 'REFUNDING') {
+        this.logger.warn(
+          `订单状态非退款中，跳过更新: ${refund.orderNo}, 当前状态: ${order.status}`,
+        );
+        // 返回成功避免微信重试
+        return { code: 'SUCCESS', message: 'OK' };
+      }
+
+      // 根据退款状态更新订单
+      if (refund.refundStatus === 'SUCCESS') {
+        // 退款成功，更新订单状态
+        await this.prisma.order.update({
+          where: { id: order.id },
+          data: {
+            status: 'REFUNDED',
+            refundId: refund.refundId,
+            refundedAt: refund.refundedAt || new Date(),
+          },
+        });
+
+        this.logger.log(
+          `退款回调处理成功: ${refund.orderNo} → ${refund.refundId}`,
+        );
+      } else if (refund.refundStatus === 'CLOSED' || refund.refundStatus === 'ABNORMAL') {
+        // 退款关闭或异常，恢复订单状态为 PAID
+        await this.prisma.order.update({
+          where: { id: order.id },
+          data: {
+            status: 'PAID',
+            refundReason: `退款失败: ${refund.refundStatus}`,
+          },
+        });
+
+        this.logger.warn(
+          `退款异常: ${refund.orderNo}, 状态: ${refund.refundStatus}`,
+        );
+      }
+
+      // 微信要求返回此格式
+      return { code: 'SUCCESS', message: 'OK' };
+    } catch (error: any) {
+      this.logger.error('退款回调处理失败', error);
+      // 返回失败让微信重试
+      return { code: 'FAIL', message: error.message || 'Internal error' };
+    }
+  }
+
+  /**
    * 查询支付状态
    */
   @Get('status/:orderId')

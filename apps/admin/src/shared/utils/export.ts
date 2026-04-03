@@ -7,6 +7,7 @@ interface ExportOrder {
   user?: {
     nickname?: string;
     email: string;
+    phone?: string;
   };
   template?: {
     title: string;
@@ -32,7 +33,7 @@ const statusMap: Record<string, string> = {
 export const convertToCSV = (orders: ExportOrder[]) => {
   const headers = [
     '订单号',
-    '用户',
+    '用户手机',
     '券标题',
     '购买价格',
     '面值',
@@ -45,7 +46,7 @@ export const convertToCSV = (orders: ExportOrder[]) => {
 
   const rows = orders.map(order => [
     order.orderNo,
-    order.user?.nickname || order.user?.email || '',
+    order.user?.phone || '',
     order.template?.title || '',
     toNumber(order.price).toFixed(2),
     toNumber(order.faceValue).toFixed(2),

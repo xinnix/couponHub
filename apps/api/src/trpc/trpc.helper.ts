@@ -162,20 +162,39 @@ export const createCrudRouter = <TModelName extends string>(
         }
         const data = parsedInput.data as any;
 
+        // Debug log
+        console.log(`[getMany] ${modelName} input:`, JSON.stringify(data, null, 2));
+
         const model = (ctx.prisma as any)[modelName.charAt(0).toLowerCase() + modelName.slice(1)];
+
+        // Build query object
+        const queryObj: any = {
+          skip: data.skip ?? (data.page ? (data.page - 1) * (data.limit || 10) : 0),
+          take: data.take ?? data.limit,
+          where: data.where,
+          orderBy: data.orderBy ?? { id: 'desc' },
+        };
+
+        // Only add include/select if provided
+        if (data.include) {
+          queryObj.include = data.include;
+        }
+        if (data.select) {
+          queryObj.select = data.select;
+        }
+
+        console.log(`[getMany] ${modelName} Prisma query:`, JSON.stringify(queryObj, null, 2));
+
         const [items, total] = await Promise.all([
-          model.findMany({
-            skip:
-              data.skip ??
-              (data.page ? (data.page - 1) * (data.limit || 10) : 0),
-            take: data.take ?? data.limit,
-            where: data.where,
-            orderBy: data.orderBy ?? { id: 'desc' },
-            include: data.include,
-            select: data.select,
-          }),
+          model.findMany(queryObj),
           model.count({ where: data.where }),
         ]);
+
+        // Debug log
+        console.log(`[getMany] ${modelName} result:`, {
+          itemCount: items.length,
+          firstItem: items[0] ? JSON.stringify(items[0], null, 2) : null,
+        });
 
         return {
           items,

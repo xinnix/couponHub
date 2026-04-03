@@ -16,6 +16,7 @@ interface Order {
   user?: {
     nickname?: string;
     email: string;
+    phone?: string;
   };
   template?: {
     title: string;
@@ -126,8 +127,8 @@ export const RefundModal: React.FC<RefundModalProps> = ({ visible, order, onCanc
         <Descriptions.Item label="订单号" span={2}>
           <span style={{ fontFamily: 'monospace' }}>{order.orderNo}</span>
         </Descriptions.Item>
-        <Descriptions.Item label="用户">
-          {order.user?.nickname || order.user?.email}
+        <Descriptions.Item label="用户手机">
+          {order.user?.phone || '-'}
         </Descriptions.Item>
         <Descriptions.Item label="券标题">
           {order.template?.title}

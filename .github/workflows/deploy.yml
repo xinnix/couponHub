@@ -4,13 +4,9 @@ on:
   push:
     branches:
       - main
-      - master
-      - v1
   pull_request:
     branches:
       - main
-      - master
-      - v1
   workflow_dispatch: # 允许手动触发
 
 env:

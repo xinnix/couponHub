@@ -10,6 +10,8 @@ export const queryClient = new QueryClient({
     queries: {
       refetchOnWindowFocus: false,
       retry: 1,
+      staleTime: 5 * 60 * 1000, // 5 minutes - 数据在 5 分钟内被认为是新鲜的，不会重新请求
+      refetchOnMount: false, // 组件挂载时不自动重新请求（如果数据还是新鲜的）
     },
   },
 });

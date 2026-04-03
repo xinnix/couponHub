@@ -10,15 +10,15 @@ version: "3.8"
 
 services:
   api:
-    image: ${REGISTRY:-ghcr.io}/${IMAGE_NAME:-agenticrepo}-api:${TAG:-latest}
-    container_name: agenticrepo-api-prod
+    image: ${REGISTRY:-ghcr.io}/${IMAGE_NAME:-couponHub}-api:${TAG:-latest}
+    container_name: couponHub-api-prod
     env_file:
       - 1panel.env
     ports:
-      - "${API_PORT:-3000}:3000"
+      - "${API_PORT:-3000}:3001"
     restart: unless-stopped
     networks:
-      - agenticrepo-network
+      - couponHub-network
     # 日志配置
     logging:
       driver: "json-file"
@@ -27,14 +27,14 @@ services:
         max-file: "3"
 
   admin:
-    image: ${REGISTRY:-ghcr.io}/${IMAGE_NAME:-agenticrepo}-admin:${TAG:-latest}
-    container_name: agenticrepo-admin-prod
+    image: ${REGISTRY:-ghcr.io}/${IMAGE_NAME:-couponHub}-admin:${TAG:-latest}
+    container_name: couponHub-admin-prod
     ports:
-      - "${ADMIN_PORT:-80}:80"
+      - "${ADMIN_PORT:-80}:8080"
     depends_on:
       - api
     networks:
-      - agenticrepo-network
+      - couponHub-network
     # 日志配置
     logging:
       driver: "json-file"
@@ -42,5 +42,5 @@ services:
         max-size: "10m"
         max-file: "3"
 networks:
-  agenticrepo-network:
+  couponHub-network:
     driver: bridge

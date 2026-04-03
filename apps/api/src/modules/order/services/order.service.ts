@@ -185,41 +185,17 @@ export class OrderService extends BaseService<'Order'> {
       },
     });
 
-    try {
-      // 调用微信退款接口
-      const refundTransactionId = await this.wechatPayService.refund({
-        orderNo: order.orderNo,
-        refundNo: `refund_${Date.now()}`,
-        totalAmount: Number(order.price),
-        refundAmount: Number(order.price),
-        reason,
-      });
+    // 调用微信退款接口（异步处理，等待回调确认）
+    const refundTransactionId = await this.wechatPayService.refund({
+      orderNo: order.orderNo,
+      refundNo: `refund_${Date.now()}`,
+      totalAmount: Number(order.price),
+      refundAmount: Number(order.price),
+      reason,
+    });
 
-      // 退款成功，自动更新订单状态为 REFUNDED
-      await this.prisma.order.update({
-        where: { id: orderId },
-        data: {
-          status: 'REFUNDED',
-          refundId: refundTransactionId,
-          refundedAt: new Date(),
-        },
-      });
-
-      this.logger.log(`订单退款成功: ${order.orderNo}, 退款单号: ${refundTransactionId}`);
-      return { refundId: refundTransactionId };
-    } catch (error) {
-      // 退款失败，恢复订单状态为 PAID
-      await this.prisma.order.update({
-        where: { id: orderId },
-        data: {
-          status: 'PAID',
-          refundReason: null,
-        },
-      });
-
-      this.logger.error(`订单退款失败: ${order.orderNo}`, error);
-      throw error;
-    }
+    this.logger.log(`订单退款申请已提交: ${order.orderNo}, 退款单号: ${refundTransactionId}, 等待微信回调确认`);
+    return { refundId: refundTransactionId };
   }
 
   /**

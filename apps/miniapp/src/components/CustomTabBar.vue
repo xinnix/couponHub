@@ -20,7 +20,7 @@ const tabs: TabItem[] = [
   {
     pagePath: '/pages/merchant/list',
     text: '品牌',
-    icon: 'icon-shangchao-01',
+    icon: 'icon-CRMEB-shanghu-mianxing',
   },
   {
     pagePath: '/pages/home/index',

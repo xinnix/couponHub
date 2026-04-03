@@ -223,7 +223,13 @@ function getDefaultImage(type: string, id: string) {
 <template>
   <view class="relative min-h-screen bg-surface text-on-surface font-body antialiased" style="padding-bottom: 200rpx;">
     <!-- 背景品牌图案 -->
-    <view class="brand-pattern pointer-events-none fixed left-0 top-0 z--1 h-full w-full opacity-3" />
+    <view class="brand-pattern pointer-events-none fixed left-0 top-0 z--1 h-full w-full" :style="{
+      backgroundImage: 'url(../static/bg.png)',
+      backgroundRepeat: 'repeat',
+      backgroundSize: '400rpx',
+      backgroundPosition: 'center',
+      opacity: 0.03,
+    }" />
 
     <!-- 主内容区域 -->
     <view v-if="loading && merchants.length === 0" class="flex items-center justify-center py-20">
@@ -325,20 +331,6 @@ function getDefaultImage(type: string, id: string) {
         </scroll-view>
       </view>
 
-      <!-- Categories Grid -->
-      <view class="grid grid-cols-4 gap-4 px-6 pb-4">
-        <view v-for="cat in categories" :key="cat.id"
-          class="group flex flex-col items-center gap-1.5 transition-transform active-scale-95">
-          <view
-            class="category-icon-bg ring-primary-container-10 h-14 w-14 flex items-center justify-center rounded-2xl text-primary-container shadow-sm ring-1">
-            <text class="iconfont" :class="cat.icon" />
-          </view>
-          <text class="text-10px text-on-surface-variant font-bold tracking-wider">
-            {{ cat.name }}
-          </text>
-        </view>
-      </view>
-
       <!-- Merchant List -->
       <view class="px-6">
         <view class="mb-3 flex items-end justify-between">
@@ -362,6 +354,7 @@ function getDefaultImage(type: string, id: string) {
             </text>
           </view>
         </scroll-view>
+        <!-- Categories Grid -->
 
         <view class="grid grid-cols-4 gap-2">
           <view v-for="merchant in filteredMerchants" :key="merchant.id"
@@ -381,10 +374,22 @@ function getDefaultImage(type: string, id: string) {
             </view>
           </view>
         </view>
+        <!-- <view class="grid grid-cols-4 gap-4 px-6 pb-4">
+          <view v-for="cat in categories" :key="cat.id"
+            class="group flex flex-col items-center gap-1.5 transition-transform active-scale-95">
+            <view
+              class="category-icon-bg ring-primary-container-10 h-14 w-14 flex items-center justify-center rounded-2xl text-primary-container shadow-sm ring-1">
+              <text class="iconfont" :class="cat.icon" />
+            </view>
+            <text class="text-10px text-on-surface-variant font-bold tracking-wider">
+              {{ cat.name }}
+            </text>
+          </view>
+        </view> -->
       </view>
 
       <!-- Mall News Section -->
-      <view class="mt-8 px-6">
+      <view class="mt-4 px-6">
         <view class="mb-3 flex flex-col">
           <text class="text-xl text-on-surface font-extrabold leading-tight">
             商场快讯
@@ -419,7 +424,7 @@ function getDefaultImage(type: string, id: string) {
 </template>
 
 <style lang="scss" scoped>
-/* 品牌图案背景 - 小程序不支持 background-image,已移除 */
+/* 品牌图案背景 */
 .brand-pattern {
   position: fixed;
   top: 0;
@@ -427,7 +432,6 @@ function getDefaultImage(type: string, id: string) {
   width: 100%;
   height: 100%;
   z-index: -1;
-  opacity: 0.03;
   pointer-events: none;
 }
 

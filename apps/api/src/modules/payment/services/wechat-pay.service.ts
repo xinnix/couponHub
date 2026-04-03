@@ -12,6 +12,7 @@ import { Wechatpay, Formatter, Aes, Rsa } from 'wechatpay-axios-plugin';
  * - 生成小程序支付参数
  * - 处理支付回调通知
  * - 发起退款
+ * - 处理退款回调通知
  * - 查询订单状态
  *
  * 配置要求：
@@ -22,7 +23,8 @@ import { Wechatpay, Formatter, Aes, Rsa } from 'wechatpay-axios-plugin';
  * - WX_PAY_PRIVATE_KEY_PATH: 商户私钥路径
  * - WX_PAY_PUBLIC_KEY_ID: 微信支付公钥 ID（2024年Q3新增，推荐）
  * - WX_PAY_PUBLIC_KEY_PATH: 微信支付公钥路径（推荐）
- * - WX_PAY_NOTIFY_URL: 回调通知 URL
+ * - WX_PAY_NOTIFY_URL: 支付回调通知 URL
+ * - WX_PAY_REFUND_NOTIFY_URL: 退款回调通知 URL（可选，默认使用支付回调地址）
  *
  * 注意：
  * - 2024年Q3起，微信支付官方推荐使用「微信支付公钥」替代「平台证书」
@@ -40,7 +42,8 @@ export class WechatPayService implements OnModuleInit {
   private readonly privateKeyPath: string;
   private readonly publicKeyId: string; // 微信支付公钥 ID（新）
   private readonly publicKeyPath: string; // 微信支付公钥路径（新）
-  private readonly notifyUrl: string;
+  private readonly notifyUrl: string; // 支付回调地址
+  private readonly refundNotifyUrl: string; // 退款回调地址
   private readonly sandbox: boolean;
   private isConfigured = false;
 
@@ -57,6 +60,8 @@ export class WechatPayService implements OnModuleInit {
       this.configService.get<string>('WX_PAY_PUBLIC_KEY_PATH') || '';
     this.notifyUrl =
       this.configService.get<string>('WX_PAY_NOTIFY_URL') || '';
+    this.refundNotifyUrl =
+      this.configService.get<string>('WX_PAY_REFUND_NOTIFY_URL') || this.notifyUrl; // 默认使用支付回调地址
     this.sandbox =
       this.configService.get<string>('WX_PAY_SANDBOX') === 'true';
   }
@@ -304,6 +309,81 @@ export class WechatPayService implements OnModuleInit {
   }
 
   /**
+   * 处理退款回调通知
+   *
+   * @param body 回调请求体（原始 JSON 字符串）
+   * @param headers 请求头（包含微信签名信息）
+   * @returns 解密后的退款结果
+   */
+  async handleRefundCallback(
+    body: string,
+    headers: {
+      'wechatpay-timestamp'?: string;
+      'wechatpay-nonce'?: string;
+      'wechatpay-signature'?: string;
+      'wechatpay-serial'?: string;
+    },
+  ): Promise<{
+    orderId: string;
+    orderNo: string;
+    refundId: string;
+    refundNo: string;
+    refundStatus: string;
+    refundedAt?: Date;
+    amount: {
+      total: number;
+      refund: number;
+      payerTotal: number;
+      payerRefund: number;
+    };
+  }> {
+    this.ensureConfigured();
+
+    // SDK 会自动验签，直接解析 JSON
+    const notification = JSON.parse(body);
+    const { resource } = notification;
+
+    this.logger.log(
+      `退款回调通知: 类型 ${notification.event_type}, 摘要 ${notification.summary}`,
+    );
+
+    // 解密回调数据（使用 AES-256-GCM）
+    const decrypted = Aes.AesGcm.decrypt(
+      resource.ciphertext,
+      this.apiKey,
+      resource.nonce,
+      resource.associated_data,
+    );
+
+    const refund = JSON.parse(decrypted.toString());
+
+    this.logger.log(
+      `退款回调: 订单 ${refund.out_trade_no}, 退款单号 ${refund.out_refund_no}, 微信退款ID ${refund.refund_id}, 状态 ${refund.refund_status}`,
+    );
+
+    // 检查退款状态
+    if (refund.refund_status !== 'SUCCESS') {
+      this.logger.warn(`退款未成功: ${refund.refund_status}`);
+      // 对于非成功状态，仍然返回数据，让业务层决定如何处理
+    }
+
+    return {
+      orderId: refund.out_trade_no, // 订单号（需要业务层查询对应的订单ID）
+      orderNo: refund.out_trade_no,
+      refundId: refund.refund_id, // 微信退款单号
+      refundNo: refund.out_refund_no, // 商户退款单号
+      refundStatus: refund.refund_status, // SUCCESS, CLOSED, PROCESSING, ABNORMAL
+      refundedAt: refund.success_time ? new Date(refund.success_time) : undefined,
+      amount: {
+        total: refund.amount.total, // 原订单金额（分）
+        refund: refund.amount.refund, // 退款金额（分）
+        payerTotal: refund.amount.payer_total, // 用户实际支付金额（分）
+        payerRefund: refund.amount.payer_refund, // 用户退款金额（分）
+      },
+    };
+  }
+
+  /**
    * 发起退款
    */
   async refund(params: {
@@ -331,6 +411,7 @@ export class WechatPayService implements OnModuleInit {
           currency: 'CNY',
         },
         reason: reason || '用户申请退款',
+        notify_url: this.refundNotifyUrl, // 使用独立的退款回调地址
       });
 
       this.logger.log(`退款请求成功: 退款单号 ${refundNo}, 退款ID ${(data as any).refund_id}`);

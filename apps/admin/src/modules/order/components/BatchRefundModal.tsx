@@ -15,6 +15,7 @@ interface Order {
   user?: {
     nickname?: string;
     email: string;
+    phone?: string;
   };
   template?: {
     title: string;
@@ -118,10 +119,10 @@ export const BatchRefundModal: React.FC<BatchRefundModalProps> = ({
       ),
     },
     {
-      title: "用户",
-      width: 120,
+      title: "用户手机",
+      width: 130,
       render: (_: any, record: Order) => (
-        <span>{record.user?.nickname || record.user?.email || "-"}</span>
+        <span>{record.user?.phone || "-"}</span>
       ),
     },
     {
