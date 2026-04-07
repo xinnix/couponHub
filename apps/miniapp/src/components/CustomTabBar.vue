@@ -73,7 +73,7 @@ function toLink(path: string) {
 <style lang="scss" scoped>
 .tabbar {
   padding-bottom: env(safe-area-inset-bottom);
-  height: 160rpx;
+  height: 140rpx;
 
   &__inner {
     padding-bottom: inherit;

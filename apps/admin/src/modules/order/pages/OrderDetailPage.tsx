@@ -203,6 +203,9 @@ export const OrderDetailPage = () => {
               <Descriptions.Item label="订单号">
                 <span style={{ fontFamily: 'monospace' }}>{order.orderNo}</span>
               </Descriptions.Item>
+              <Descriptions.Item label="用户">
+                {order.user?.nickname || order.user?.email || '-'}
+              </Descriptions.Item>
               <Descriptions.Item label="用户手机">
                 {order.user?.phone || '-'}
               </Descriptions.Item>

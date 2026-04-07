@@ -1,6 +1,7 @@
 // apps/admin/src/modules/order/pages/OrderListPage.tsx
 import { useState } from "react";
-import { useTrpcQuery } from "../../../shared/hooks/useTrpcQuery";
+import { useList, useUpdate } from "@refinedev/core";
+import { List } from "@refinedev/antd";
 import {
   Table,
   Button,
@@ -53,7 +54,6 @@ interface Order {
     id: string;
     nickname?: string;
     email: string;
-    phone?: string;
   };
   template?: {
     id: string;
@@ -72,34 +72,29 @@ export const OrderListPage = () => {
   const [statusFilter, setStatusFilter] = useState<string | undefined>(undefined);
   const [dateRange, setDateRange] = useState<[dayjs.Dayjs, dayjs.Dayjs] | null>(null);
 
-  // Build where clause
-  const where: any = {};
-  if (searchText) where.orderNo = { contains: searchText };
-  if (statusFilter) where.status = statusFilter;
-  if (dateRange && dateRange[0] && dateRange[1]) {
-    where.createdAt = {
-      gte: dateRange[0].startOf('day').toISOString(),
-      lte: dateRange[1].endOf('day').toISOString(),
-    };
-  }
-
-  // Use tRPC directly with include
-  const { data, isLoading } = useTrpcQuery('order.getMany', {
-    page: 1,
-    limit: 100,
-    where,
-    include: {
-      user: { select: { id: true, nickname: true, email: true, phone: true } },
-      template: { select: { id: true, title: true } },
-      merchant: { select: { id: true, name: true } },
+  const { result, query } = useList<Order>({
+    resource: "order",
+    pagination: {
+      pageSize: 10,
+    },
+    filters: [
+      ...(searchText ? [{ field: "orderNo", operator: "contains", value: searchText }] as any : []),
+      ...(statusFilter ? [{ field: "status", operator: "eq", value: statusFilter }] as any : []),
+      ...(dateRange && dateRange[0] && dateRange[1] ? [
+        { field: "createdAt", operator: "gte", value: dateRange[0].startOf('day').toISOString() },
+        { field: "createdAt", operator: "lte", value: dateRange[1].endOf('day').toISOString() },
+      ] as any : []),
+    ],
+    meta: {
+      include: {
+        user: { select: { id: true, nickname: true, email: true } },
+        template: { select: { id: true, title: true } },
+        merchant: { select: { id: true, name: true } },
+      },
     },
   });
 
-  // Debug: log the data structure
-  console.log('[OrderListPage] data:', data);
-  console.log('[OrderListPage] first order:', data?.items?.[0]);
-
-  const orders = data?.items || [];
+  const orders = (result as any)?.data || [];
 
   // 统计数据
   const unpaidCount = orders.filter((o: Order) => o.status === 'UNPAID').length;
@@ -127,7 +122,7 @@ export const OrderListPage = () => {
         limit: 9999,
         where,
         include: {
-          user: { select: { id: true, nickname: true, email: true, phone: true } },
+          user: { select: { id: true, nickname: true, email: true } },
           template: { select: { id: true, title: true } },
           merchant: { select: { id: true, name: true } },
         },
@@ -155,10 +150,10 @@ export const OrderListPage = () => {
       ),
     },
     {
-      title: "用户手机",
-      width: 130,
+      title: "用户",
+      width: 120,
       render: (_: any, record: Order) => (
-        <span>{record.user?.phone || '-'}</span>
+        <span>{record.user?.nickname || record.user?.email || '-'}</span>
       ),
     },
     {
@@ -225,7 +220,8 @@ export const OrderListPage = () => {
 
   return (
     <div style={{ maxWidth: 1800, margin: "0 auto", padding: "24px" }}>
-      <Card>
+      <List>
+        <Card>
           <Row justify="space-between" align="middle" style={{ marginBottom: 16 }}>
             <Col>
               <h1 style={{ margin: 0, fontSize: 24, fontWeight: "bold" }}>订单管理</h1>
@@ -337,17 +333,18 @@ export const OrderListPage = () => {
             columns={columns}
             rowKey="id"
             dataSource={orders}
-            loading={isLoading}
+            loading={query.isLoading}
             scroll={{ x: 2000 }}
             pagination={{
               current: 1,
               pageSize: 10,
-              total: data?.total || 0,
+              total: (result as any)?.total || 0,
               showSizeChanger: true,
               showTotal: (total) => `共 ${total} 条`,
             }}
           />
         </Card>
-      </div>
-    );
-  };
+      </List>
+    </div>
+  );
+};

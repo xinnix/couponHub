@@ -221,7 +221,7 @@ function getDefaultImage(type: string, id: string) {
 </script>
 
 <template>
-  <view class="relative min-h-screen bg-surface text-on-surface font-body antialiased" style="padding-bottom: 200rpx;">
+  <view class="relative min-h-screen bg-surface text-on-surface font-body antialiased">
     <!-- 背景品牌图案 -->
     <view class="brand-pattern pointer-events-none fixed left-0 top-0 z--1 h-full w-full" :style="{
       backgroundImage: 'url(../static/bg.png)',
@@ -252,7 +252,7 @@ function getDefaultImage(type: string, id: string) {
     </view>
 
     <!-- 主内容区域 -->
-    <scroll-view v-else scroll-y refresher-enabled :refresher-triggered="loading" class="relative z-10 pb-24"
+    <scroll-view v-else scroll-y refresher-enabled :refresher-triggered="loading" class="relative z-10"
       @refresherrefresh="onRefresh">
       <!-- Hero Section - 轮播图 -->
       <view class="px-6 pt-1">
@@ -356,21 +356,28 @@ function getDefaultImage(type: string, id: string) {
         </scroll-view>
         <!-- Categories Grid -->
 
-        <view class="grid grid-cols-4 gap-2">
+        <view class="grid grid-cols-4 gap-3">
           <view v-for="merchant in filteredMerchants" :key="merchant.id"
-            class="merchant-card-bg border-outline-variant-30 flex flex-col overflow-hidden border rounded-lg transition-transform duration-200 shadow-card active-scale-98"
+            class="merchant-card-bg border-outline-variant-30 flex flex-col overflow-hidden border rounded-xl transition-transform duration-200 shadow-card active-scale-98"
             @click="goToMerchant(merchant)">
             <view class="merchant-image-container bg-gray-100">
               <image class="h-full w-full object-cover" :src="merchant.image" mode="aspectFill" lazy-load
                 @error="(e) => onImageError(e, '商户', merchant.id)" @load="onImageLoad('商户', merchant.id)" />
             </view>
-            <view class="flex flex-col gap-0.5 p-1.5">
-              <text class="truncate text-9px text-on-surface font-bold leading-tight">
+            <view class="flex flex-col gap-1 p-3">
+              <text class="truncate text-13px text-on-surface font-bold leading-tight">
                 {{ merchant.name }}
               </text>
-              <text class="merchant-desc-text truncate text-8px font-medium">
+              <text class="merchant-desc-text truncate text-11px font-medium">
                 {{ merchant.desc }}
               </text>
+              <!-- <view class="mt-1 flex items-center gap-1">
+                <view class="area-badge">
+                  <text class="text-10px font-bold">
+                    {{ merchant.area }}
+                  </text>
+                </view>
+              </view> -->
             </view>
           </view>
         </view>
@@ -640,5 +647,15 @@ function getDefaultImage(type: string, id: string) {
 /* 新闻日期文字 */
 .news-date-text {
   color: rgba(110, 120, 129, 0.6);
+}
+
+/* 区域徽章样式 */
+.area-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4rpx 12rpx;
+  background: rgba(0, 174, 239, 0.1);
+  border-radius: 12rpx;
+  color: #00AEEF;
 }
 </style>

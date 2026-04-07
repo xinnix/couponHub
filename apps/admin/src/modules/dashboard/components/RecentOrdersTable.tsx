@@ -24,13 +24,13 @@ export function RecentOrdersTable() {
       ellipsis: true,
     },
     {
-      title: '用户手机',
+      title: '用户',
       key: 'user',
-      width: 130,
-      render: (_: any, record: any) => record.user?.phone || '-',
+      width: 120,
+      render: (_: any, record: any) => record.user?.nickname || record.user?.email || '-',
     },
     {
-      title: '券标题',
+      title: '券模板',
       key: 'template',
       width: 150,
       ellipsis: true,

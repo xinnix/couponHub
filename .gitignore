@@ -58,6 +58,7 @@ uploads/
 # WeChat Pay certificates (sensitive)
 *.pem
 !certs/.gitkeep
+!certs/README.md
 
 # Claude Code hooks
 .claude/logs/

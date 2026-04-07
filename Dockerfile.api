@@ -85,7 +85,11 @@ COPY --from=builder /app/infra/shared/dist ./node_modules/@opencode/shared/dist
 # 5. 拷贝完整的 Prisma Schema 以便在生产环境运行迁移
 COPY --from=builder /app/infra/database ./infra/database
 
-# 6. 拷贝启动脚本
+# 6. 创建证书目录（用于微信支付证书）
+# 注意：证书文件不会包含在镜像中，需要通过 volume 挂载或 Docker secrets 提供
+RUN mkdir -p /app/certs
+
+# 7. 拷贝启动脚本
 COPY apps/api/entrypoint-simple.sh ./entrypoint.sh
 RUN chmod +x ./entrypoint.sh
 
