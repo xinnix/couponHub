@@ -75,6 +75,13 @@ function goToMerchant(merchant: any) {
   })
 }
 
+// 跳转到商户列表页面
+function handleGoToMerchantList() {
+  uni.navigateTo({
+    url: '/pages/merchant/list',
+  })
+}
+
 // 查看新闻详情
 function goToNewsDetail(news: any) {
   uni.navigateTo({
@@ -272,8 +279,7 @@ function getDefaultImage(type: string, id: string) {
           :autoplay="heroNews.length > 1" :interval="3000" :duration="500" :circular="true"
           indicator-color="rgba(255, 255, 255, 0.5)" indicator-active-color="#ffffff" @change="onSwiperChange">
           <swiper-item v-for="(news, index) in heroNews" :key="news.id">
-            <view class="relative h-full w-full overflow-hidden rounded-2xl shadow-lg"
-              @click="goToNewsDetail(news)">
+            <view class="relative h-full w-full overflow-hidden rounded-2xl shadow-lg" @click="goToNewsDetail(news)">
               <image class="h-full w-full" :src="news.image" mode="aspectFill" />
               <view class="banner-overlay-bg absolute inset-0 flex flex-col justify-end p-6">
                 <text class="banner-tag-text mb-1 text-xs font-bold tracking-widest uppercase">
@@ -355,7 +361,7 @@ function getDefaultImage(type: string, id: string) {
               Selected Stores
             </text>
           </view>
-          <text class="mb-0.5 text-xs text-primary-container font-bold">
+          <text class="mb-0.5 text-xs text-primary-container font-bold" @click="handleGoToMerchantList">
             查看全部 →
           </text>
         </view>
@@ -420,8 +426,7 @@ function getDefaultImage(type: string, id: string) {
         </view>
         <view class="grid grid-cols-2 gap-4">
           <view v-for="news in newsList" :key="news.id"
-            class="group flex flex-col gap-2 transition-transform active-scale-98"
-            @click="goToNewsDetail(news)">
+            class="group flex flex-col gap-2 transition-transform active-scale-98" @click="goToNewsDetail(news)">
             <view class="news-image-aspect relative overflow-hidden rounded-xl bg-gray-100 shadow-sm">
               <image class="h-full w-full object-cover" :src="news.image" mode="aspectFill" lazy-load
                 @error="(e) => onImageError(e, '新闻', news.id)" @load="onImageLoad('新闻', news.id)" />
@@ -460,7 +465,7 @@ function getDefaultImage(type: string, id: string) {
 .page-content {
   position: relative;
   z-index: 10;
-  padding-bottom: calc(140rpx + env(safe-area-inset-bottom));
+  // padding-bottom: calc(140rpx + env(safe-area-inset-bottom));
 }
 
 /* 顶部栏背景 */
