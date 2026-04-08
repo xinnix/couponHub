@@ -13,6 +13,7 @@ type _LocationUrl =
   "/pages/home/index" |
   "/pages/merchant/detail" |
   "/pages/merchant/list" |
+  "/pages/news/detail" |
   "/pages/profile/index" |
   "/pages/qrcode/index" |
   "/pages/scan/index" |

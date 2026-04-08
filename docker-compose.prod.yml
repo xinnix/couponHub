@@ -10,7 +10,7 @@ version: "3.8"
 
 services:
   api:
-    image: ${REGISTRY:-ghcr.io}/${IMAGE_NAME:-couponHub}-api:${TAG:-latest}
+    image: ${REGISTRY:-ghcr.io}/${IMAGE_NAME:-couponhub}-api:${TAG:-latest}
     container_name: couponHub-api-prod
     env_file:
       - 1panel.env
@@ -34,7 +34,7 @@ services:
         max-file: "3"
 
   admin:
-    image: ${REGISTRY:-ghcr.io}/${IMAGE_NAME:-couponHub}-admin:${TAG:-latest}
+    image: ${REGISTRY:-ghcr.io}/${IMAGE_NAME:-couponhub}-admin:${TAG:-latest}
     container_name: couponHub-admin-prod
     env_file:
       - 1panel.env

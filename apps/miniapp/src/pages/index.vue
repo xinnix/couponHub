@@ -5,6 +5,10 @@ import CustomTabBar from '@/components/CustomTabBar.vue'
 
 definePage({
   type: 'home',
+  style: {
+    enablePullDownRefresh: true,
+    backgroundColor: '#F5FAFF',
+  },
 })
 
 // 状态栏高度
@@ -68,6 +72,13 @@ function goToMerchant(merchant: any) {
   uni.showToast({
     title: '商户详情功能开发中',
     icon: 'none',
+  })
+}
+
+// 查看新闻详情
+function goToNewsDetail(news: any) {
+  uni.navigateTo({
+    url: `/pages/news/detail?id=${news.id}`,
   })
 }
 
@@ -176,6 +187,13 @@ onMounted(() => {
   loadHomeData()
 })
 
+// 页面下拉刷新
+onPullDownRefresh(() => {
+  loadHomeData().finally(() => {
+    uni.stopPullDownRefresh()
+  })
+})
+
 // 启动自动轮播
 function startAutoPlay() {
   if (heroNews.value.length > 1) {
@@ -196,11 +214,6 @@ function stopAutoPlay() {
 // 手动切换轮播
 function onSwiperChange(e: any) {
   currentHeroIndex.value = e.detail.current
-}
-
-// 下拉刷新
-function onRefresh() {
-  return loadHomeData()
 }
 
 // 图片加载错误处理
@@ -252,15 +265,15 @@ function getDefaultImage(type: string, id: string) {
     </view>
 
     <!-- 主内容区域 -->
-    <scroll-view v-else scroll-y refresher-enabled :refresher-triggered="loading" class="relative z-10"
-      @refresherrefresh="onRefresh">
+    <view v-else class="page-content">
       <!-- Hero Section - 轮播图 -->
       <view class="px-6 pt-1">
         <swiper v-if="heroNews.length > 0" class="banner-swiper" :indicator-dots="heroNews.length > 1"
           :autoplay="heroNews.length > 1" :interval="3000" :duration="500" :circular="true"
           indicator-color="rgba(255, 255, 255, 0.5)" indicator-active-color="#ffffff" @change="onSwiperChange">
           <swiper-item v-for="(news, index) in heroNews" :key="news.id">
-            <view class="relative h-full w-full overflow-hidden rounded-2xl shadow-lg">
+            <view class="relative h-full w-full overflow-hidden rounded-2xl shadow-lg"
+              @click="goToNewsDetail(news)">
               <image class="h-full w-full" :src="news.image" mode="aspectFill" />
               <view class="banner-overlay-bg absolute inset-0 flex flex-col justify-end p-6">
                 <text class="banner-tag-text mb-1 text-xs font-bold tracking-widest uppercase">
@@ -407,7 +420,8 @@ function getDefaultImage(type: string, id: string) {
         </view>
         <view class="grid grid-cols-2 gap-4">
           <view v-for="news in newsList" :key="news.id"
-            class="group flex flex-col gap-2 transition-transform active-scale-98">
+            class="group flex flex-col gap-2 transition-transform active-scale-98"
+            @click="goToNewsDetail(news)">
             <view class="news-image-aspect relative overflow-hidden rounded-xl bg-gray-100 shadow-sm">
               <image class="h-full w-full object-cover" :src="news.image" mode="aspectFill" lazy-load
                 @error="(e) => onImageError(e, '新闻', news.id)" @load="onImageLoad('新闻', news.id)" />
@@ -423,7 +437,7 @@ function getDefaultImage(type: string, id: string) {
           </view>
         </view>
       </view>
-    </scroll-view>
+    </view>
 
     <!-- 自定义底部导航栏 -->
     <CustomTabBar :current="0" />
@@ -440,6 +454,13 @@ function getDefaultImage(type: string, id: string) {
   height: 100%;
   z-index: -1;
   pointer-events: none;
+}
+
+/* 页面内容区域 */
+.page-content {
+  position: relative;
+  z-index: 10;
+  padding-bottom: calc(140rpx + env(safe-area-inset-bottom));
 }
 
 /* 顶部栏背景 */
