@@ -25,6 +25,7 @@ export const statisticsRouter = router({
         couponStats,
         settlementStats,
         merchantCategoryGroup,
+        merchantCategories,
       ] = await Promise.all([
         // 用户总数
         ctx.prisma.user.count(),
@@ -71,11 +72,21 @@ export const statisticsRouter = router({
 
         // 商户分类分布
         ctx.prisma.merchant.groupBy({
-          by: ['category'],
+          by: ['categoryId'],
           where: { status: 'ACTIVE' },
           _count: true,
         }),
+
+        // 查询所有商户分类（用于关联名称）
+        ctx.prisma.merchantCategory.findMany({
+          select: { id: true, name: true, slug: true },
+        }),
       ]);
+
+      // 创建分类 ID -> 名称的映射
+      const categoryMap = new Map<string, { name: string; slug: string }>(
+        merchantCategories.map((cat) => [cat.id, { name: cat.name, slug: cat.slug }]),
+      );
 
       return {
         // 核心指标
@@ -97,7 +108,9 @@ export const statisticsRouter = router({
           amount: Number(g._sum.price ?? 0),
         })),
         merchantCategoryDistribution: merchantCategoryGroup.map((g) => ({
-          category: g.category,
+          categoryId: g.categoryId,
+          categoryName: categoryMap.get(g.categoryId)?.name ?? '未分类',
+          categorySlug: categoryMap.get(g.categoryId)?.slug ?? 'unknown',
           count: g._count,
         })),
       };
