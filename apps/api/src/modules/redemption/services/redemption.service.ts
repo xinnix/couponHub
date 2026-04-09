@@ -63,7 +63,12 @@ export class RedemptionService {
       throw new BadRequestException(`订单状态异常: ${order.status}`);
     }
 
-    // 5. 验证核销权限
+    // 5. 检查订单是否过期（使用订单的 expireAt 字段）
+    if (order.expireAt && new Date(order.expireAt) < new Date()) {
+      throw new BadRequestException('该券已过期，无法核销');
+    }
+
+    // 6. 验证核销权限
     const merchantScope = order.template.merchantScope as string[];
     if (!merchantScope.includes(handler.merchantId)) {
       throw new ForbiddenException('该券不适用于当前商户');

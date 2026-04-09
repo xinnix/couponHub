@@ -8,6 +8,7 @@ import {
   UseGuards,
   ForbiddenException,
   NotFoundException,
+  BadRequestException,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
@@ -20,6 +21,7 @@ import { JwtAuthGuard } from '../../../core/guards/jwt.guard';
 import { CurrentUser } from '../../auth/decorators/decorators';
 import { OrderService } from '../services/order.service';
 import { PrismaService } from '../../../prisma/prisma.service';
+import { verifyRedeemCode } from '../../../shared/utils/qrcode.util';
 
 @ApiTags('orders')
 @Controller('orders')
@@ -44,6 +46,58 @@ export class OrderController {
   @ApiResponse({ status: 200, description: '获取成功' })
   async getMyOrders(@Query('status') status: string | undefined, @CurrentUser() user: any) {
     return this.orderService.getMyOrders(user.id, status);
+  }
+
+  @Post('get-by-code')
+  @ApiOperation({ summary: '根据核销码获取订单信息（用于核销前确认）' })
+  @ApiResponse({ status: 200, description: '获取成功' })
+  async getOrderByCode(@Body('code') code: string, @CurrentUser() user: any) {
+    // 1. 解析核销码
+    const { orderId, valid, reason } = verifyRedeemCode(code);
+
+    if (!valid) {
+      throw new BadRequestException(reason || '二维码无效');
+    }
+
+    // 2. 查询订单信息
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+      include: {
+        template: true,
+        merchant: true,
+        user: {
+          select: {
+            id: true,
+            nickname: true,
+            phone: true,
+          },
+        },
+      },
+    });
+
+    if (!order) {
+      throw new NotFoundException('订单不存在');
+    }
+
+    // 3. 验证订单状态（必须是已支付）
+    if (order.status !== 'PAID') {
+      throw new BadRequestException(`订单状态异常: ${order.status}`);
+    }
+
+    // 4. 返回订单信息
+    return {
+      orderId: order.id,
+      code: code,
+      orderNo: order.orderNo,
+      faceValue: Number(order.faceValue),
+      title: order.template?.title || '优惠券',
+      merchantName: order.merchant?.name || '商户',
+      couponType: '全场通用',
+      expireDate: order.expireAt
+        ? new Date(order.expireAt).toLocaleDateString('zh-CN')
+        : '长期有效',
+      status: order.status,
+    };
   }
 
   @Get(':id')

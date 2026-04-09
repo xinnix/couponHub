@@ -8,6 +8,7 @@ type _LocationUrl =
   "/pages/hi" |
   "/pages/login" |
   "/pages/coupon/detail" |
+  "/pages/coupon/list" |
   "/pages/handler/index" |
   "/pages/handler/records" |
   "/pages/home/index" |
@@ -16,6 +17,7 @@ type _LocationUrl =
   "/pages/news/detail" |
   "/pages/profile/index" |
   "/pages/qrcode/index" |
+  "/pages/redemption/confirm" |
   "/pages/scan/index" |
   "/pages/wallet/index";
 

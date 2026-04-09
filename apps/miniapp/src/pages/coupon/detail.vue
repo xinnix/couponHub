@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { computed, ref } from 'vue'
 import { couponApi, orderApi, paymentApi } from '@/api/business'
 
 const loading = ref(true)
@@ -10,88 +10,130 @@ const statusBarHeight = ref(0)
 // 计算属性 - 显示数据
 const displayTitle = computed(() => {
   if (coupon.value && coupon.value.title) {
-    return coupon.value.title;
+    return coupon.value.title
   }
-  return '';
-});
+  return ''
+})
 
 const displayBuyPrice = computed(() => {
   if (coupon.value && coupon.value.buyPrice) {
-    const price = parseFloat(coupon.value.buyPrice);
-    return isNaN(price) ? 0 : price;
+    const price = Number.parseFloat(coupon.value.buyPrice)
+    return isNaN(price) ? 0 : price
   }
-  return 0;
-});
+  return 0
+})
 
 const displayFaceValue = computed(() => {
   if (coupon.value && coupon.value.faceValue) {
-    const value = parseFloat(coupon.value.faceValue);
-    return isNaN(value) ? 0 : value;
+    const value = Number.parseFloat(coupon.value.faceValue)
+    return isNaN(value) ? 0 : value
   }
-  return 0;
-});
+  return 0
+})
 
 const displayStock = computed(() => {
   if (coupon.value && coupon.value.stock !== undefined) {
-    const stock = parseInt(coupon.value.stock);
-    return isNaN(stock) ? 0 : stock;
+    const stock = Number.parseInt(coupon.value.stock)
+    return isNaN(stock) ? 0 : stock
   }
-  return 0;
-});
+  return 0
+})
 
 const displayValidFrom = computed(() => {
   if (coupon.value && coupon.value.validFrom) {
-    return coupon.value.validFrom;
+    return coupon.value.validFrom
   }
-  return '';
-});
+  return ''
+})
 
 const displayValidUntil = computed(() => {
   if (coupon.value && coupon.value.validUntil) {
-    return coupon.value.validUntil;
+    return coupon.value.validUntil
   }
-  return '';
-});
+  return ''
+})
 
 const displayDescription = computed(() => {
   if (coupon.value && coupon.value.description) {
-    return coupon.value.description;
+    return coupon.value.description
   }
-  return '在商户门店尽享专属优惠。本券适用于店内所有商品，包括季节新品及精选配饰。';
-});
+  return '在商户门店尽享专属优惠。本券适用于店内所有商品，包括季节新品及精选配饰。'
+})
 
 const displayMerchantName = computed(() => {
   if (coupon.value && coupon.value.merchant && coupon.value.merchant.name) {
-    return coupon.value.merchant.name;
+    return coupon.value.merchant.name
   }
-  return '商户门店';
-});
+  return '商户门店'
+})
 
 const displayButtonText = computed(() => {
   if (buying.value) {
-    return '处理中...';
+    return '处理中...'
   }
   if (!coupon.value || displayStock.value <= 0) {
-    return '已售罄';
+    return '已售罄'
   }
-  return '立即购买';
-});
+
+  // 新增：根据价格显示不同文案
+  if (displayBuyPrice.value === 0) {
+    return '立即领取'
+  }
+
+  return '立即购买'
+})
 
 const isButtonDisabled = computed(() => {
-  return buying.value || !coupon.value || displayStock.value <= 0;
-});
+  return buying.value || !coupon.value || displayStock.value <= 0
+})
 
 const discountPercent = computed(() => {
   if (displayFaceValue.value > 0 && displayBuyPrice.value > 0) {
-    const discount = ((displayFaceValue.value - displayBuyPrice.value) / displayFaceValue.value * 100).toFixed(0);
-    return discount;
+    const discount = ((displayFaceValue.value - displayBuyPrice.value) / displayFaceValue.value * 100).toFixed(0)
+    return discount
   }
-  return '50';
-});
+  return '50'
+})
+
+// 库存文案
+const stockText = computed(() => {
+  const stock = displayStock.value
+  if (stock <= 0)
+    return '已售罄'
+  if (stock <= 10)
+    return `仅剩${stock}张`
+  return `剩余${stock}张`
+})
+
+// 库存颜色
+const stockColor = computed(() => {
+  const stock = displayStock.value
+  if (stock <= 0)
+    return '#ba1a1a'
+  if (stock <= 10)
+    return '#8d4f00'
+  return '#3a637c'
+})
+
+// 购买截止日期
+const displayEndTime = computed(() => {
+  if (coupon.value && coupon.value.validUntil) {
+    return formatDate(coupon.value.validUntil)
+  }
+  return '长期有效'
+})
+
+// 有效天数
+const displayValidDays = computed(() => {
+  if (coupon.value && coupon.value.validDays) {
+    return coupon.value.validDays
+  }
+  return 30 // 默认30天
+})
 
 // 格式化价格函数
 function formatPrice(price: number): string {
-  return price.toFixed(2);
+  return price.toFixed(2)
 }
 
 // 获取状态栏高度
@@ -103,17 +145,17 @@ function goBack() {
 }
 
 onLoad(async (options: any) => {
-  let couponId = '';
+  let couponId = ''
 
   // 从普通参数获取
   if (options && options.id) {
-    couponId = options.id;
+    couponId = options.id
   }
 
   // 从 scene 参数获取（扫码进入）
   if (options && options.scene) {
-    const scene = decodeURIComponent(options.scene);
-    couponId = scene;
+    const scene = decodeURIComponent(options.scene)
+    couponId = scene
   }
 
   if (couponId) {
@@ -121,7 +163,7 @@ onLoad(async (options: any) => {
   }
   else {
     loading.value = false
-    uni.showToast({ title: '参数错误', icon: 'none' });
+    uni.showToast({ title: '参数错误', icon: 'none' })
   }
 })
 
@@ -141,27 +183,89 @@ async function loadCoupon(id: string) {
 }
 
 async function handleBuy() {
-  if (buying.value) return
-  if (!coupon.value) return
+  if (buying.value)
+    return
+  if (!coupon.value)
+    return
 
   // 检查库存
-  const stockNum = parseInt(coupon.value.stock) || 0;
+  const stockNum = Number.parseInt(coupon.value.stock) || 0
   if (stockNum <= 0) {
     uni.showToast({ title: '库存不足', icon: 'none' })
     return
   }
 
-  // 确认购买
-  const buyPriceNum = parseFloat(coupon.value.buyPrice) || 0;
-  const faceValueNum = parseFloat(coupon.value.faceValue) || 0;
+  const buyPriceNum = Number.parseFloat(coupon.value.buyPrice) || 0
 
+  // 新增：根据价格分流
+  if (buyPriceNum === 0) {
+    await handleFreeClaim() // 免费领取流程
+  } else {
+    await handlePaidPurchase() // 付费购买流程（保持原有逻辑）
+  }
+}
+
+// 新增：免费领取处理函数
+async function handleFreeClaim() {
+  try {
+    buying.value = true
+    uni.showLoading({ title: '领取中...', mask: true })
+
+    // 1. 创建订单
+    const orderRes = await orderApi.create({ templateId: coupon.value.id })
+    const orderData = orderRes.data as any
+
+    // 2. 检查是否需要支付
+    if (orderData && orderData.needPayment === false) {
+      // 免费券已自动 PAID，直接跳转券包
+      uni.hideLoading()
+      uni.showToast({ title: '领取成功', icon: 'success' })
+      setTimeout(() => {
+        uni.navigateTo({ url: '/pages/wallet/index' })
+      }, 1000)
+    } else {
+      // 异常：价格 0 但后端标记需要支付
+      uni.hideLoading()
+      uni.showToast({ title: '系统异常，请联系客服', icon: 'none' })
+    }
+  } catch (error: any) {
+    uni.hideLoading()
+
+    // 处理领取上限错误
+    let errorMsg = '领取失败'
+    if (error.response?.data?.message) {
+      errorMsg = error.response.data.message
+      // 特殊处理领取上限错误
+      if (errorMsg.includes('每人限领')) {
+        uni.showModal({
+          title: '领取限制',
+          content: errorMsg,
+          showCancel: false,
+        })
+        return
+      }
+    }
+
+    uni.showToast({ title: errorMsg, icon: 'none' })
+  } finally {
+    buying.value = false
+  }
+}
+
+// 付费购买处理函数（保持原有逻辑）
+async function handlePaidPurchase() {
+  const buyPriceNum = Number.parseFloat(coupon.value.buyPrice) || 0
+  const faceValueNum = Number.parseFloat(coupon.value.faceValue) || 0
+
+  // 确认购买
   await new Promise<void>((resolve) => {
     uni.showModal({
       title: '确认购买',
-      content: `${coupon.value.title}\n价格：¥${formatPrice(buyPriceNum)}\n面值：¥${formatPrice(faceValueNum)}`,
+      content: `${coupon.value!.title}\n价格：¥${formatPrice(buyPriceNum)}\n面值：¥${formatPrice(faceValueNum)}`,
       confirmText: '确认支付',
       success: (res) => {
-        if (res.confirm) resolve()
+        if (res.confirm)
+          resolve()
       },
     })
   })
@@ -171,11 +275,11 @@ async function handleBuy() {
     uni.showLoading({ title: '下单中...', mask: true })
 
     // 1. 创建订单
-    const orderRes = await orderApi.create({ templateId: coupon.value.id })
-    const orderData = orderRes.data as any;
-    let orderId = '';
+    const orderRes = await orderApi.create({ templateId: coupon.value!.id })
+    const orderData = orderRes.data as any
+    let orderId = ''
     if (orderData && orderData.order && orderData.order.id) {
-      orderId = orderData.order.id;
+      orderId = orderData.order.id
     }
     if (!orderId) {
       throw new Error('创建订单失败')
@@ -184,10 +288,10 @@ async function handleBuy() {
     // 2. 创建支付，获取微信支付参数
     uni.showLoading({ title: '调起支付...', mask: true })
     const payRes = await paymentApi.create({ orderId })
-    const payData = payRes.data as any;
-    let payParams = null;
+    const payData = payRes.data as any
+    let payParams = null
     if (payData && payData.payParams) {
-      payParams = payData.payParams;
+      payParams = payData.payParams
     }
 
     if (!payParams) {
@@ -207,22 +311,22 @@ async function handleBuy() {
         paySign: payParams.paySign,
         success: () => resolve(),
         fail: (err: any) => {
-          let errMsg = '';
+          let errMsg = ''
           if (err && err.errMsg) {
-            errMsg = err.errMsg;
+            errMsg = err.errMsg
           }
           if (errMsg.includes('cancel')) {
             reject(new Error('支付取消'))
           }
           else {
-            const errorMsg = errMsg || '支付失败';
+            const errorMsg = errMsg || '支付失败'
             reject(new Error(errorMsg))
           }
         },
       })
     })
 
-    // 4. 支付成功，跳转到券包（回调会更新订单状态）
+    // 4. 支付成功，跳转到券包
     uni.showToast({ title: '支付成功', icon: 'success' })
     setTimeout(() => {
       uni.navigateTo({ url: '/pages/wallet/index' })
@@ -230,20 +334,24 @@ async function handleBuy() {
   }
   catch (error: any) {
     uni.hideLoading()
-    let respData = null;
-    if (error && error.response && error.response.data) {
-      respData = error.response.data;
+
+    // 处理领取上限错误
+    let errorMsg = '购买失败'
+    if (error.response?.data?.message) {
+      errorMsg = error.response.data.message
+      if (errorMsg.includes('每人限领')) {
+        uni.showModal({
+          title: '购买限制',
+          content: errorMsg,
+          showCancel: false,
+        })
+        return
+      }
+    } else if (error.message) {
+      errorMsg = error.message
     }
-    let respMsg = '';
-    if (respData && respData.message) {
-      respMsg = respData.message;
-    }
-    let errMsg = '';
-    if (error && error.message) {
-      errMsg = error.message;
-    }
-    const msg = respMsg || errMsg || '购买失败'
-    uni.showToast({ title: msg, icon: 'none' })
+
+    uni.showToast({ title: errorMsg, icon: 'none' })
   }
   finally {
     buying.value = false
@@ -257,330 +365,398 @@ function formatDate(date: string | Date) {
 </script>
 
 <template>
-  <view class="page-container">
-    <!-- 顶部导航栏 -->
-    <view class="nav-bar" :style="{ paddingTop: statusBarHeight + 'px' }">
-      <view class="nav-content">
-        <view class="nav-left">
-          <view class="back-btn" @click="goBack">
-            <text class="back-icon">←</text>
-          </view>
-          <text class="nav-title">优惠券详情</text>
-        </view>
-      </view>
-    </view>
-
+  <view class="page">
     <!-- 加载状态 -->
-    <view v-if="loading" class="loading-state">
-      <text class="loading-text">加载中...</text>
+    <view v-if="loading" class="loading-wrap">
+      <text class="loading-hint">
+        加载中...
+      </text>
     </view>
 
-    <!-- 主内容区域 -->
-    <view v-else class="main-content">
-      <!-- 标题和价格区域 -->
-      <view class="pricing-section">
-        <view class="tag-container">
+    <!-- 主内容 -->
+    <scroll-view v-else scroll-y class="content-scroll">
+      <view class="content-inner">
+        <!-- 标题与价格区域 -->
+        <view class="pricing-section">
+          <!-- 限时特惠标签 -->
           <view class="offer-tag">
-            <text class="tag-icon">🏷</text>
-            <text class="tag-text">限时特惠</text>
+            <text class="iconfont icon-youhuiquan tag-icon-font" />
+            <text class="tag-label">
+              限时特惠
+            </text>
           </view>
-        </view>
-        <text class="coupon-title">{{ displayTitle }}</text>
-        <text class="coupon-description">{{ displayDescription }}</text>
 
-        <view class="price-container">
-          <text class="current-price">¥{{ formatPrice(displayBuyPrice) }}</text>
-          <text class="original-price">¥{{ formatPrice(displayFaceValue) }}</text>
-          <view class="discount-tag">
-            <text class="discount-text">立省 {{ discountPercent }}%</text>
+          <!-- 标题 -->
+          <text class="title">
+            {{ displayTitle }}
+          </text>
+
+          <!-- 描述 -->
+          <text class="desc">
+            {{ displayDescription }}
+          </text>
+
+          <!-- 价格行 -->
+          <view class="price-row">
+            <view class="price-main">
+              <!-- 新增：免费券显示"免费"文案 -->
+              <text v-if="displayBuyPrice === 0" class="price-free">
+                免费
+              </text>
+              <text v-else class="price-now">
+                ¥{{ formatPrice(displayBuyPrice) }}
+              </text>
+              <text class="price-old">
+                ¥{{ formatPrice(displayFaceValue) }}
+              </text>
+            </view>
+          </view>
+
+          <!-- 标签行：折扣 + 库存 -->
+          <view class="badge-row">
+            <view class="badge badge-primary">
+              <text class="badge-text badge-text-primary">
+                立省 {{ discountPercent }}%
+              </text>
+            </view>
+            <view class="badge badge-stock">
+              <text class="iconfont icon-youhuiquan badge-icon-font" />
+              <text class="badge-text" :style="{ color: stockColor }">
+                {{ stockText }}
+              </text>
+            </view>
+          </view>
+
+          <!-- 购买截止 -->
+          <view class="deadline-row">
+            <text class="iconfont icon-youhuiquan deadline-icon-font" />
+            <text class="deadline-text">
+              购买截止：{{ displayEndTime }}
+            </text>
           </view>
         </view>
+
+        <!-- 购买须知 -->
+        <view class="rules-section">
+          <view class="rules-header">
+            <view class="rules-bar" />
+            <text class="rules-title">
+              购买须知
+            </text>
+          </view>
+
+          <view class="rules-list">
+            <!-- 有效期 -->
+            <view class="rule-item">
+              <view class="rule-icon-box">
+                <text class="iconfont icon-youhuiquan rule-icon-font" />
+              </view>
+              <view class="rule-body">
+                <text class="rule-label">
+                  有效期
+                </text>
+                <text class="rule-desc">
+                  自购买之日起{{ coupon?.validDays || 30 }}天内有效
+                </text>
+              </view>
+            </view>
+
+            <!-- 使用规则 -->
+            <view class="rule-item">
+              <view class="rule-icon-box">
+                <text class="iconfont icon-youhuiquan rule-icon-font" />
+              </view>
+              <view class="rule-body">
+                <text class="rule-label">
+                  使用规则
+                </text>
+                <text class="rule-desc">
+                  仅限 {{ displayMerchantName }} 门店使用
+                </text>
+              </view>
+            </view>
+
+            <!-- 叠加规则 -->
+            <view class="rule-item">
+              <view class="rule-icon-box">
+                <text class="iconfont icon-youhuiquan rule-icon-font" />
+              </view>
+              <view class="rule-body">
+                <text class="rule-label">
+                  叠加规则
+                </text>
+                <text class="rule-desc">
+                  不与其他优惠活动同时使用，每单限用一张
+                </text>
+              </view>
+            </view>
+
+            <!-- 退改规则 -->
+            <view class="rule-item">
+              <view class="rule-icon-box">
+                <text class="iconfont icon-youhuiquan rule-icon-font" />
+              </view>
+              <view class="rule-body">
+                <text class="rule-label">
+                  退改规则
+                </text>
+                <text class="rule-desc">
+                  未核销前支持随时退款
+                </text>
+              </view>
+            </view>
+          </view>
+        </view>
+
+        <!-- 底部保障区域 -->
+        <!-- <view class="trust-row">
+          <view class="trust-card trust-card-primary">
+            <text class="iconfont icon-youhuiquan trust-icon-font" />
+            <text class="trust-label">
+              平台保障
+            </text>
+          </view>
+          <view class="trust-card trust-card-gray">
+            <text class="trust-card-sub">
+              推荐方
+            </text>
+            <text class="trust-card-name">
+              社区商圈
+            </text>
+          </view>
+        </view> -->
       </view>
-
-      <!-- 使用规则区域 -->
-      <view class="rules-section">
-        <view class="rules-header">
-          <view class="rules-indicator"></view>
-          <text class="rules-title">使用规则</text>
-        </view>
-
-        <view class="rules-list">
-          <!-- 有效期 -->
-          <view class="rule-item">
-            <view class="rule-icon-box">
-              <text class="rule-icon">📅</text>
-            </view>
-            <view class="rule-content">
-              <text class="rule-label">有效期</text>
-              <text class="rule-desc">自购买之日起30天内有效</text>
-            </view>
-          </view>
-
-          <!-- 使用范围 -->
-          <view class="rule-item">
-            <view class="rule-icon-box">
-              <text class="rule-icon">🏪</text>
-            </view>
-            <view class="rule-content">
-              <text class="rule-label">使用范围</text>
-              <text class="rule-desc">仅限 {{ displayMerchantName }} 门店使用</text>
-            </view>
-          </view>
-
-          <!-- 叠加规则 -->
-          <view class="rule-item">
-            <view class="rule-icon-box">
-              <text class="rule-icon">📦</text>
-            </view>
-            <view class="rule-content">
-              <text class="rule-label">叠加规则</text>
-              <text class="rule-desc">不与其他优惠活动同时使用，每单限用一张</text>
-            </view>
-          </view>
-
-          <!-- 退改规则 -->
-          <view class="rule-item">
-            <view class="rule-icon-box">
-              <text class="rule-icon">↩️</text>
-            </view>
-            <view class="rule-content">
-              <text class="rule-label">退改规则</text>
-              <text class="rule-desc">未核销前支持随时退款</text>
-            </view>
-          </view>
-        </view>
-      </view>
-
-      <!-- 商家信息区域 -->
-      <view class="merchant-section" v-if="coupon && coupon.merchant">
-        <view class="merchant-image-box">
-          <image
-            v-if="coupon.merchant.coverImage"
-            :src="coupon.merchant.coverImage"
-            class="merchant-image"
-            mode="aspectFill"
-          />
-          <view v-else class="merchant-placeholder">
-            <text class="placeholder-icon">🏪</text>
-          </view>
-        </view>
-        <view class="merchant-info-box">
-          <view class="verified-badge">
-            <text class="verified-icon">✓</text>
-          </view>
-          <view class="merchant-info">
-            <text class="merchant-label">推荐方</text>
-            <text class="merchant-name">社区商圈</text>
-          </view>
-        </view>
-      </view>
-    </view>
+    </scroll-view>
 
     <!-- 底部购买栏 -->
     <view class="bottom-bar">
-      <view class="price-display">
-        <text class="price-symbol">¥</text>
-        <text class="price-value">{{ formatPrice(displayBuyPrice) }}</text>
+      <view class="bar-price">
+        <!-- 新增：免费券不显示价格 -->
+        <text v-if="displayBuyPrice === 0" class="bar-price-free">
+          免费
+        </text>
+        <text v-else>
+          <text class="bar-price-sym">
+            ¥
+          </text>
+          <text class="bar-price-num">
+            {{ formatPrice(displayBuyPrice) }}
+          </text>
+        </text>
       </view>
-      <button
-        class="buy-btn"
-        :disabled="isButtonDisabled"
-        @click="handleBuy"
-      >
-        <text class="buy-icon">🛍️</text>
-        <text class="buy-text">{{ displayButtonText }}</text>
-      </button>
+      <view class="bar-btn" :class="{ 'bar-btn-disabled': isButtonDisabled }" @click="handleBuy">
+        <text class="iconfont icon-youhuiquan bar-btn-icon-font" />
+        <text class="bar-btn-text">
+          {{ displayButtonText }}
+        </text>
+      </view>
     </view>
   </view>
 </template>
 
 <style scoped>
-/* 页面容器 */
-.page-container {
+/* ========== 页面 ========== */
+.page {
   min-height: 100vh;
   background: #f5faff;
-  padding-bottom: 120rpx;
-}
-
-/* 顶部导航栏 */
-.nav-bar {
-  position: fixed;
-  top: 0;
-  width: 100%;
-  z-index: 50;
-  background: rgba(245, 250, 255, 0.8);
-  backdrop-filter: blur(20px);
-}
-
-.nav-content {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  height: 88rpx;
-  padding: 0 32rpx;
+  flex-direction: column;
 }
 
-.nav-left {
-  display: flex;
-  align-items: center;
-  gap: 24rpx;
+.content-scroll {
+  flex: 1;
+  padding-bottom: 160rpx;
 }
 
-.back-btn {
-  width: 48rpx;
-  height: 48rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s;
-}
-
-.back-btn:active {
-  transform: scale(0.95);
-  opacity: 0.7;
-}
-
-.back-icon {
-  font-size: 36rpx;
-  color: #00AEEF;
-}
-
-.nav-title {
-  font-size: 32rpx;
-  font-weight: bold;
-  color: #171c20;
-}
-
-/* 加载状态 */
-.loading-state {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 200rpx 0;
-}
-
-.loading-text {
-  font-size: 28rpx;
-  color: #6e7881;
-}
-
-/* 主内容区域 */
-.main-content {
-  padding: 140rpx 32rpx 0;
+.content-inner {
+  padding: 32rpx;
   max-width: 900rpx;
   margin: 0 auto;
 }
 
-/* 标题和价格区域 */
+/* ========== 加载 ========== */
+.loading-wrap {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.loading-hint {
+  font-size: 28rpx;
+  color: #6e7881;
+}
+
+/* ========== 标题与价格区域 ========== */
 .pricing-section {
   margin-bottom: 48rpx;
 }
 
-.tag-container {
-  margin-bottom: 16rpx;
-}
-
+/* 标签 */
 .offer-tag {
   display: inline-flex;
   align-items: center;
-  gap: 12rpx;
-  padding: 8rpx 20rpx;
+  gap: 10rpx;
+  padding: 8rpx 24rpx;
   background: #b9e2ff;
-  border-radius: 48rpx;
+  border-radius: 999rpx;
 }
 
-.tag-icon {
-  font-size: 20rpx;
-}
-
-.tag-text {
+.tag-icon-font {
   font-size: 24rpx;
-  font-weight: bold;
+  color: #3d657e;
+}
+
+.tag-label {
+  font-size: 24rpx;
+  font-weight: 700;
   color: #3d657e;
   letter-spacing: 2rpx;
 }
 
-.coupon-title {
+/* 标题 */
+.title {
   display: block;
   font-size: 48rpx;
   font-weight: 900;
   color: #171c20;
-  margin: 16rpx 0 12rpx;
+  margin-top: 20rpx;
   line-height: 1.3;
+  letter-spacing: -1rpx;
 }
 
-.coupon-description {
+/* 描述 */
+.desc {
   display: block;
   font-size: 28rpx;
   color: #6e7881;
-  line-height: 1.6;
-  margin-bottom: 24rpx;
+  line-height: 1.7;
+  margin-top: 12rpx;
 }
 
-.price-container {
+/* 价格行 */
+.price-row {
+  margin-top: 24rpx;
+}
+
+.price-main {
   display: flex;
   align-items: baseline;
   gap: 16rpx;
-  margin-top: 16rpx;
 }
 
-.current-price {
-  font-size: 64rpx;
+.price-now {
+  font-size: 60rpx;
   font-weight: 900;
   color: #00AEEF;
+  letter-spacing: -2rpx;
 }
 
-.original-price {
+/* 新增：免费券价格样式 */
+.price-free {
+  font-size: 60rpx;
+  font-weight: 900;
+  color: #52c41a; /* 绿色表示免费 */
+  letter-spacing: -2rpx;
+}
+
+.price-old {
   font-size: 28rpx;
   color: #6e7881;
   text-decoration: line-through;
 }
 
-.discount-tag {
-  margin-left: auto;
+/* 标签行 */
+.badge-row {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  margin-top: 20rpx;
+  flex-wrap: wrap;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8rpx;
   padding: 8rpx 16rpx;
-  background: rgba(0, 174, 239, 0.1);
   border-radius: 12rpx;
 }
 
-.discount-text {
+.badge-primary {
+  background: rgba(0, 174, 239, 0.1);
+}
+
+.badge-text {
   font-size: 24rpx;
-  font-weight: bold;
+  font-weight: 700;
+}
+
+.badge-text-primary {
   color: #00AEEF;
 }
 
-/* 使用规则区域 */
+.badge-stock {
+  background: #dee3e8;
+}
+
+.badge-icon-font {
+  font-size: 24rpx;
+}
+
+/* 购买截止 */
+.deadline-row {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin-top: 24rpx;
+  padding-top: 24rpx;
+  border-top: 2rpx dashed #bdc8d1;
+}
+
+.deadline-icon-font {
+  font-size: 28rpx;
+  color: #6e7881;
+}
+
+.deadline-text {
+  font-size: 24rpx;
+  color: #6e7881;
+}
+
+/* ========== 购买须知 ========== */
 .rules-section {
   background: #eff4fa;
   border-radius: 24rpx;
-  padding: 32rpx;
-  margin-bottom: 48rpx;
+  padding: 36rpx 32rpx;
+  margin-bottom: 32rpx;
 }
 
 .rules-header {
   display: flex;
   align-items: center;
-  gap: 16rpx;
-  margin-bottom: 32rpx;
+  gap: 20rpx;
+  margin-bottom: 36rpx;
 }
 
-.rules-indicator {
+.rules-bar {
   width: 8rpx;
-  height: 48rpx;
+  height: 44rpx;
   background: #00AEEF;
   border-radius: 8rpx;
 }
 
 .rules-title {
   font-size: 36rpx;
-  font-weight: bold;
+  font-weight: 700;
   color: #171c20;
+  letter-spacing: -0.5rpx;
 }
 
 .rules-list {
   display: flex;
   flex-direction: column;
-  gap: 32rpx;
+  gap: 36rpx;
 }
 
 .rule-item {
@@ -599,173 +775,159 @@ function formatDate(date: string | Date) {
   justify-content: center;
 }
 
-.rule-icon {
+.rule-icon-font {
   font-size: 32rpx;
+  color: #00AEEF;
 }
 
-.rule-content {
+.rule-body {
   flex: 1;
 }
 
 .rule-label {
   display: block;
   font-size: 28rpx;
-  font-weight: bold;
+  font-weight: 700;
   color: #171c20;
-  margin-bottom: 8rpx;
+  margin-bottom: 6rpx;
 }
 
 .rule-desc {
   display: block;
   font-size: 28rpx;
   color: #6e7881;
-  line-height: 1.5;
+  line-height: 1.6;
 }
 
-/* 商家信息区域 */
-.merchant-section {
+/* ========== 底部保障区域 ========== */
+.trust-row {
   display: flex;
   gap: 24rpx;
-  margin-bottom: 32rpx;
 }
 
-.merchant-image-box {
-  flex: 7;
-  height: 300rpx;
-  background: rgba(222, 227, 232, 0.5);
+.trust-card {
+  flex: 1;
   border-radius: 24rpx;
-  overflow: hidden;
-}
-
-.merchant-image {
-  width: 100%;
-  height: 100%;
-}
-
-.merchant-placeholder {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.placeholder-icon {
-  font-size: 80rpx;
-}
-
-.merchant-info-box {
-  flex: 5;
+  padding: 36rpx 24rpx;
   display: flex;
   flex-direction: column;
-  gap: 24rpx;
-}
-
-.verified-badge {
-  flex: 1;
-  background: #00AEEF;
-  border-radius: 24rpx;
-  display: flex;
   align-items: center;
   justify-content: center;
+  gap: 12rpx;
 }
 
-.verified-icon {
-  font-size: 48rpx;
-  color: #ffffff;
+.trust-card-primary {
+  background: rgba(0, 174, 239, 0.1);
+  border: 2rpx solid rgba(0, 174, 239, 0.2);
 }
 
-.merchant-info {
-  flex: 1;
+.trust-card-gray {
   background: #dee3e8;
-  border-radius: 24rpx;
-  padding: 24rpx;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
 }
 
-.merchant-label {
-  display: block;
+.trust-icon-font {
+  font-size: 48rpx;
+  color: #00AEEF;
+}
+
+.trust-label {
+  font-size: 24rpx;
+  font-weight: 700;
+  color: #00AEEF;
+}
+
+.trust-card-sub {
   font-size: 20rpx;
   font-weight: 900;
   color: #6e7881;
   letter-spacing: 4rpx;
-  text-transform: uppercase;
-  margin-bottom: 8rpx;
 }
 
-.merchant-name {
-  display: block;
+.trust-card-name {
   font-size: 24rpx;
-  font-weight: bold;
+  font-weight: 700;
   color: #171c20;
 }
 
-/* 底部购买栏 */
+/* ========== 底部购买栏 ========== */
 .bottom-bar {
   position: fixed;
   bottom: 0;
   left: 0;
+  right: 0;
   width: 100%;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 32rpx;
+  padding: 24rpx 32rpx;
+  padding-bottom: calc(24rpx + env(safe-area-inset-bottom));
   background: #ffffff;
   box-shadow: 0 -8rpx 64rpx 0 rgba(23, 28, 32, 0.04);
   border-radius: 32rpx 32rpx 0 0;
   z-index: 50;
+  box-sizing: border-box;
 }
 
-.price-display {
+.bar-price {
   display: flex;
   align-items: baseline;
+  flex-shrink: 0;
 }
 
-.price-symbol {
+.bar-price-sym {
   font-size: 28rpx;
-  font-weight: bold;
+  font-weight: 700;
   color: #171c20;
   margin-right: 4rpx;
 }
 
-.price-value {
-  font-size: 40rpx;
-  font-weight: bold;
+.bar-price-num {
+  font-size: 44rpx;
+  font-weight: 700;
   color: #171c20;
 }
 
-.buy-btn {
+/* 新增：底部免费券价格样式 */
+.bar-price-free {
+  font-size: 44rpx;
+  font-weight: 700;
+  color: #52c41a; /* 绿色表示免费 */
+}
+
+.bar-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 16rpx;
-  padding: 24rpx 64rpx;
+  gap: 12rpx;
+  padding: 22rpx 48rpx;
   background: #00AEEF;
-  color: #ffffff;
   border-radius: 16rpx;
-  border: none;
-  transition: all 0.15s;
+  flex-shrink: 0;
 }
 
-.buy-btn:active {
+.bar-btn:active {
   transform: scale(0.98);
+  opacity: 0.9;
 }
 
-.buy-btn[disabled] {
+.bar-btn-disabled {
   background: #bdc8d1;
+}
+
+.bar-btn-disabled .bar-btn-icon-font,
+.bar-btn-disabled .bar-btn-text {
   color: #6e7881;
 }
 
-.buy-icon {
+.bar-btn-icon-font {
   font-size: 32rpx;
+  color: #ffffff;
 }
 
-.buy-text {
-  font-size: 28rpx;
+.bar-btn-text {
+  font-size: 26rpx;
   font-weight: 600;
+  color: #ffffff;
   letter-spacing: 4rpx;
-  text-transform: uppercase;
 }
 </style>

@@ -119,6 +119,7 @@ export const TemplateListPage = () => {
       ...record,
       buyPrice: Number(record.buyPrice),
       faceValue: Number(record.faceValue),
+      validDays: record.validDays || 30, // 默认30天
       validFrom: dayjs(record.validFrom),
       validUntil: dayjs(record.validUntil),
     });
@@ -222,12 +223,29 @@ export const TemplateListPage = () => {
     const { status, validUntil } = record;
     const isExpired = new Date(validUntil) < new Date();
 
+    // 计算距离过期还有多少天
+    const daysLeft = Math.ceil(
+      (new Date(validUntil).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+    );
+
     if (status === 'DISABLED') {
       return <Tag color="default" style={{ cursor: 'pointer' }} onClick={() => handleToggleStatus(record)}>已停用</Tag>;
     }
     if (isExpired || status === 'EXPIRED') {
       return <Tag color="error">已过期</Tag>;
     }
+
+    // 即将过期提示（7天内）
+    if (daysLeft <= 7 && daysLeft > 0 && status === 'ACTIVE') {
+      return (
+        <Tooltip title={`还有${daysLeft}天过期`}>
+          <Tag color="warning" style={{ cursor: 'pointer' }} onClick={() => handleToggleStatus(record)}>
+            即将过期
+          </Tag>
+        </Tooltip>
+      );
+    }
+
     return <Tag color="success" style={{ cursor: 'pointer' }} onClick={() => handleToggleStatus(record)}>上架中</Tag>;
   };
 
@@ -273,12 +291,20 @@ export const TemplateListPage = () => {
       ),
     },
     {
-      title: "有效期",
+      title: "销售期",
       width: 200,
       render: (_: any, record: CouponTemplate) => (
         <span style={{ fontSize: 12 }}>
           {dayjs(record.validFrom).format('YYYY-MM-DD')} ~ {dayjs(record.validUntil).format('YYYY-MM-DD')}
         </span>
+      ),
+    },
+    {
+      title: "有效天数",
+      dataIndex: "validDays",
+      width: 100,
+      render: (days: number) => (
+        <Tag color="purple">{days}天</Tag>
       ),
     },
     {

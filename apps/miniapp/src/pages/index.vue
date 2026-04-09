@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import { onShow } from '@dcloudio/uni-app'
 import { couponApi, merchantApi, newsApi } from '@/api/business'
+import { authApi } from '@/api/auth'
 import CustomTabBar from '@/components/CustomTabBar.vue'
 
 definePage({
@@ -69,9 +71,32 @@ function grabVoucher(voucher: any) {
 
 // 查看商户详情
 function goToMerchant(merchant: any) {
-  uni.showToast({
-    title: '商户详情功能开发中',
-    icon: 'none',
+  console.log('====== 首页商户点击 ======')
+  console.log('商户 ID:', merchant.id)
+  console.log('商户名称:', merchant.name)
+
+  if (!merchant.id) {
+    console.error('❌ 商户 ID 为空')
+    uni.showToast({
+      title: '商户ID无效',
+      icon: 'none',
+    })
+    return
+  }
+
+  console.log('✅ 准备跳转到商户详情页')
+  uni.navigateTo({
+    url: `/pages/merchant/detail?id=${merchant.id}`,
+    success: () => {
+      console.log('✅ 跳转成功')
+    },
+    fail: (err) => {
+      console.error('❌ 跳转失败:', err)
+      uni.showToast({
+        title: '跳转失败',
+        icon: 'none',
+      })
+    },
   })
 }
 
@@ -191,8 +216,49 @@ onMounted(() => {
   const systemInfo = uni.getSystemInfoSync()
   statusBarHeight.value = systemInfo.statusBarHeight || 0
 
+  // 检查核销员身份，如果是核销员则跳转到核销员首页
+  checkHandlerIdentity()
+
   loadHomeData()
 })
+
+// 页面显示时刷新用户信息
+onShow(async () => {
+  await refreshUserInfo()
+})
+
+// 刷新用户信息
+async function refreshUserInfo() {
+  const token = uni.getStorageSync('token')
+
+  // 如果已登录，刷新用户信息
+  if (token) {
+    try {
+      const res = await authApi.getProfile()
+      if (res.data) {
+        // 更新本地存储的用户信息
+        uni.setStorageSync('userInfo', res.data)
+        console.log('用户信息已刷新:', res.data)
+      }
+    } catch (error) {
+      console.error('刷新用户信息失败:', error)
+      // 如果获取用户信息失败（可能 token 过期），不强制跳转登录页
+      // 让用户在需要时主动登录
+    }
+  }
+}
+
+// 检查核销员身份
+function checkHandlerIdentity() {
+  const isHandler = uni.getStorageSync('isHandler')
+  const token = uni.getStorageSync('token')
+
+  // 已登录且是核销员，跳转到核销员首页
+  if (token && isHandler) {
+    console.log('用户是核销员，跳转到核销员首页')
+    uni.reLaunch({ url: '/pages/handler/index' })
+  }
+}
 
 // 页面下拉刷新
 onPullDownRefresh(() => {

@@ -23,12 +23,12 @@ const tabs: TabItem[] = [
     icon: 'icon-CRMEB-shanghu-mianxing',
   },
   {
-    pagePath: '/pages/home/index',
+    pagePath: '/pages/coupon/list',
     text: '优惠',
     icon: 'icon-youhuiquan',
   },
   {
-    pagePath: '/pages/profile/index',
+    pagePath: '/pages/wallet/index',
     text: '钱包',
     icon: 'icon-qianbao',
   },

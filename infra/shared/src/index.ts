@@ -478,9 +478,12 @@ export type NewsListQueryInput = z.infer<typeof NewsListQuerySchema>;
 export const CouponTemplateSchema = z.object({
   id: z.string(),
   title: z.string(),
-  buyPrice: z.number().positive(),
+  buyPrice: z.number().nonnegative(), // 修改：允许 0（免费券）
   faceValue: z.number().positive(),
+  settlementAmount: z.number().nonnegative().optional().nullable(), // 结算金额（可选）
   stock: z.number().int().nonnegative(),
+  claimLimit: z.number().int().positive().optional().nullable(), // 新增：每人限领数量
+  isFree: z.boolean().optional(), // 新增：是否为免费券
   merchantScope: z.array(z.string()),
   validFrom: z.date(),
   validUntil: z.date(),
@@ -494,9 +497,11 @@ export const CouponTemplateSchema = z.object({
 // 基础券模板 Schema（不含 refinement）
 const BaseCouponTemplateSchema = z.object({
   title: z.string().min(1, "券标题不能为空").max(100, "标题最多100字"),
-  buyPrice: z.number().positive("购买价格必须大于0"),
+  buyPrice: z.number().nonnegative("购买价格不能为负").min(0, "购买价格不能为负"), // 修改：允许 0（免费券）
   faceValue: z.number().positive("面值必须大于0"),
+  settlementAmount: z.number().nonnegative("结算金额不能为负").optional().nullable(), // 结算金额（可选）
   stock: z.number().int().nonnegative("库存不能为负").min(0, "库存不能为负"),
+  claimLimit: z.number().int().positive("每人限领数量必须为正整数").optional().nullable(), // 新增：每人限领数量
   merchantScope: z.array(z.string()).min(1, "至少选择一个适用商户"),
   validFrom: z.coerce.date(), // 自动将字符串转换为 Date
   validUntil: z.coerce.date(), // 自动将字符串转换为 Date
@@ -558,8 +563,9 @@ export const OrderSchema = z.object({
   refundId: z.string().optional().nullable(),
   refundReason: z.string().optional().nullable(),
   refundedAt: z.date().optional().nullable(),
-  price: z.number().positive(),
+  price: z.number().nonnegative(), // 修改：允许 0（免费券）
   faceValue: z.number().positive(),
+  isFreeOrder: z.boolean().optional(), // 新增：是否为免费领取订单
   isLocked: z.boolean(),
   createdAt: z.date(),
   updatedAt: z.date(),

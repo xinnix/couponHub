@@ -55,7 +55,7 @@ export class WechatService {
   }
 
   /**
-   * 解密微信手机号数据
+   * 解密微信手机号数据（旧版，已废弃）
    * 文档: https://developers.weixin.qq.com/miniprogram/dev/framework/open-ability/signature.html#%E5%8A%A0%E5%AF%86%E6%95%B0%E6%8D%AE%E8%A7%A3%E5%AF%86%E7%AE%97%E6%B3%95
    */
   async decryptPhoneNumber(
@@ -89,6 +89,44 @@ export class WechatService {
     } catch (error) {
       this.logger.error('手机号解密失败', error);
       throw new Error('手机号解密失败');
+    }
+  }
+
+  /**
+   * 获取用户手机号（新版 API，2023年后推荐）
+   * 文档: https://developers.weixin.qq.com/miniprogram/dev/OpenApiDoc/user-info/phone-number/getPhoneNumber.html
+   */
+  async getPhoneNumber(code: string): Promise<{
+    phoneNumber: string;
+    purePhoneNumber: string;
+    countryCode: string;
+    watermark: any;
+  }> {
+    const accessToken = await this.getAccessToken();
+    const url = `https://api.weixin.qq.com/wxa/business/getuserphonenumber?access_token=${accessToken}`;
+
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code }),
+      });
+
+      const data = await response.json();
+
+      if (data.errcode !== 0) {
+        throw new Error(`获取手机号失败: ${data.errmsg} (errcode: ${data.errcode})`);
+      }
+
+      return {
+        phoneNumber: data.phone_info.phoneNumber,
+        purePhoneNumber: data.phone_info.purePhoneNumber,
+        countryCode: data.phone_info.countryCode,
+        watermark: data.phone_info.watermark,
+      };
+    } catch (error) {
+      this.logger.error('获取手机号失败', error);
+      throw error;
     }
   }
 

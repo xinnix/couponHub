@@ -30,14 +30,13 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
 
   async onModuleInit() {
     try {
-      // TODO: 实际连接 Redis
-      // const Redis = require('ioredis');
-      // this.client = new Redis({
-      //   host: this.host,
-      //   port: this.port,
-      //   password: this.password,
-      // });
-      this.logger.log(`Redis 服务初始化 (${this.host}:${this.port})`);
+      const Redis = require('ioredis');
+      this.client = new Redis({
+        host: this.host,
+        port: this.port,
+        password: this.password,
+      });
+      this.logger.log(`Redis 服务已连接 (${this.host}:${this.port})`);
     } catch (error) {
       this.logger.error('Redis 连接失败', error);
     }
@@ -70,12 +69,11 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
 
     for (let i = 0; i < retryTimes; i++) {
       try {
-        // TODO: 实际使用 Redis SET NX EX 命令
-        // const result = await this.client.set(lockKey, lockValue, 'PX', ttl, 'NX');
-
-        // 模拟返回成功
-        this.logger.debug(`获取锁成功: ${lockKey}`);
-        return lockValue;
+        const result = await this.client.set(lockKey, lockValue, 'PX', ttl, 'NX');
+        if (result === 'OK') {
+          this.logger.debug(`获取锁成功: ${lockKey}`);
+          return lockValue;
+        }
       } catch (error) {
         this.logger.error(`获取锁失败 (重试 ${i + 1}/${retryTimes})`, error);
         if (i < retryTimes - 1) {
@@ -99,18 +97,19 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     const lockKey = `lock:${key}`;
 
     try {
-      // TODO: 实际使用 Lua 脚本确保原子性
-      // const script = `
-      //   if redis.call("get", KEYS[1]) == ARGV[1] then
-      //     return redis.call("del", KEYS[1])
-      //   else
-      //     return 0
-      //   end
-      // `;
-      // const result = await this.client.eval(script, 1, lockKey, value);
-
-      this.logger.debug(`释放锁成功: ${lockKey}`);
-      return true;
+      const script = `
+        if redis.call("get", KEYS[1]) == ARGV[1] then
+          return redis.call("del", KEYS[1])
+        else
+          return 0
+        end
+      `;
+      const result = await this.client.eval(script, 1, lockKey, value);
+      if (result === 1) {
+        this.logger.debug(`释放锁成功: ${lockKey}`);
+        return true;
+      }
+      return false;
     } catch (error) {
       this.logger.error(`释放锁失败: ${lockKey}`, error);
       return false;

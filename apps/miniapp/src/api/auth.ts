@@ -76,11 +76,8 @@ export const authApi = {
   /**
    * 获取微信手机号
    */
-  getPhoneNumber: (data: {
-    code: string;
-    encryptedData: string;
-    iv: string;
-  }) => http.post(API_ENDPOINTS.getPhoneNumber, data),
+  getPhoneNumber: (code: string) =>
+    http.post(API_ENDPOINTS.getPhoneNumber, { code }),
 
   /**
    * 检查核销员身份

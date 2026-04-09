@@ -207,7 +207,27 @@ const handleCouponClick = (id: string) => {
 };
 
 const handleMerchantClick = (id: string) => {
-  uni.navigateTo({ url: `/pages/merchant/detail?id=${id}` });
+  console.log('====== 首页商户点击 ======')
+  console.log('商户 ID:', id)
+  console.log('商户 ID 类型:', typeof id)
+
+  if (!id) {
+    console.error('❌ 商户 ID 为空')
+    uni.showToast({ title: '商户ID无效', icon: 'none' })
+    return
+  }
+
+  console.log('✅ 准备跳转到商户详情页')
+  uni.navigateTo({
+    url: `/pages/merchant/detail?id=${id}`,
+    success: () => {
+      console.log('✅ 跳转成功')
+    },
+    fail: (err) => {
+      console.error('❌ 跳转失败:', err)
+      uni.showToast({ title: '跳转失败', icon: 'none' })
+    }
+  })
 };
 
 const handleNewsClick = (id: string) => {

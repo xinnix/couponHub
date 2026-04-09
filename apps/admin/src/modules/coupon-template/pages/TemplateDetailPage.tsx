@@ -11,6 +11,7 @@ interface CouponTemplate {
   title: string;
   buyPrice: number;
   faceValue: number;
+  settlementAmount?: number; // 结算金额
   stock: number;
   merchantScope: string[];
   validFrom: Date;
@@ -142,10 +143,31 @@ export const TemplateDetailPage = () => {
             </Col>
           </Row>
 
+          {/* 结算金额单独一行显示 */}
+          <Row gutter={16} style={{ marginBottom: 24 }}>
+            <Col span={6}>
+              <Card>
+                <Statistic
+                  title="结算金额"
+                  value={template.settlementAmount || template.faceValue}
+                  prefix={<DollarOutlined />}
+                  precision={2}
+                  valueStyle={{ color: '#1890ff' }}
+                  suffix={!template.settlementAmount && '(面值)'}
+                />
+              </Card>
+            </Col>
+          </Row>
+
           <Descriptions bordered column={2}>
             <Descriptions.Item label="券标题" span={2}>{template.title}</Descriptions.Item>
             <Descriptions.Item label="状态">{getStatusTag()}</Descriptions.Item>
             <Descriptions.Item label="库存">{template.stock}</Descriptions.Item>
+            <Descriptions.Item label="结算金额">
+              {template.settlementAmount
+                ? `¥${template.settlementAmount.toFixed(2)}`
+                : `¥${template.faceValue.toFixed(2)} (使用面值)`}
+            </Descriptions.Item>
             <Descriptions.Item label="有效期开始">
               {dayjs(template.validFrom).format('YYYY-MM-DD HH:mm:ss')}
             </Descriptions.Item>

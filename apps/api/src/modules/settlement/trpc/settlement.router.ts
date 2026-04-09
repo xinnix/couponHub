@@ -80,14 +80,22 @@ export const settlementRouter = createCrudRouterWithCustom(
             orderNo: order.orderNo,
             price: Number(order.price),
             faceValue: Number(order.faceValue),
+            settlementAmount: order.template.settlementAmount
+              ? Number(order.template.settlementAmount)
+              : Number(order.faceValue), // fallback 到面值
             templateTitle: order.template.title,
             redeemedAt: order.redeemedAt,
             userNickname: order.user.nickname,
           }));
 
-          // 计算结算金额（使用 reduce 累加，然后转为 Decimal）
+          // 计算结算金额（使用 settlementAmount，为空时 fallback 到 faceValue）
           const totalAmount = orders.reduce(
-            (sum, order) => sum + Number(order.faceValue),
+            (sum, order) => {
+              const amount = order.template.settlementAmount
+                ? Number(order.template.settlementAmount)
+                : Number(order.faceValue);
+              return sum + amount;
+            },
             0,
           );
 

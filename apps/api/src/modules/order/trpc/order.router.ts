@@ -9,6 +9,7 @@ import { createCrudRouterWithCustom } from '../../../trpc/trpc.helper';
 import { protectedProcedure } from '../../../trpc/trpc';
 import { z } from 'zod';
 import { ConflictException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { verifyRedeemCode } from '../../../shared/utils/qrcode.util';
 
 /**
  * 生成订单号
@@ -64,10 +65,39 @@ export const orderRouter = createCrudRouterWithCustom(
           throw new ConflictException('库存不足');
         }
 
-        // 4. 生成订单号
+        // === 新增逻辑：领取上限检查 ===
+        // 4. 检查用户领取上限
+        if (template.claimLimit !== null && template.claimLimit > 0) {
+          // 查询用户已领取的该券数量（PAID 和 REDEEMED 状态）
+          const userClaimCount = await ctx.prisma.order.count({
+            where: {
+              userId,
+              templateId,
+              status: { in: ['PAID', 'REDEEMED'] }, // 只统计有效订单
+            },
+          });
+
+          if (userClaimCount >= template.claimLimit) {
+            throw new ConflictException(
+              `每人限领${template.claimLimit}张，您已领取${userClaimCount}张`
+            );
+          }
+        }
+
+        // === 新增逻辑：免费券判断 ===
+        // 5. 判断是否为免费券
+        const isFree = Number(template.buyPrice) === 0;
+        const initialStatus = isFree ? 'PAID' : 'UNPAID';
+
+        // 计算过期时间（免费券立即计算，付费券在支付成功后计算）
+        const expireAt = isFree
+          ? new Date(now.getTime() + template.validDays * 24 * 60 * 60 * 1000)
+          : undefined;
+
+        // 6. 生成订单号
         const orderNo = generateOrderNo();
 
-        // 5. 创建订单并扣减库存（事务）
+        // 7. 创建订单并扣减库存（事务）
         const order = await ctx.prisma.$transaction(async (tx) => {
           // 创建订单
           const newOrder = await tx.order.create({
@@ -75,9 +105,12 @@ export const orderRouter = createCrudRouterWithCustom(
               orderNo,
               userId,
               templateId,
-              status: 'UNPAID',
+              status: initialStatus, // 根据是否免费决定初始状态
               price: template.buyPrice,
               faceValue: template.faceValue,
+              isFreeOrder: isFree, // 新增字段标记
+              paidAt: isFree ? now : undefined, // 免费券直接记录领取时间
+              expireAt: expireAt, // 免费券立即设置过期时间
             },
             include: {
               template: true,
@@ -93,7 +126,11 @@ export const orderRouter = createCrudRouterWithCustom(
           return newOrder;
         });
 
-        return { order };
+        // === 新增返回值：needPayment 标识 ===
+        return {
+          order,
+          needPayment: !isFree, // 前端根据此字段判断是否需要支付
+        };
       }),
 
     // 我的券包
@@ -261,6 +298,60 @@ export const orderRouter = createCrudRouterWithCustom(
         });
 
         return updated;
+      }),
+
+    // 根据核销码获取订单信息（用于核销前确认）
+    getByCode: protectedProcedure
+      .input(z.object({ code: z.string() }))
+      .query(async ({ input, ctx }) => {
+        const { code } = input;
+
+        // 1. 解析核销码
+        const { orderId, valid, reason } = verifyRedeemCode(code);
+
+        if (!valid) {
+          throw new BadRequestException(reason || '二维码无效');
+        }
+
+        // 2. 查询订单信息
+        const order = await ctx.prisma.order.findUnique({
+          where: { id: orderId },
+          include: {
+            template: true,
+            merchant: true,
+            user: {
+              select: {
+                id: true,
+                nickname: true,
+                phone: true,
+              },
+            },
+          },
+        });
+
+        if (!order) {
+          throw new BadRequestException('订单不存在');
+        }
+
+        // 3. 验证订单状态（必须是已支付）
+        if (order.status !== 'PAID') {
+          throw new BadRequestException(`订单状态异常: ${order.status}`);
+        }
+
+        // 4. 返回订单信息
+        return {
+          orderId: order.id,
+          code: code,
+          orderNo: order.orderNo,
+          faceValue: Number(order.faceValue),
+          title: order.template?.title || '优惠券',
+          merchantName: order.merchant?.name || '商户',
+          couponType: '全场通用', // 可以从 template 中获取
+          expireDate: order.expireAt
+            ? new Date(order.expireAt).toLocaleDateString('zh-CN')
+            : '长期有效',
+          status: order.status,
+        };
       }),
   }),
   {

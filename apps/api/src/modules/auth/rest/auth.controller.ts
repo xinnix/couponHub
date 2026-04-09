@@ -69,18 +69,24 @@ export class AuthController {
     return this.authService.loginWithWechat(code);
   }
 
-  @Public()
   @Post('getPhoneNumber')
+  @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
   @ApiOperation({ summary: '获取微信手机号并关联核销员身份' })
   @ApiResponse({
     status: 200,
     description: '手机号获取成功',
   })
+  @ApiResponse({
+    status: 401,
+    description: '未授权',
+  })
   async getPhoneNumber(
-    @Body() body: { code: string; encryptedData: string; iv: string },
+    @CurrentUser() user: any,
+    @Body('code') code: string,
   ) {
-    return this.authService.getPhoneNumber(body);
+    return this.authService.getPhoneNumber(user.id, code);
   }
 
   @Public()
@@ -129,17 +135,21 @@ export class AuthController {
   @Post('me')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: '获取当前用户信息 (POST 兼容)' })
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: '更新当前用户信息' })
   @ApiResponse({
     status: 200,
-    description: '用户信息',
+    description: '用户信息更新成功',
   })
   @ApiResponse({
     status: 401,
     description: '未授权',
   })
-  async getCurrentUserPost(@CurrentUser() user: any) {
-    return this.authService.getCurrentUser(user.id);
+  async updateCurrentUser(
+    @CurrentUser() user: any,
+    @Body() body: { nickname?: string; avatar?: string },
+  ) {
+    return this.authService.updateUserProfile(user.id, body);
   }
 
   @Post('logout')

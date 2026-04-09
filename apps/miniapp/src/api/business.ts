@@ -83,6 +83,13 @@ export const orderApi = {
   },
 
   /**
+   * 根据核销码获取订单信息（用于核销前确认）
+   */
+  getByCode: (code: string) => {
+    return http.post('/orders/get-by-code', { code });
+  },
+
+  /**
    * 申请退款
    */
   requestRefund: (data: { orderId: string; reason: string }) => {

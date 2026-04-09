@@ -1,3 +1,109 @@
+<script setup lang="ts">
+import { onMounted, ref } from 'vue'
+import { authApi } from '@/api/auth'
+
+definePage({
+  style: {
+    navigationStyle: 'custom',
+    backgroundColor: '#F5FAFF',
+  },
+})
+
+const statusBarHeight = ref(0)
+const loading = ref(false)
+const agreed = ref(false)
+// 第一步完成后进入第二步
+const step = ref(1)
+
+onMounted(() => {
+  const systemInfo = uni.getSystemInfoSync()
+  statusBarHeight.value = systemInfo.statusBarHeight || 0
+})
+
+// 第一步：微信登录（获取 openid，建立用户）
+async function onLoginTap() {
+  if (!agreed.value) {
+    uni.showToast({ title: '请先同意用户协议和隐私政策', icon: 'none' })
+    return
+  }
+
+  loading.value = true
+  try {
+    const codeRes = await uni.login({ provider: 'weixin' })
+    const code = codeRes.code
+    if (!code)
+      throw new Error('获取登录凭证失败')
+
+    const res = await authApi.wechatLogin(code)
+
+    uni.setStorageSync('token', res.data.accessToken)
+    uni.setStorageSync('refreshToken', res.data.refreshToken)
+    uni.setStorageSync('userInfo', res.data.user)
+
+    // 如果用户已有手机号，跳过第二步直接进入
+    if (res.data.user.phone) {
+      navigateAfterLogin()
+    }
+    else {
+      step.value = 2
+    }
+  }
+  catch (error: any) {
+    uni.showToast({ title: error.message || '登录失败', icon: 'none' })
+  }
+  finally {
+    loading.value = false
+  }
+}
+
+// 第二步：获取手机号
+async function handleGetPhoneNumber(event: any) {
+  if (event.detail.errMsg !== 'getPhoneNumber:ok') {
+    // 用户拒绝授权，直接跳转首页
+    navigateAfterLogin()
+    return
+  }
+
+  loading.value = true
+  try {
+    await authApi.getPhoneNumber(event.detail.code)
+  }
+  catch (error) {
+    console.error('手机号授权失败', error)
+  }
+  finally {
+    loading.value = false
+    navigateAfterLogin()
+  }
+}
+
+// 跳过手机号，直接进入
+function skipPhoneNumber() {
+  navigateAfterLogin()
+}
+
+async function navigateAfterLogin() {
+  try {
+    const handlerRes = await authApi.checkHandlerStatus()
+    uni.setStorageSync('isHandler', handlerRes.data.isHandler)
+    uni.setStorageSync('handlerInfo', handlerRes.data.handler)
+
+    uni.showToast({ title: '登录成功', icon: 'success' })
+    setTimeout(() => {
+      if (handlerRes.data.isHandler) {
+        uni.reLaunch({ url: '/pages/handler/index' })
+      }
+      else {
+        uni.reLaunch({ url: '/pages/index' })
+      }
+    }, 1000)
+  }
+  catch {
+    uni.reLaunch({ url: '/pages/index' })
+  }
+}
+</script>
+
 <template>
   <view class="login-container">
     <!-- 背景品牌图案 -->
@@ -9,184 +115,76 @@
       opacity: 0.03,
     }" />
 
-    <!-- Logo 顶部栏 -->
-    <view class="top-bar-bg sticky top-0 z-50 w-full flex items-center px-4 py-3"
-      :style="{ paddingTop: `${statusBarHeight}px` }">
-      <image class="logo-image" src="/static/logo.png" mode="aspectFit" />
-    </view>
-
-    <!-- 主内容区域 -->
+    <!-- Logo -->
     <view class="login-content">
-      <view class="login-header">
-        <view class="brand-badge">
-          <text class="brand-icon">✨</text>
+      <!-- 第一步：微信登录 -->
+      <template v-if="step === 1">
+        <view class="login-header">
+          <image class="logo-image" src="/static/logo.png" mode="aspectFit" />
+          <text class="title text-on-surface font-extrabold">
+            欢迎回来
+          </text>
+          <text class="subtitle text-on-surface-variant">
+            登录开启精彩体验
+          </text>
         </view>
-        <text class="title text-on-surface font-extrabold">
-          欢迎回来
-        </text>
-        <text class="subtitle text-on-surface-variant">
-          登录开启精彩体验
-        </text>
-      </view>
 
-      <!-- 微信登录按钮 -->
-      <button
-        class="wechat-login-btn"
-        open-type="getPhoneNumber"
-        @getphonenumber="handleWechatLogin"
-        :loading="loading"
-      >
-        <view class="btn-content">
-          <text class="btn-icon iconfont icon-weixin" />
-          <text class="btn-text">微信一键登录</text>
+        <view class="wechat-login-btn" :class="{ disabled: loading }" @tap="onLoginTap">
+          <view class="btn-content">
+            <text class="btn-icon iconfont icon-weixin" />
+            <text class="btn-text">
+              微信一键登录
+            </text>
+          </view>
         </view>
-      </button>
 
-      <!-- 分割线 -->
-      <view class="divider">
-        <view class="divider-line" />
-        <text class="divider-text">安全便捷</text>
-        <view class="divider-line" />
-      </view>
+        <view class="agreement" @tap="agreed = !agreed">
+          <view class="checkbox" :class="{ checked: agreed }">
+            <text v-if="agreed" class="check-icon">✓</text>
+          </view>
+          <view class="agreement-text">
+            <text class="tip">我已阅读并同意</text>
+            <text class="link">《用户协议》</text>
+            <text class="tip">和</text>
+            <text class="link">《隐私政策》</text>
+          </view>
+        </view>
+      </template>
 
-      <!-- 功能说明 -->
-      <view class="features">
-        <view class="feature-item">
-          <text class="feature-icon">🎁</text>
-          <text class="feature-text">领取专属优惠券</text>
+      <!-- 第二步：获取手机号 -->
+      <template v-if="step === 2">
+        <view class="login-header">
+          <view class="phone-icon-wrap">
+            <text class="phone-icon">📱</text>
+          </view>
+          <text class="title text-on-surface font-extrabold">
+            绑定手机号
+          </text>
+          <text class="subtitle text-on-surface-variant">
+            绑定手机号以获得更好的服务体验
+          </text>
         </view>
-        <view class="feature-item">
-          <text class="feature-icon">🏪</text>
-          <text class="feature-text">探索优质商户</text>
-        </view>
-        <view class="feature-item">
-          <text class="feature-icon">💳</text>
-          <text class="feature-text">便捷钱包管理</text>
-        </view>
-      </view>
 
-      <!-- 底部协议 -->
-      <view class="footer">
-        <text class="tip">登录即表示同意</text>
-        <text class="link">《用户协议》</text>
-        <text class="tip">和</text>
-        <text class="link">《隐私政策》</text>
-      </view>
+        <button
+          class="wechat-login-btn phone-btn"
+          open-type="getPhoneNumber"
+          :loading="loading"
+          @getphonenumber="handleGetPhoneNumber"
+        >
+          <view class="btn-content">
+            <text class="btn-text">
+              授权手机号
+            </text>
+          </view>
+        </button>
+
+        <view class="skip-btn" @tap="skipPhoneNumber">
+          <text class="skip-text">暂不绑定，先去看看</text>
+        </view>
+      </template>
     </view>
   </view>
 </template>
-
-<script setup lang="ts">
-import { onMounted, ref } from 'vue';
-import { authApi } from '@/api/auth';
-
-definePage({
-  style: {
-    navigationStyle: 'custom',
-    backgroundColor: '#F5FAFF',
-  },
-})
-
-// 状态栏高度
-const statusBarHeight = ref(0);
-
-const loading = ref(false);
-
-// 页面加载时获取系统信息
-onMounted(() => {
-  const systemInfo = uni.getSystemInfoSync();
-  statusBarHeight.value = systemInfo.statusBarHeight || 0;
-});
-
-const handleWechatLogin = async (event: any) => {
-  loading.value = true;
-
-  try {
-    // 1. 获取微信 code
-    const codeRes = await uni.login({ provider: 'weixin' });
-    let code = codeRes.code;
-
-    if (!code) {
-      throw new Error('获取登录凭证失败');
-    }
-
-    // 2. 处理手机号授权（仅在用户同意时）
-    let needNewCode = false;
-    if (event.detail && event.detail.errMsg === 'getPhoneNumber:ok') {
-      if (event.detail.encryptedData && event.detail.iv) {
-        try {
-          const phoneData = await authApi.getPhoneNumber({
-            code, // 使用当前 code 解密手机号
-            encryptedData: event.detail.encryptedData,
-            iv: event.detail.iv
-          });
-          // User.phone 已在后端更新，handlerId 也已设置
-          console.log('手机号授权成功', phoneData);
-          // ⚠️ 重要：code 已被消耗，需要重新获取
-          needNewCode = true;
-        } catch (error) {
-          console.error('手机号授权失败', error);
-          // 继续登录流程，但不关联核销员身份
-          // code 可能已被消耗，保险起见重新获取
-          needNewCode = true;
-        }
-      }
-    } else if (event.detail && event.detail.errMsg) {
-      console.log('用户拒绝授权手机号', event.detail.errMsg);
-      // 用户拒绝授权，继续登录流程
-    }
-
-    // 3. 如果 code 已被消耗，重新获取
-    if (needNewCode) {
-      const loginRes = await uni.login({ provider: 'weixin' });
-      code = loginRes.code;
-
-      if (!code) {
-        throw new Error('获取登录凭证失败');
-      }
-    }
-
-    // 4. 发送到后端进行登录
-    const res = await authApi.wechatLogin(code);
-
-    // 5. 存储 token
-    uni.setStorageSync('token', res.data.accessToken);
-    uni.setStorageSync('refreshToken', res.data.refreshToken);
-    uni.setStorageSync('userInfo', res.data.user);
-
-    // 6. 检查核销员身份
-    try {
-      const handlerRes = await authApi.checkHandlerStatus();
-      uni.setStorageSync('isHandler', handlerRes.data.isHandler);
-      uni.setStorageSync('handlerInfo', handlerRes.data.handler);
-
-      // 7. 提示并跳转
-      uni.showToast({
-        title: '登录成功',
-        icon: 'success',
-      });
-
-      setTimeout(() => {
-        if (handlerRes.data.isHandler) {
-          uni.reLaunch({ url: '/pages/handler/index' });
-        } else {
-          uni.reLaunch({ url: '/pages/index' });
-        }
-      }, 1000);
-    } catch (error) {
-      // 核销员检查失败，默认跳转首页
-      uni.reLaunch({ url: '/pages/index' });
-    }
-  } catch (error: any) {
-    uni.showToast({
-      title: error.message || '登录失败',
-      icon: 'none',
-    });
-  } finally {
-    loading.value = false;
-  }
-};
-</script>
 
 <style lang="scss" scoped>
 /* 登录容器 */
@@ -209,15 +207,12 @@ const handleWechatLogin = async (event: any) => {
   pointer-events: none;
 }
 
-/* 顶部栏背景 */
-.top-bar-bg {
-  background: rgba(245, 250, 255, 0.9);
-}
-
 /* Logo 图片 */
 .logo-image {
-  width: 200rpx;
-  height: 80rpx;
+  width: 280rpx;
+  height: 112rpx;
+  margin: 0 auto 40rpx;
+  display: block;
 }
 
 /* 主内容区域 */
@@ -234,24 +229,6 @@ const handleWechatLogin = async (event: any) => {
 .login-header {
   text-align: center;
   margin-bottom: 80rpx;
-}
-
-/* 品牌徽章 */
-.brand-badge {
-  width: 120rpx;
-  height: 120rpx;
-  background: rgba(255, 255, 255, 0.9);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: 0 auto 40rpx;
-  box-shadow: 0 8rpx 32rpx rgba(23, 28, 32, 0.04);
-  border: 2rpx solid rgba(189, 200, 209, 0.2);
-}
-
-.brand-icon {
-  font-size: 48px;
 }
 
 /* 标题 */
@@ -303,69 +280,84 @@ const handleWechatLogin = async (event: any) => {
   color: #ffffff;
 }
 
-/* 分割线 */
-.divider {
-  width: 100%;
+/* 协议勾选 */
+.agreement {
+  display: flex;
+  align-items: flex-start;
+  gap: 12rpx;
+  margin-top: 32rpx;
+  padding: 0 8rpx;
+}
+
+.checkbox {
+  width: 36rpx;
+  height: 36rpx;
+  min-width: 36rpx;
+  border-radius: 8rpx;
+  border: 2rpx solid rgba(189, 200, 209, 0.6);
   display: flex;
   align-items: center;
-  gap: 20rpx;
-  margin-bottom: 40rpx;
+  justify-content: center;
+  margin-top: 2rpx;
+  transition: all 0.2s ease;
+
+  &.checked {
+    background: #00AEEF;
+    border-color: #00AEEF;
+  }
 }
 
-.divider-line {
-  flex: 1;
-  height: 2rpx;
-  background: rgba(189, 200, 209, 0.3);
+.check-icon {
+  font-size: 22rpx;
+  color: #ffffff;
+  font-weight: 700;
 }
 
-.divider-text {
-  font-size: 24rpx;
-  color: rgba(110, 120, 129, 0.8);
-  font-weight: 500;
-}
-
-/* 功能说明 */
-.features {
-  width: 100%;
+.agreement-text {
   display: flex;
-  flex-direction: column;
-  gap: 24rpx;
-  margin-bottom: 60rpx;
+  flex-wrap: wrap;
+  gap: 0;
+  line-height: 40rpx;
 }
 
-.feature-item {
+/* 手机号图标 */
+.phone-icon-wrap {
+  width: 120rpx;
+  height: 120rpx;
   background: rgba(255, 255, 255, 0.9);
-  border-radius: 24rpx;
-  padding: 24rpx 32rpx;
+  border-radius: 50%;
   display: flex;
   align-items: center;
-  gap: 20rpx;
-  box-shadow: 0 4rpx 16rpx rgba(23, 28, 32, 0.03);
+  justify-content: center;
+  margin: 0 auto 40rpx;
+  box-shadow: 0 8rpx 32rpx rgba(23, 28, 32, 0.04);
   border: 2rpx solid rgba(189, 200, 209, 0.2);
 }
 
-.feature-icon {
-  font-size: 32px;
+.phone-icon {
+  font-size: 48px;
 }
 
-.feature-text {
+.phone-btn {
+  background: #00AEEF;
+  color: #ffffff;
+  border: none;
+  margin-bottom: 24rpx;
+
+  &::after {
+    border: none;
+  }
+}
+
+/* 跳过按钮 */
+.skip-btn {
+  padding: 20rpx 0;
+}
+
+.skip-text {
   font-size: 28rpx;
-  color: rgba(110, 120, 129, 1);
+  color: rgba(110, 120, 129, 0.8);
   font-weight: 500;
-}
-
-/* 底部协议 */
-.footer {
-  position: fixed;
-  bottom: 40rpx;
-  left: 0;
-  right: 0;
-  text-align: center;
-  padding-bottom: env(safe-area-inset-bottom);
-  display: flex;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 8rpx;
 }
 
 .tip {

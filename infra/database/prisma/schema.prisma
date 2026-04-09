@@ -329,10 +329,17 @@ model CouponTemplate {
   title         String
   buyPrice      Decimal  @db.Decimal(10, 2) // 购买价格
   faceValue     Decimal  @db.Decimal(10, 2) // 面值
+  settlementAmount Decimal? @db.Decimal(10, 2) // 结算金额（可选，为空时使用面值）
   stock         Int
+
+  // 新增字段：免费领取和领取限制
+  claimLimit    Int?     @default(1)    // 每人限领数量（null=无限制，默认1张）
+  isFree        Boolean  @default(false) // 是否为免费券（辅助查询字段）
+
   merchantScope Json // 适用商户 ID 数组
   validFrom     DateTime
   validUntil    DateTime
+  validDays     Int      @default(30) // 购买后X天内有效，默认30天
   description   String?
   usageRules    String? // 使用规则说明（文本描述）
 
@@ -354,6 +361,8 @@ model CouponTemplate {
   @@index([status])
   @@index([validFrom, validUntil])
   @@index([createdById])
+  @@index([isFree])              // 新增索引：便于查询免费券
+  @@index([status, isFree])      // 新增复合索引：优化小程序端查询
   @@map("coupon_templates")
 }
 
@@ -369,8 +378,9 @@ model Order {
   status     String @default("UNPAID") // UNPAID, PAID, REDEEMED, REFUNDING, REFUNDED, EXPIRED
 
   // 支付信息
-  payId  String?   @unique // 微信支付订单号
-  paidAt DateTime?
+  payId    String?   @unique // 微信支付订单号
+  paidAt   DateTime?
+  expireAt DateTime? // 订单过期时间（paidAt + validDays天）
 
   // 核销信息
   redeemMerchantId String?
@@ -384,6 +394,9 @@ model Order {
 
   price     Decimal @db.Decimal(10, 2)
   faceValue Decimal @db.Decimal(10, 2)
+
+  // 新增字段：标记免费领取订单
+  isFreeOrder Boolean @default(false) // 标记是否为免费领取订单
 
   // 结算锁定标记
   isLocked Boolean @default(false)
@@ -399,6 +412,8 @@ model Order {
   @@index([userId])
   @@index([status])
   @@index([templateId])
+  @@index([userId, templateId])   // 新增复合索引：优化领取统计查询
+  @@index([status, expireAt])     // 新增复合索引：优化订单过期查询
   @@index([payId])
   @@index([orderNo])
   @@index([redeemMerchantId])

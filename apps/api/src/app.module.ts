@@ -19,6 +19,7 @@ import { RedemptionModule } from "./modules/redemption/module";
 import { SettlementModule } from "./modules/settlement/module";
 import { UploadModule } from "./modules/upload/module";
 import { HandlerModule } from "./modules/handler/module";
+import { SchedulerModule } from "./modules/scheduler/module";
 
 // 全局过滤器/拦截器
 import { APP_FILTER, APP_INTERCEPTOR } from "@nestjs/core";
@@ -49,6 +50,7 @@ import { FileStorageService } from "./shared/services/file-storage.service";
     SettlementModule,
     UploadModule,
     HandlerModule,
+    SchedulerModule,
   ],
   providers: [
     Reflector,

@@ -11,6 +11,7 @@ interface SnapshotData {
     templateId: string;
     price: number;
     faceValue: number;
+    settlementAmount: number; // 结算金额
     redeemedAt: string;
   }>;
   generatedAt: string;
@@ -55,6 +56,15 @@ export const SettlementSnapshot: React.FC<SettlementSnapshotProps> = ({ snapshot
       ),
     },
     {
+      title: '结算金额',
+      dataIndex: 'settlementAmount',
+      key: 'settlementAmount',
+      width: 100,
+      render: (value: any) => (
+        <span style={{ color: '#1890ff', fontWeight: 'bold' }}>{formatCurrency(value)}</span>
+      ),
+    },
+    {
       title: '核销时间',
       dataIndex: 'redeemedAt',
       key: 'redeemedAt',
@@ -66,6 +76,7 @@ export const SettlementSnapshot: React.FC<SettlementSnapshotProps> = ({ snapshot
   // 计算汇总
   const totalAmount = snapshotData.orders.reduce((sum, order) => sum + toNumber(order.price), 0);
   const totalFaceValue = snapshotData.orders.reduce((sum, order) => sum + toNumber(order.faceValue), 0);
+  const totalSettlementAmount = snapshotData.orders.reduce((sum, order) => sum + toNumber(order.settlementAmount), 0);
 
   return (
     <div>
@@ -88,6 +99,12 @@ export const SettlementSnapshot: React.FC<SettlementSnapshotProps> = ({ snapshot
               {formatCurrency(totalFaceValue)}
             </div>
             <div style={{ fontSize: 14, color: '#8c8c8c' }}>总面值</div>
+          </div>
+          <div>
+            <div style={{ fontSize: 24, fontWeight: 'bold', color: '#1890ff' }}>
+              {formatCurrency(totalSettlementAmount)}
+            </div>
+            <div style={{ fontSize: 14, color: '#8c8c8c' }}>总结算金额</div>
           </div>
         </div>
       </Card>

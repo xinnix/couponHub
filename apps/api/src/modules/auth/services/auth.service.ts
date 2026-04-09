@@ -364,6 +364,23 @@ export class AuthService {
   }
 
   /**
+   * 📝 更新用户信息
+   */
+  async updateUserProfile(userId: string, data: { nickname?: string; avatar?: string; phone?: string }) {
+    const user = await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        ...(data.nickname && { nickname: data.nickname }),
+        ...(data.avatar && { avatar: data.avatar }),
+        ...(data.phone && { phone: data.phone }),
+      },
+    });
+
+    const { passwordHash: _, ...sanitizedUser } = user;
+    return sanitizedUser;
+  }
+
+  /**
    * 🚪 用户登出
    */
   async logout(userId: string, refreshToken: string) {
@@ -434,32 +451,25 @@ export class AuthService {
   }
 
   /**
-   * 📱 获取微信手机号并关联核销员身份
+   * 📱 获取微信手机号并关联核销员身份（新版 API）
    */
-  async getPhoneNumber(data: { code: string; encryptedData: string; iv: string }) {
-    // 1. 获取 session_key 和 openid
-    const { sessionKey, openid } = await this.wechatService.code2Session(data.code);
+  async getPhoneNumber(userId: string, code: string) {
+    // 1. 通过微信 API 获取手机号
+    const { phoneNumber } = await this.wechatService.getPhoneNumber(code);
 
-    // 2. 解密手机号
-    const { phoneNumber } = await this.wechatService.decryptPhoneNumber(
-      data.encryptedData,
-      data.iv,
-      sessionKey,
-    );
-
-    // 3. 更新 User.phone
+    // 2. 更新 User.phone
     const user = await this.prisma.user.update({
-      where: { openid },
+      where: { id: userId },
       data: { phone: phoneNumber },
     });
 
-    // 4. 匹配核销员身份
+    // 3. 匹配核销员身份
     const handler = await this.prisma.handler.findUnique({
       where: { phone: phoneNumber },
       include: { merchant: true },
     });
 
-    // 5. 如果匹配，设置 User.handlerId
+    // 4. 如果匹配，设置 User.handlerId
     if (handler && handler.isActive) {
       await this.prisma.user.update({
         where: { id: user.id },

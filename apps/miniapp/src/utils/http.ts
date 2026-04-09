@@ -59,17 +59,7 @@ class HttpClient {
             uni.removeStorageSync('refreshToken');
             uni.removeStorageSync('userInfo');
 
-            // 2. 提示用户
-            uni.showModal({
-              title: '登录已过期',
-              content: '请重新登录',
-              showCancel: false,
-              success: () => {
-                // 3. 跳转到登录页
-                uni.reLaunch({ url: '/pages/login' });
-              },
-            });
-
+            // 2. 不弹窗，让页面自己处理未登录状态
             reject(res.data);
             return;
           }

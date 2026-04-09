@@ -454,53 +454,57 @@ export const authRouter = router({
       return { success: true };
     }),
 
-  // 解密微信手机号并更新 User.phone
-  getPhoneNumber: publicProcedure
+  // 获取微信手机号并更新 User.phone（新版 API）
+  getPhoneNumber: protectedProcedure
     .input(z.object({
       code: z.string(),
-      encryptedData: z.string(),
-      iv: z.string(),
     }))
     .mutation(async ({ ctx, input }) => {
-      // 1. 获取 session_key
+      // 1. 获取 access_token
       const appId = process.env.WX_APP_ID;
       const appSecret = process.env.WX_APP_SECRET;
-      const url = `https://api.weixin.qq.com/sns/jscode2session?appid=${appId}&secret=${appSecret}&js_code=${input.code}&grant_type=authorization_code`;
+      const tokenUrl = `https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid=${appId}&secret=${appSecret}`;
 
-      const wechatRes = await fetch(url);
-      const wechatData = await wechatRes.json();
+      const tokenRes = await fetch(tokenUrl);
+      const tokenData = await tokenRes.json();
 
-      if (wechatData.errcode) {
+      if (tokenData.errcode) {
         throw new TRPCError({
           code: 'BAD_REQUEST',
-          message: `微信登录失败: ${wechatData.errmsg}`,
+          message: `获取 access_token 失败: ${tokenData.errmsg}`,
         });
       }
 
-      const { session_key, openid } = wechatData;
+      const accessToken = tokenData.access_token;
 
-      // 2. 解密手机号
-      const crypto = require('crypto');
-      const decipher = crypto.createDecipheriv(
-        'aes-128-cbc',
-        Buffer.from(session_key, 'base64'),
-        Buffer.from(input.iv, 'base64'),
-      );
+      // 2. 获取手机号
+      const phoneUrl = `https://api.weixin.qq.com/wxa/business/getuserphonenumber?access_token=${accessToken}`;
+      const phoneRes = await fetch(phoneUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: input.code }),
+      });
 
-      let decoded = decipher.update(Buffer.from(input.encryptedData, 'base64'));
-      decoded = Buffer.concat([decoded, decipher.final()]);
+      const phoneData = await phoneRes.json();
 
-      const phoneData = JSON.parse(decoded.toString());
+      if (phoneData.errcode !== 0) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: `获取手机号失败: ${phoneData.errmsg}`,
+        });
+      }
+
+      const phoneNumber = phoneData.phone_info.phoneNumber;
 
       // 3. 更新 User.phone
       const user = await ctx.prisma.user.update({
-        where: { openid },
-        data: { phone: phoneData.phoneNumber },
+        where: { id: ctx.user.id },
+        data: { phone: phoneNumber },
       });
 
       // 4. 匹配核销员身份
       const handler = await ctx.prisma.handler.findUnique({
-        where: { phone: phoneData.phoneNumber },
+        where: { phone: phoneNumber },
         include: { merchant: true },
       });
 
@@ -513,7 +517,7 @@ export const authRouter = router({
       }
 
       return {
-        phoneNumber: phoneData.phoneNumber,
+        phoneNumber,
         isHandler: handler && handler.isActive,
         handler: handler ? {
           id: handler.id,

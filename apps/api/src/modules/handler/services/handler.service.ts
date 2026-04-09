@@ -43,7 +43,7 @@ export class HandlerService extends BaseService<'Handler'> {
   }
 
   /**
-   * 创建核销员
+   * 创建核销员并关联同名手机号用户
    */
   async createHandler(data: CreateHandler) {
     // 验证手机号格式
@@ -65,7 +65,7 @@ export class HandlerService extends BaseService<'Handler'> {
       throw new Error('商户不存在');
     }
 
-    return this.prisma.handler.create({
+    const handler = await this.prisma.handler.create({
       data: {
         name: data.name,
         phone: data.phone,
@@ -74,10 +74,15 @@ export class HandlerService extends BaseService<'Handler'> {
       },
       include: { merchant: true },
     });
+
+    // 关联同手机号的用户
+    await this.linkUsersByPhone(handler.id, data.phone);
+
+    return handler;
   }
 
   /**
-   * 更新核销员
+   * 更新核销员，手机号变更时同步关联用户
    */
   async updateHandler(id: string, data: UpdateHandler) {
     // 如果更新手机号，验证格式和唯一性
@@ -93,11 +98,30 @@ export class HandlerService extends BaseService<'Handler'> {
       }
     }
 
-    return this.prisma.handler.update({
+    // 如果手机号变更，先解除旧关联再建立新关联
+    if (data.phone) {
+      const oldHandler = await this.prisma.handler.findUnique({ where: { id } });
+      if (oldHandler && oldHandler.phone !== data.phone) {
+        // 解除旧手机号关联的用户
+        await this.prisma.user.updateMany({
+          where: { handlerId: id, phone: oldHandler.phone },
+          data: { handlerId: null },
+        });
+      }
+    }
+
+    const handler = await this.prisma.handler.update({
       where: { id },
       data,
       include: { merchant: true },
     });
+
+    // 关联新手机号对应的用户
+    if (data.phone) {
+      await this.linkUsersByPhone(id, data.phone);
+    }
+
+    return handler;
   }
 
   /**
@@ -116,11 +140,33 @@ export class HandlerService extends BaseService<'Handler'> {
 
   /**
    * 删除核销员（软删除：设置 isActive = false）
+   * 同时解除与用户的关联
    */
   async deleteHandler(id: string) {
+    // 解除关联用户
+    await this.prisma.user.updateMany({
+      where: { handlerId: id },
+      data: { handlerId: null },
+    });
+
     return this.prisma.handler.update({
       where: { id },
       data: { isActive: false },
     });
+  }
+
+  /**
+   * 根据手机号关联用户到核销员
+   */
+  private async linkUsersByPhone(handlerId: string, phone: string) {
+    const users = await this.prisma.user.findMany({
+      where: { phone },
+    });
+    if (users.length > 0) {
+      await this.prisma.user.updateMany({
+        where: { id: { in: users.map(u => u.id) } },
+        data: { handlerId },
+      });
+    }
   }
 }

@@ -153,17 +153,33 @@ export class PaymentController {
         return { code: 'SUCCESS', message: 'OK' };
       }
 
+      // 获取券模板信息以计算过期时间
+      const template = await this.prisma.couponTemplate.findUnique({
+        where: { id: order.templateId },
+      });
+
+      if (!template) {
+        this.logger.error(`订单关联的券模板不存在: ${order.templateId}`);
+        throw new BadRequestException('Template not found');
+      }
+
+      // 计算过期时间：paidAt + validDays 天
+      const paidAt = payment.paidAt || new Date();
+      const expireAt = new Date(paidAt);
+      expireAt.setDate(expireAt.getDate() + template.validDays);
+
       await this.prisma.order.update({
         where: { id: payment.orderId },
         data: {
           status: 'PAID',
           payId: payment.transactionId,
-          paidAt: payment.paidAt,
+          paidAt: paidAt,
+          expireAt: expireAt, // 设置订单过期时间
         },
       });
 
       this.logger.log(
-        `支付回调处理成功: ${payment.orderNo} → ${payment.transactionId}`,
+        `支付回调处理成功: ${payment.orderNo} → ${payment.transactionId}, 过期时间: ${expireAt.toISOString()}`,
       );
 
       // 微信要求返回此格式

@@ -1,46 +1,66 @@
 <template>
-  <view class="handler-container">
-    <!-- 核销员信息卡片 -->
-    <view class="handler-card">
-      <view class="handler-header">
-        <text class="handler-name">{{ handlerName }}</text>
-        <text class="handler-phone">{{ handlerPhone }}</text>
-      </view>
-      <view class="merchant-info">
-        <text class="merchant-name">{{ merchantName }}</text>
-        <text class="merchant-category">{{ merchantCategory }}</text>
-      </view>
+  <view class="handler-page">
+    <!-- 加载状态 -->
+    <view v-if="loading" class="loading-container">
+      <text class="loading-text">加载中...</text>
     </view>
 
-    <!-- 统计数据 -->
-    <view class="stats-container">
-      <view class="stat-item">
-        <text class="stat-value">{{ stats.totalRedemptions }}</text>
-        <text class="stat-label">总核销数</text>
+    <!-- 主内容 -->
+    <view v-else>
+      <!-- 欢迎信息 -->
+      <view class="welcome-section">
+        <text class="welcome-text">欢迎回来，</text>
+        <text class="welcome-name">{{ merchantName }}店员，你好</text>
       </view>
-      <view class="stat-item">
-        <text class="stat-value">{{ stats.todayRedemptions }}</text>
-        <text class="stat-label">今日核销</text>
-      </view>
-    </view>
 
-    <!-- 功能按钮 -->
-    <view class="actions-container">
-      <button class="action-btn primary" @click="goScan">
-        扫码核销
+      <!-- 数据统计卡片 -->
+      <view class="stats-grid">
+        <view class="stat-card">
+          <view class="stat-header">
+            <text class="icon-font icon-check">✓</text>
+            <text class="stat-label">今日已核销</text>
+          </view>
+          <view class="stat-value-group">
+            <text class="stat-number">{{ stats.todayRedemptions }}</text>
+            <text class="stat-unit">张</text>
+          </view>
+        </view>
+
+        <view class="stat-card">
+          <view class="stat-header">
+            <text class="icon-font icon-wallet">¥</text>
+            <text class="stat-label">本月预估结算</text>
+          </view>
+          <view class="stat-value-group">
+            <text class="stat-number">{{ stats.monthEstimate }}</text>
+            <text class="stat-unit">元</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- 扫码核销按钮 -->
+      <button class="scan-button" @click="goScan" hover-class="scan-button-active">
+        <text class="scan-text">扫码核销</text>
       </button>
-      <button class="action-btn" @click="goRecords">
-        查看记录
-      </button>
-    </view>
 
-    <!-- 最近核销记录 -->
-    <view v-show="hasRecentOrders" class="recent-container">
-      <text class="recent-title">最近核销记录</text>
-      <view class="recent-list">
-        <view v-for="order in recentOrders" :key="order.id" class="recent-item">
-          <text class="order-id">{{ order.orderNo }}</text>
-          <text class="order-time">{{ order.redeemedAt }}</text>
+      <!-- 最近核销流水 -->
+      <view class="records-section">
+        <view class="records-header">
+          <text class="records-title">最近核销流水</text>
+          <text class="records-link" @click="goRecords">查看全部</text>
+        </view>
+
+        <view class="records-list">
+          <view v-for="record in recentRecords" :key="record.id" class="record-item">
+            <view class="record-info">
+              <text class="record-name">{{ record.couponName }}</text>
+              <view class="record-meta-row">
+                <text class="record-meta">尾号 {{ record.tailNo }} · {{ record.time }}</text>
+                <text class="record-handler">{{ record.handlerName }}</text>
+              </view>
+            </view>
+            <text class="record-amount">{{ record.amount }}</text>
+          </view>
         </view>
       </view>
     </view>
@@ -48,61 +68,140 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted } from 'vue';
+import { onShow } from '@dcloudio/uni-app';
+import { authApi } from '@/api/auth';
+import { redemptionApi } from '@/api/business';
 
-const handlerInfo = ref<any>(null);
+interface HandlerInfo {
+  id: string;
+  name: string;
+  phone: string;
+  merchantId: string;
+  merchantName: string;
+  merchantCategory: string;
+  merchantArea: string;
+}
+
+interface RedemptionRecord {
+  id: string;
+  couponName: string;
+  tailNo: string;
+  time: string;
+  amount: string;
+  handlerName: string;
+}
+
+const handlerInfo = ref<HandlerInfo | null>(null);
+const merchantName = ref('');
 const stats = ref({
-  totalRedemptions: 0,
   todayRedemptions: 0,
-});
-const recentOrders = ref<any[]>([]);
-
-// 计算属性 - 安全访问数据
-const handlerName = computed(() => {
-  if (handlerInfo.value && handlerInfo.value.name) {
-    return handlerInfo.value.name;
-  }
-  return '核销员';
+  monthEstimate: 0,
 });
 
-const handlerPhone = computed(() => {
-  if (handlerInfo.value && handlerInfo.value.phone) {
-    return handlerInfo.value.phone;
-  }
-  return '';
-});
-
-const merchantName = computed(() => {
-  if (handlerInfo.value && handlerInfo.value.merchantName) {
-    return handlerInfo.value.merchantName;
-  }
-  return '商户';
-});
-
-const merchantCategory = computed(() => {
-  if (handlerInfo.value && handlerInfo.value.merchantCategory) {
-    return handlerInfo.value.merchantCategory;
-  }
-  return '';
-});
-
-const hasRecentOrders = computed(() => {
-  return recentOrders.value && recentOrders.value.length > 0;
-});
+const recentRecords = ref<RedemptionRecord[]>([]);
+const loading = ref(false);
 
 onMounted(async () => {
-  // 从本地存储获取核销员信息
-  handlerInfo.value = uni.getStorageSync('handlerInfo');
-
-  if (!handlerInfo.value) {
-    uni.showToast({ title: '请先登录', icon: 'none' });
-    uni.reLaunch({ url: '/pages/login' });
-    return;
-  }
-
-  // TODO: 调用后端 API 获取统计数据和最近记录
-  // 这里可以添加实际的 API 调用
+  await loadHandlerData();
 });
+
+// 页面显示时刷新数据
+onShow(async () => {
+  // 如果已经加载过数据，刷新统计数据
+  if (handlerInfo.value) {
+    await loadHandlerData();
+  }
+});
+
+async function loadHandlerData() {
+  loading.value = true;
+  try {
+    // 1. 检查核销员身份
+    const handlerStatusRes = await authApi.checkHandlerStatus();
+
+    if (!handlerStatusRes.data?.isHandler || !handlerStatusRes.data?.handler) {
+      uni.showToast({ title: '您不是核销员', icon: 'none' });
+      uni.reLaunch({ url: '/pages/index' });
+      return;
+    }
+
+    handlerInfo.value = handlerStatusRes.data.handler;
+    merchantName.value = handlerInfo.value.merchantName;
+
+    // 保存核销员信息到本地
+    uni.setStorageSync('handlerInfo', handlerInfo.value);
+    uni.setStorageSync('isHandler', true);
+
+    // 2. 获取核销记录（按商户筛选）
+    const today = new Date();
+    const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+
+    const [todayRecords, monthRecords] = await Promise.all([
+      redemptionApi.getRecords({
+        merchantId: handlerInfo.value.merchantId,
+        startDate: startOfDay.toISOString(),
+        pageSize: 100,
+      }),
+      redemptionApi.getRecords({
+        merchantId: handlerInfo.value.merchantId,
+        startDate: startOfMonth.toISOString(),
+        pageSize: 100,
+      }),
+    ]);
+
+    // 3. 计算统计数据
+    if (todayRecords.data?.data) {
+      stats.value.todayRedemptions = todayRecords.data.data.length;
+    }
+
+    if (monthRecords.data?.data) {
+      stats.value.monthEstimate = monthRecords.data.data.reduce((sum: number, order: any) => {
+        return sum + Number(order.faceValue || 0);
+      }, 0);
+    }
+
+    // 4. 获取最近核销流水
+    const recentRes = await redemptionApi.getRecords({
+      merchantId: handlerInfo.value.merchantId,
+      pageSize: 5,
+    });
+
+    if (recentRes.data?.data) {
+      recentRecords.value = recentRes.data.data.map((order: any) => {
+        // 获取尾号（订单号后4位）
+        const tailNo = order.orderNo.slice(-4);
+
+        // 格式化时间
+        const redeemedAt = new Date(order.redeemedAt);
+        const hours = redeemedAt.getHours().toString().padStart(2, '0');
+        const minutes = redeemedAt.getMinutes().toString().padStart(2, '0');
+        const time = `${hours}:${minutes}`;
+
+        // 格式化金额
+        const amount = order.isFreeOrder ? '已通过' : `+ ¥${Number(order.faceValue).toFixed(2)}`;
+
+        // 获取核销员姓名
+        const handlerName = order.handler?.name || '未知核销员';
+
+        return {
+          id: order.id,
+          couponName: order.template?.title || '优惠券',
+          tailNo,
+          time,
+          amount,
+          handlerName,
+        };
+      });
+    }
+  } catch (error) {
+    console.error('加载核销员数据失败:', error);
+    uni.showToast({ title: '加载失败，请稍后重试', icon: 'none' });
+  } finally {
+    loading.value = false;
+  }
+}
 
 const goScan = () => {
   uni.navigateTo({ url: '/pages/scan/index' });
@@ -114,142 +213,207 @@ const goRecords = () => {
 </script>
 
 <style scoped>
-.handler-container {
+/* 页面容器 */
+.handler-page {
   min-height: 100vh;
-  background: #f5f5f5;
-  padding: 20rpx;
+  background: #f5faff;
+  padding: 32rpx 24rpx 48rpx;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Plus Jakarta Sans', sans-serif;
 }
 
-.handler-card {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-radius: 16rpx;
-  padding: 32rpx;
-  margin-bottom: 20rpx;
-  color: #ffffff;
-}
-
-.handler-header {
+/* 加载状态 */
+.loading-container {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  margin-bottom: 16rpx;
+  justify-content: center;
+  min-height: 100vh;
 }
 
-.handler-name {
-  font-size: 36rpx;
-  font-weight: bold;
-}
-
-.handler-phone {
+.loading-text {
   font-size: 28rpx;
+  color: #3e4850;
 }
 
-.merchant-info {
-  display: flex;
-  flex-direction: column;
-  gap: 8rpx;
+/* 欢迎区域 */
+.welcome-section {
+  margin-bottom: 48rpx;
 }
 
-.merchant-name {
-  font-size: 32rpx;
-  font-weight: 500;
-}
-
-.merchant-category {
-  font-size: 24rpx;
-  opacity: 0.9;
-}
-
-.stats-container {
-  display: flex;
-  gap: 20rpx;
-  margin-bottom: 20rpx;
-}
-
-.stat-item {
-  flex: 1;
-  background: #ffffff;
-  border-radius: 16rpx;
-  padding: 32rpx;
-  text-align: center;
-  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.05);
-}
-
-.stat-value {
+.welcome-text {
   display: block;
-  font-size: 48rpx;
-  font-weight: bold;
-  color: #667eea;
+  font-size: 28rpx;
+  font-weight: 500;
+  color: #3e4850;
+  letter-spacing: -0.5rpx;
   margin-bottom: 8rpx;
 }
 
-.stat-label {
-  font-size: 24rpx;
-  color: #666666;
+.welcome-name {
+  display: block;
+  font-size: 48rpx;
+  font-weight: 800;
+  color: #171c20;
 }
 
-.actions-container {
+/* 统计卡片 */
+.stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 32rpx;
+  margin-bottom: 32rpx;
+}
+
+.stat-card {
+  background: #eff4fa;
+  padding: 24rpx 28rpx;
+  border-radius: 20rpx;
+}
+
+.stat-header {
   display: flex;
-  gap: 20rpx;
-  margin-bottom: 20rpx;
+  align-items: center;
+  gap: 12rpx;
+  margin-bottom: 16rpx;
 }
 
-.action-btn {
-  flex: 1;
+.icon-font {
+  font-size: 24rpx;
+}
+
+.icon-check {
+  color: #00658d;
+}
+
+.icon-wallet {
+  color: #8d4f00;
+}
+
+.stat-label {
+  font-size: 20rpx;
+  font-weight: 700;
+  color: #3e4850;
+  letter-spacing: 2rpx;
+}
+
+.stat-value-group {
+  display: flex;
+  align-items: baseline;
+  gap: 8rpx;
+}
+
+.stat-number {
+  font-size: 48rpx;
+  font-weight: 900;
+  color: #171c20;
+}
+
+.stat-unit {
+  font-size: 24rpx;
+  font-weight: 700;
+  color: #3e4850;
+}
+
+/* 扫码核销按钮 */
+.scan-button {
+  width: 100%;
   height: 88rpx;
-  background: #ffffff;
   border-radius: 16rpx;
-  font-size: 32rpx;
-  font-weight: 500;
-  color: #333333;
-  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.05);
+  background: #00aeef;
+  box-shadow: 0 4rpx 16rpx rgba(0, 174, 239, 0.25);
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  margin-bottom: 48rpx;
+  transition: transform 0.2s;
 }
 
-.action-btn.primary {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+.scan-button-active {
+  transform: scale(0.98);
+}
+
+.scan-text {
+  font-size: 32rpx;
+  font-weight: 700;
   color: #ffffff;
 }
 
-.recent-container {
-  background: #ffffff;
-  border-radius: 16rpx;
-  padding: 32rpx;
-  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.05);
+/* 最近核销流水 */
+.records-section {
+  margin-bottom: 48rpx;
 }
 
-.recent-title {
-  display: block;
-  font-size: 32rpx;
-  font-weight: bold;
+.records-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
   margin-bottom: 24rpx;
-  color: #333333;
 }
 
-.recent-list {
+.records-title {
+  font-size: 28rpx;
+  font-weight: 900;
+  color: #171c20;
+  letter-spacing: 4rpx;
+}
+
+.records-link {
+  font-size: 20rpx;
+  font-weight: 700;
+  color: #00658d;
+}
+
+/* 核销记录列表 */
+.records-list {
   display: flex;
   flex-direction: column;
   gap: 16rpx;
 }
 
-.recent-item {
+.record-item {
+  background: #ffffff;
+  padding: 24rpx 28rpx;
+  border-radius: 20rpx;
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: 16rpx 0;
-  border-bottom: 1rpx solid #f0f0f0;
+  justify-content: space-between;
+  box-shadow: 0 8rpx 24rpx rgba(23, 28, 32, 0.02);
 }
 
-.recent-item:last-child {
-  border-bottom: none;
+.record-info {
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
 }
 
-.order-id {
+.record-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.record-name {
   font-size: 28rpx;
-  color: #333333;
+  font-weight: 700;
+  color: #171c20;
 }
 
-.order-time {
+.record-meta {
+  font-size: 20rpx;
+  font-weight: 500;
+  color: #3e4850;
+}
+
+.record-handler {
+  font-size: 20rpx;
+  font-weight: 500;
+  color: rgba(62, 72, 80, 0.6);
+}
+
+.record-amount {
   font-size: 24rpx;
-  color: #999999;
+  font-weight: 700;
+  color: #00aeef;
 }
 </style>

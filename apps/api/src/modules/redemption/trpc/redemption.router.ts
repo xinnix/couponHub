@@ -196,6 +196,13 @@ export const redemptionRouter = router({
                 phone: true,
               },
             },
+            handler: {
+              select: {
+                id: true,
+                name: true,
+                phone: true,
+              },
+            },
           },
           orderBy: { redeemedAt: 'desc' },
           skip: (page - 1) * pageSize,

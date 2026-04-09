@@ -1,5 +1,6 @@
 // apps/admin/src/modules/coupon-template/components/TemplateForm.tsx
-import { Form, Input, InputNumber, Select, DatePicker, Row, Col } from "antd";
+import { Form, Input, InputNumber, Select, DatePicker, Row, Col, Tooltip } from "antd";
+import { QuestionCircleOutlined } from '@ant-design/icons';
 import { MerchantScopeSelector } from './MerchantScopeSelector';
 
 const { TextArea } = Input;
@@ -25,17 +26,25 @@ export const TemplateForm: React.FC<TemplateFormProps> = ({ form, isEdit }) => {
         <Col span={12}>
           <Form.Item
             name="buyPrice"
-            label="购买价格（元）"
+            label={
+              <span>
+                购买价格（元）&nbsp;
+                <Tooltip title="设置为0元时，用户可直接免费领取，无需支付">
+                  <QuestionCircleOutlined style={{ color: '#1890ff' }} />
+                </Tooltip>
+              </span>
+            }
             rules={[
               { required: true, message: "请输入购买价格" },
-              { type: 'number', min: 0.01, message: "价格必须大于0" },
+              { type: 'number', min: 0, message: "价格不能为负数" }, // 修改：允许 0
             ]}
+            initialValue={0.01} // 默认值 0.01，避免误设
           >
             <InputNumber
               placeholder="请输入购买价格"
               style={{ width: '100%' }}
               precision={2}
-              min={0}
+              min={0} // 修改：最小值改为 0
               prefix="¥"
             />
           </Form.Item>
@@ -60,8 +69,36 @@ export const TemplateForm: React.FC<TemplateFormProps> = ({ form, isEdit }) => {
         </Col>
       </Row>
 
+      {/* 新增结算金额字段 */}
       <Row gutter={16}>
         <Col span={12}>
+          <Form.Item
+            name="settlementAmount"
+            label={
+              <span>
+                结算金额（元）&nbsp;
+                <Tooltip title="商户结算时的实际金额。不填写则使用面值结算，可低于面值">
+                  <QuestionCircleOutlined style={{ color: '#1890ff' }} />
+                </Tooltip>
+              </span>
+            }
+            rules={[
+              { type: 'number', min: 0, message: "结算金额不能为负数" },
+            ]}
+          >
+            <InputNumber
+              placeholder="不填写则使用面值结算"
+              style={{ width: '100%' }}
+              precision={2}
+              min={0}
+              prefix="¥"
+            />
+          </Form.Item>
+        </Col>
+      </Row>
+
+      <Row gutter={16}>
+        <Col span={8}>
           <Form.Item
             name="stock"
             label="库存"
@@ -77,7 +114,51 @@ export const TemplateForm: React.FC<TemplateFormProps> = ({ form, isEdit }) => {
             />
           </Form.Item>
         </Col>
-        <Col span={12}>
+        <Col span={8}>
+          {/* 新增：每人限领数量 */}
+          <Form.Item
+            name="claimLimit"
+            label={
+              <span>
+                每人限领数量&nbsp;
+                <Tooltip title="不填写表示无限制，建议填写以防止恶意刷券">
+                  <QuestionCircleOutlined style={{ color: '#1890ff' }} />
+                </Tooltip>
+              </span>
+            }
+            initialValue={1} // 默认每人限领 1 张
+            rules={[
+              { type: 'number', min: 1, message: "限领数量至少为1" },
+            ]}
+          >
+            <InputNumber
+              placeholder="不限"
+              style={{ width: '100%' }}
+              min={1}
+              precision={0} // 整数
+            />
+          </Form.Item>
+        </Col>
+        <Col span={8}>
+          <Form.Item
+            name="validDays"
+            label="有效天数"
+            initialValue={30}
+            rules={[
+              { required: true, message: '请输入有效天数' },
+              { type: 'number', min: 1, message: '有效天数必须大于0' },
+            ]}
+            tooltip="购买后多少天内有效，每个用户根据购买时间独立计算"
+          >
+            <InputNumber
+              style={{ width: '100%' }}
+              min={1}
+              precision={0}
+              placeholder="例如：30表示购买后30天内有效"
+            />
+          </Form.Item>
+        </Col>
+        <Col span={8}>
           <Form.Item name="status" label="状态" initialValue="ACTIVE">
             <Select>
               <Select.Option value="ACTIVE">上架</Select.Option>
