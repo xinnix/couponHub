@@ -2,6 +2,8 @@
 import { useEffect, useRef, useState } from "react";
 import Quill from "quill";
 import "quill/dist/quill.snow.css";
+import { OSSUploader } from "../utils/oss-upload";
+import { message } from "antd";
 
 interface RichTextEditorProps {
   value?: string;
@@ -30,15 +32,68 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
       theme: "snow",
       placeholder,
       modules: {
-        toolbar: [
-          [{ header: [1, 2, 3, false] }],
-          ["bold", "italic", "underline", "strike"],
-          [{ list: "ordered" }, { list: "bullet" }],
-          [{ color: [] }, { background: [] }],
-          ["link", "image"],
-          [{ align: [] }],
-          ["clean"],
-        ],
+        toolbar: {
+          container: [
+            [{ header: [1, 2, 3, false] }],
+            ["bold", "italic", "underline", "strike"],
+            [{ list: "ordered" }, { list: "bullet" }],
+            [{ color: [] }, { background: [] }],
+            ["link", "image"],
+            [{ align: [] }],
+            ["clean"],
+          ],
+          handlers: {
+            // 自定义图片上传处理
+            image: function (this: any) {
+              const input = document.createElement("input");
+              input.setAttribute("type", "file");
+              input.setAttribute("accept", "image/*");
+              input.click();
+
+              input.onchange = async () => {
+                const file = input.files?.[0];
+                if (!file) return;
+
+                try {
+                  // 验证文件类型
+                  const allowedTypes = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+                  if (!OSSUploader.validateFileType(file, allowedTypes)) {
+                    message.error("仅支持 JPG、PNG、GIF、WEBP 格式的图片");
+                    return;
+                  }
+
+                  // 验证文件大小（最大 5MB）
+                  const maxSize = 5 * 1024 * 1024;
+                  if (!OSSUploader.validateFileSize(file, maxSize)) {
+                    message.error("图片大小不能超过 5MB");
+                    return;
+                  }
+
+                  message.loading({ content: "图片上传中...", key: "upload" });
+
+                  // 上传到 OSS
+                  const result = await OSSUploader.upload(file, "news_content");
+
+                  message.success({ content: "图片上传成功", key: "upload" });
+
+                  // 获取光标位置
+                  const range = this.quill.getSelection();
+                  const index = range?.index ?? 0;
+
+                  // 插入图片 URL
+                  this.quill.insertEmbed(index, "image", result.url);
+                  this.quill.setSelection(index + 1, 0);
+                } catch (error: any) {
+                  message.error({
+                    content: error.message || "图片上传失败",
+                    key: "upload",
+                  });
+                  console.error("Image upload error:", error);
+                }
+              };
+            },
+          },
+        },
       },
     });
 
