@@ -1,4 +1,5 @@
 // apps/admin/src/modules/coupon-template/components/TemplateForm.tsx
+import { useList } from "@refinedev/core";
 import { Form, Input, InputNumber, Select, DatePicker, Row, Col, Tooltip } from "antd";
 import { QuestionCircleOutlined } from '@ant-design/icons';
 import { MerchantScopeSelector } from './MerchantScopeSelector';
@@ -12,6 +13,15 @@ interface TemplateFormProps {
 }
 
 export const TemplateForm: React.FC<TemplateFormProps> = ({ form, isEdit }) => {
+  // 获取商户类别列表
+  const { result: categoriesResult } = useList({
+    resource: "merchantCategory",
+    pagination: { pageSize: 100 },
+    filters: [{ field: "status", operator: "eq", value: "ACTIVE" }],
+  });
+
+  const categories = categoriesResult?.data || [];
+
   return (
     <Form form={form} layout="vertical">
       <Form.Item
@@ -228,10 +238,45 @@ export const TemplateForm: React.FC<TemplateFormProps> = ({ form, isEdit }) => {
         }}
       </Form.Item>
 
+      {/* 商户类别选择 */}
+      <Form.Item
+        name="categoryId"
+        label={
+          <span>
+            商户类别&nbsp;
+            <Tooltip title="选择类别后，券模板将适用于该类别下的所有商户">
+              <QuestionCircleOutlined style={{ color: '#1890ff' }} />
+            </Tooltip>
+          </span>
+        }
+      >
+        <Select
+          placeholder="选择商户类别（可选）"
+          allowClear
+          showSearch
+          filterOption={(input, option) =>
+            (option?.children as string)?.toLowerCase().includes(input.toLowerCase())
+          }
+        >
+          {categories.map((cat) => (
+            <Select.Option key={cat.id} value={cat.id}>
+              {cat.name}
+            </Select.Option>
+          ))}
+        </Select>
+      </Form.Item>
+
       <Form.Item
         name="merchantScope"
-        label="适用商户"
-        rules={[{ required: true, message: "请选择适用商户" }]}
+        label={
+          <span>
+            适用商户&nbsp;
+            <Tooltip title="手动选择商户。如果已选择类别，将使用类别下的商户；否则使用手动选择的商户">
+              <QuestionCircleOutlined style={{ color: '#1890ff' }} />
+            </Tooltip>
+          </span>
+        }
+        extra="请选择商户类别或手动选择商户"
       >
         <MerchantScopeSelector />
       </Form.Item>

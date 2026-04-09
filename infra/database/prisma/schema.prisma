@@ -236,13 +236,41 @@ model Todo {
 }
 
 // ============================================
+// 商户类别 (MerchantCategory)
+// ============================================
+model MerchantCategory {
+  id          String @id @default(cuid())
+  name        String @unique // 类别名称（唯一）
+  slug        String @unique // URL标识符（唯一，如 "restaurant"）
+  description String?        // 描述
+  icon        String?        // 图标 URL
+  sortOrder   Int    @default(0) // 排序权重（数字越小越靠前）
+  status      String @default("ACTIVE") // ACTIVE, INACTIVE
+
+  // 创建者和更新者 (Admin)
+  createdById String?
+  updatedById String?
+
+  // 关联
+  merchants        Merchant[]
+  couponTemplates  CouponTemplate[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([sortOrder])
+  @@map("merchant_categories")
+}
+
+// ============================================
 // 商户模型 (Merchant)
 // ============================================
 model Merchant {
   id          String  @id @default(cuid())
   name        String
   logo        String?
-  category    String // 行业分类（餐饮、服装、娱乐等）
+  categoryId  String  // 商户类别ID
   area        String? // 区域（A区、B区、C区）
   floor       String? // 楼层
   phone       String?
@@ -255,6 +283,7 @@ model Merchant {
   updatedById String?
 
   // 关联
+  category         MerchantCategory  @relation(fields: [categoryId], references: [id])
   handlers         Handler[] // 商户的核销员列表
   merchantHandlers MerchantHandler[]
   orders           Order[]
@@ -263,7 +292,7 @@ model Merchant {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@index([category])
+  @@index([categoryId])
   @@index([area])
   @@index([status])
   @@index([createdById])
@@ -336,7 +365,9 @@ model CouponTemplate {
   claimLimit    Int?     @default(1)    // 每人限领数量（null=无限制，默认1张）
   isFree        Boolean  @default(false) // 是否为免费券（辅助查询字段）
 
-  merchantScope Json // 适用商户 ID 数组
+  categoryId    String?  // 商户类别ID（可选）
+  merchantScope Json     // 适用商户 ID 数组
+
   validFrom     DateTime
   validUntil    DateTime
   validDays     Int      @default(30) // 购买后X天内有效，默认30天
@@ -353,11 +384,14 @@ model CouponTemplate {
   createdById String?
   updatedById String?
 
-  orders Order[]
+  // 关联
+  category MerchantCategory? @relation(fields: [categoryId], references: [id])
+  orders   Order[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([categoryId])
   @@index([status])
   @@index([validFrom, validUntil])
   @@index([createdById])

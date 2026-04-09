@@ -310,6 +310,50 @@ export type RoleListQueryInput = z.infer<typeof RoleListQuerySchema>;
 export type UpdateRolePermissionsInput = z.infer<typeof UpdateRolePermissionsSchema>;
 
 // ============================================
+// MerchantCategory Schemas
+// ============================================
+
+export const MerchantCategorySchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  slug: z.string(),
+  description: z.string().optional().nullable(),
+  icon: z.string().optional().nullable(),
+  sortOrder: z.number().int().nonnegative(),
+  status: z.enum(["ACTIVE", "INACTIVE"]),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+});
+
+const BaseMerchantCategorySchema = z.object({
+  name: z.string().min(1, "类别名称不能为空").max(50, "名称最多50字"),
+  slug: z.string()
+    .min(1, "标识符不能为空")
+    .max(50, "标识符最多50字")
+    .regex(/^[a-z0-9-]+$/, "标识符只能包含小写字母、数字和连字符"),
+  description: z.string().max(200, "描述最多200字").optional().nullable(),
+  icon: z.string().optional().nullable(),
+  sortOrder: z.number().int().nonnegative("排序必须为非负整数").optional(),
+  status: z.enum(["ACTIVE", "INACTIVE"]).optional(),
+});
+
+export const CreateMerchantCategorySchema = BaseMerchantCategorySchema;
+
+export const UpdateMerchantCategorySchema = BaseMerchantCategorySchema.partial();
+
+export const MerchantCategoryListQuerySchema = z.object({
+  page: z.number().int().positive().optional(),
+  limit: z.number().int().positive().optional(),
+  status: z.enum(["ACTIVE", "INACTIVE"]).optional(),
+  search: z.string().optional(),
+});
+
+export type MerchantCategoryInput = z.infer<typeof MerchantCategorySchema>;
+export type CreateMerchantCategoryInput = z.infer<typeof CreateMerchantCategorySchema>;
+export type UpdateMerchantCategoryInput = z.infer<typeof UpdateMerchantCategorySchema>;
+export type MerchantCategoryListQueryInput = z.infer<typeof MerchantCategoryListQuerySchema>;
+
+// ============================================
 // Merchant Schemas
 // ============================================
 
@@ -317,7 +361,7 @@ export const MerchantSchema = z.object({
   id: z.string(),
   name: z.string(),
   logo: z.string().url().optional().nullable(),
-  category: z.string(),
+  categoryId: z.string(),
   area: z.string().optional().nullable(),
   floor: z.string().optional().nullable(),
   phone: z.string().optional().nullable(),
@@ -331,7 +375,7 @@ export const MerchantSchema = z.object({
 export const CreateMerchantSchema = z.object({
   name: z.string().min(1, "商户名称不能为空"),
   logo: z.string().url("Logo URL格式无效").optional().nullable(),
-  category: z.string().min(1, "行业分类不能为空"),
+  categoryId: z.string().min(1, "请选择商户类别"),
   area: z.string().optional(),
   floor: z.string().optional(),
   phone: z.string().optional(),
@@ -343,7 +387,7 @@ export const CreateMerchantSchema = z.object({
 export const UpdateMerchantSchema = z.object({
   name: z.string().min(1, "商户名称不能为空").optional(),
   logo: z.string().url("Logo URL格式无效").optional().nullable(),
-  category: z.string().min(1, "行业分类不能为空").optional(),
+  categoryId: z.string().min(1, "请选择商户类别").optional(),
   area: z.string().optional(),
   floor: z.string().optional(),
   phone: z.string().optional(),
@@ -484,6 +528,7 @@ export const CouponTemplateSchema = z.object({
   stock: z.number().int().nonnegative(),
   claimLimit: z.number().int().positive().optional().nullable(), // 新增：每人限领数量
   isFree: z.boolean().optional(), // 新增：是否为免费券
+  categoryId: z.string().optional().nullable(), // 商户类别ID（可选）
   merchantScope: z.array(z.string()),
   validFrom: z.date(),
   validUntil: z.date(),
@@ -502,7 +547,8 @@ const BaseCouponTemplateSchema = z.object({
   settlementAmount: z.number().nonnegative("结算金额不能为负").optional().nullable(), // 结算金额（可选）
   stock: z.number().int().nonnegative("库存不能为负").min(0, "库存不能为负"),
   claimLimit: z.number().int().positive("每人限领数量必须为正整数").optional().nullable(), // 新增：每人限领数量
-  merchantScope: z.array(z.string()).min(1, "至少选择一个适用商户"),
+  categoryId: z.string().optional().nullable(), // 商户类别ID（可选）
+  merchantScope: z.array(z.string()), // 商户ID数组（允许空数组）
   validFrom: z.coerce.date(), // 自动将字符串转换为 Date
   validUntil: z.coerce.date(), // 自动将字符串转换为 Date
   description: z.string().optional().nullable(),
@@ -516,6 +562,12 @@ export const CreateCouponTemplateSchema = BaseCouponTemplateSchema.refine(
   {
     message: "有效期结束时间必须晚于开始时间",
     path: ["validUntil"],
+  }
+).refine(
+  (data) => data.categoryId || data.merchantScope.length > 0,
+  {
+    message: "请选择商户类别或至少选择一个商户",
+    path: ["categoryId"],
   }
 );
 

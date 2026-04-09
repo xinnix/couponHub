@@ -1,4 +1,5 @@
 // apps/admin/src/modules/merchant/components/MerchantForm.tsx
+import { useList } from "@refinedev/core";
 import { Form, Input, Select } from "antd";
 import { OSSUpload } from "@/shared/components/OSSUpload";
 
@@ -10,6 +11,15 @@ interface MerchantFormProps {
 }
 
 export const MerchantForm: React.FC<MerchantFormProps> = ({ form, isEdit }) => {
+  // 获取商户类别列表
+  const { result: categoriesResult } = useList({
+    resource: "merchantCategory",
+    pagination: { pageSize: 100 },
+    filters: [{ field: "status", operator: "eq", value: "ACTIVE" }],
+  });
+
+  const categories = categoriesResult?.data || [];
+
   return (
     <Form form={form} layout="vertical">
       <Form.Item
@@ -29,16 +39,18 @@ export const MerchantForm: React.FC<MerchantFormProps> = ({ form, isEdit }) => {
       </Form.Item>
 
       <Form.Item
-        name="category"
-        label="商户分类"
-        rules={[{ required: true, message: "请选择商户分类" }]}
+        name="categoryId"
+        label="商户类别"
+        rules={[{ required: true, message: "请选择商户类别" }]}
       >
-        <Select placeholder="请选择商户分类">
-          <Select.Option value="餐饮">餐饮</Select.Option>
-          <Select.Option value="服装">服装</Select.Option>
-          <Select.Option value="娱乐">娱乐</Select.Option>
-          <Select.Option value="美容">美容</Select.Option>
-          <Select.Option value="其他">其他</Select.Option>
+        <Select placeholder="请选择商户类别" showSearch filterOption={(input, option) =>
+          (option?.children as string)?.toLowerCase().includes(input.toLowerCase())
+        }>
+          {categories.map((cat) => (
+            <Select.Option key={cat.id} value={cat.id}>
+              {cat.name}
+            </Select.Option>
+          ))}
         </Select>
       </Form.Item>
 

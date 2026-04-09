@@ -331,7 +331,76 @@ async function main() {
   console.log('✅ Created 3 demo todos');
 
   // ============================================
-  // 7. Create Demo Merchants
+  // 7. Create Merchant Categories
+  // ============================================
+  console.log('Creating merchant categories...');
+
+  const categories = await Promise.all([
+    prisma.merchantCategory.upsert({
+      where: { slug: 'restaurant' },
+      update: {},
+      create: {
+        name: '餐饮',
+        slug: 'restaurant',
+        description: '餐饮美食类商户',
+        sortOrder: 1,
+        status: 'ACTIVE',
+      },
+    }),
+    prisma.merchantCategory.upsert({
+      where: { slug: 'retail' },
+      update: {},
+      create: {
+        name: '零售',
+        slug: 'retail',
+        description: '零售百货类商户',
+        sortOrder: 2,
+        status: 'ACTIVE',
+      },
+    }),
+    prisma.merchantCategory.upsert({
+      where: { slug: 'entertainment' },
+      update: {},
+      create: {
+        name: '娱乐',
+        slug: 'entertainment',
+        description: '休闲娱乐类商户',
+        sortOrder: 3,
+        status: 'ACTIVE',
+      },
+    }),
+    prisma.merchantCategory.upsert({
+      where: { slug: 'beauty' },
+      update: {},
+      create: {
+        name: '美容',
+        slug: 'beauty',
+        description: '美容美发服务类商户',
+        sortOrder: 4,
+        status: 'ACTIVE',
+      },
+    }),
+    prisma.merchantCategory.upsert({
+      where: { slug: 'services' },
+      update: {},
+      create: {
+        name: '生活服务',
+        slug: 'services',
+        description: '生活服务类商户',
+        sortOrder: 5,
+        status: 'ACTIVE',
+      },
+    }),
+  ]);
+
+  const restaurantCategory = categories.find(c => c.slug === 'restaurant')!;
+  const retailCategory = categories.find(c => c.slug === 'retail')!;
+  const entertainmentCategory = categories.find(c => c.slug === 'entertainment')!;
+
+  console.log(`✅ Created ${categories.length} merchant categories`);
+
+  // ============================================
+  // 8. Create Demo Merchants
   // ============================================
   console.log('Creating demo merchants...');
 
@@ -339,7 +408,8 @@ async function main() {
     data: [
       {
         name: '海底捞火锅',
-        category: '餐饮',
+        categoryId: restaurantCategory.id,
+        area: 'A区',
         floor: '3F',
         phone: '021-12345678',
         gallery: ['https://example.com/haidilao1.jpg', 'https://example.com/haidilao2.jpg'],
@@ -348,7 +418,8 @@ async function main() {
       },
       {
         name: '星巴克咖啡',
-        category: '餐饮',
+        categoryId: restaurantCategory.id,
+        area: 'A区',
         floor: '1F',
         phone: '021-23456789',
         gallery: ['https://example.com/starbucks1.jpg'],
@@ -357,7 +428,8 @@ async function main() {
       },
       {
         name: '优衣库',
-        category: '购物',
+        categoryId: retailCategory.id,
+        area: 'B区',
         floor: '2F',
         phone: '021-34567890',
         gallery: ['https://example.com/uniqlo1.jpg'],
@@ -366,7 +438,8 @@ async function main() {
       },
       {
         name: '万达影城',
-        category: '娱乐',
+        categoryId: entertainmentCategory.id,
+        area: 'C区',
         floor: '5F',
         phone: '021-45678901',
         gallery: ['https://example.com/wanda1.jpg'],
@@ -375,7 +448,8 @@ async function main() {
       },
       {
         name: '肯德基',
-        category: '餐饮',
+        categoryId: restaurantCategory.id,
+        area: 'B区',
         floor: '1F',
         phone: '021-56789012',
         gallery: ['https://example.com/kfc1.jpg'],
@@ -384,7 +458,8 @@ async function main() {
       },
       {
         name: '耐克',
-        category: '购物',
+        categoryId: retailCategory.id,
+        area: 'C区',
         floor: '3F',
         phone: '021-67890123',
         gallery: ['https://example.com/nike1.jpg'],
@@ -404,7 +479,7 @@ async function main() {
   const merchant3 = allMerchants.find((m) => m.name === '万达影城')!;
 
   // ============================================
-  // 8. Create Demo Coupon Templates
+  // 9. Create Demo Coupon Templates
   // ============================================
   console.log('Creating demo coupon templates...');
 
@@ -472,7 +547,7 @@ async function main() {
   const template4 = allTemplates.find((t) => t.title.includes('通用券'))!;
 
   // ============================================
-  // 9. Create Demo Orders
+  // 10. Create Demo Orders
   // ============================================
   console.log('Creating demo orders...');
 
@@ -542,7 +617,7 @@ async function main() {
   console.log('✅ Created 5 demo orders');
 
   // ============================================
-  // 10. Create Demo News
+  // 11. Create Demo News
   // ============================================
   console.log('Creating demo news...');
 
@@ -577,7 +652,7 @@ async function main() {
   console.log('✅ Created 3 demo news');
 
   // ============================================
-  // 11. Create Demo Settlements
+  // 12. Create Demo Settlements
   // ============================================
   console.log('Creating demo settlements...');
 
@@ -641,7 +716,8 @@ async function main() {
   console.log('  - user2@example.com (普通用户2)');
   console.log('');
   console.log('📊 业务数据统计:');
-  console.log('  - 6个商户 (餐饮、购物、娱乐)');
+  console.log('  - 5个商户分类');
+  console.log('  - 6个商户 (餐饮、零售、娱乐)');
   console.log('  - 4个券模板');
   console.log('  - 5个订单 (多种状态)');
   console.log('  - 3条新闻');

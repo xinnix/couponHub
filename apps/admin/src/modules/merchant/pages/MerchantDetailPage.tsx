@@ -6,11 +6,22 @@ import { ArrowLeftOutlined, CheckCircleOutlined, StopOutlined, EditOutlined } fr
 import { useState } from "react";
 import { HandlerList } from "../components/HandlerList";
 
+interface MerchantCategory {
+  id: string;
+  name: string;
+  slug: string;
+  description?: string;
+  icon?: string;
+  sortOrder: number;
+  status: string;
+}
+
 interface Merchant {
   id: string;
   name: string;
   logo?: string;
-  category: string;
+  categoryId: string;
+  category?: MerchantCategory;
   area?: string;
   floor?: string;
   phone?: string;
@@ -75,7 +86,7 @@ export const MerchantDetailPage = () => {
             </Tag>
           </Descriptions.Item>
           <Descriptions.Item label="商户分类">
-            <Tag color="blue">{merchant.category}</Tag>
+            <Tag color="blue">{merchant.category?.name || '未分类'}</Tag>
           </Descriptions.Item>
           <Descriptions.Item label="区域">
             {merchant.area ? <Tag color="geekblue">{merchant.area}</Tag> : '-'}
@@ -136,7 +147,7 @@ export const MerchantDetailPage = () => {
           <div>
             <h1 style={{ margin: 0, fontSize: 28, fontWeight: "bold" }}>{merchant.name}</h1>
             <Space style={{ marginTop: 8 }}>
-              <Tag color="blue">{merchant.category}</Tag>
+              <Tag color="blue">{merchant.category?.name || '未分类'}</Tag>
               {merchant.area && <Tag color="geekblue">{merchant.area}</Tag>}
               {merchant.floor && <Tag>{merchant.floor}</Tag>}
               <Tag color={merchant.status === 'ACTIVE' ? 'success' : 'error'}>

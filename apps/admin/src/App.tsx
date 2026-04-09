@@ -12,6 +12,7 @@ import { DashboardPage } from "./modules/dashboard";
 import { RoleListPage, RoleDetailPage } from "./modules/role";
 import { UserListPage, UserDetailPage } from "./modules/user";
 import { MerchantListPage, MerchantDetailPage } from "./modules/merchant";
+import { MerchantCategoryListPage } from "./modules/merchantCategory";
 import { TemplateListPage, TemplateDetailPage } from "./modules/coupon-template";
 import { OrderListPage, OrderDetailPage } from "./modules/order";
 import { SettlementListPage, SettlementDetailPage } from "./modules/settlement";
@@ -89,6 +90,10 @@ function AppContent() {
                   list: "/merchants",
                 },
                 {
+                  name: "merchantCategory",
+                  list: "/merchant-categories",
+                },
+                {
                   name: "couponTemplate",
                   list: "/coupon-templates",
                 },
@@ -130,6 +135,7 @@ function AppContent() {
                   <Route path="dashboard" element={<DashboardPage />} />
                   <Route path="merchants" element={<MerchantListPage />} />
                   <Route path="merchants/:id" element={<MerchantDetailPage />} />
+                  <Route path="merchant-categories" element={<MerchantCategoryListPage />} />
                   <Route path="coupon-templates" element={<TemplateListPage />} />
                   <Route path="coupon-templates/:id" element={<TemplateDetailPage />} />
                   <Route path="orders" element={<OrderListPage />} />

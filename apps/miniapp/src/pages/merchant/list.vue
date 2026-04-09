@@ -12,10 +12,16 @@ definePage({
 
 const statusBarHeight = ref(0)
 const loading = ref(false)
+const loadingCategories = ref(false)
 const merchants = ref<any[]>([])
 const searchKeyword = ref('')
 const activeCategory = ref('all')
 const activeArea = ref('全部')
+
+// 分类数据（从后端获取）
+const categories = ref<Array<{ label: string; value: string; count?: number }>>([
+  { label: '全部', value: 'all' },
+])
 
 // 滚动监听相关
 const scrollTop = ref(0)
@@ -31,16 +37,6 @@ const filterFixedTop = computed(() => {
   return `${statusBarHeight.value + 44}px` // 状态栏 + 搜索栏高度
 })
 
-// 分类数据（参考图片的分类标签）
-const categories = [
-  { label: '全部(138)', value: 'all' },
-  { label: '餐饮美食(39)', value: '餐饮' },
-  { label: '服饰鞋包(39)', value: '服装' },
-  { label: '儿童', value: '儿童' },
-  { label: '美容', value: '美容' },
-  { label: '娱乐', value: '娱乐' },
-]
-
 // 区域数据（参考小程序首页）
 const areas = ['全部', 'A区', 'B区', 'C区']
 
@@ -54,13 +50,20 @@ const filteredMerchants = computed(() => {
     result = result.filter(m =>
       m.name.toLowerCase().includes(keyword)
       || m.description?.toLowerCase().includes(keyword)
-      || m.category?.toLowerCase().includes(keyword),
+      || (m.category?.name || m.category)?.toLowerCase().includes(keyword),
     )
   }
 
   // 分类过滤
   if (activeCategory.value !== 'all') {
-    result = result.filter(m => m.category === activeCategory.value)
+    result = result.filter(m => {
+      // 如果 category 是对象，比较 categoryId
+      if (m.category?.id) {
+        return m.category.id === activeCategory.value
+      }
+      // 如果 category 是字符串，直接比较
+      return m.categoryId === activeCategory.value || m.category === activeCategory.value
+    })
   }
 
   // 区域过滤
@@ -80,6 +83,8 @@ onMounted(() => {
   HEADER_IMAGE_HEIGHT_PX.value = uni.upx2px(320) // 背景图高度 320rpx
   SEARCH_BAR_HEIGHT_PX.value = uni.upx2px(88) // 搜索栏高度 88rpx
 
+  // 加载分类和商户数据
+  loadCategories()
   loadMerchants()
 })
 
@@ -105,6 +110,32 @@ function handleScroll(e: any) {
   // 阈值 = 背景图高度 - 搜索栏高度
   const filterThreshold = HEADER_IMAGE_HEIGHT_PX.value - SEARCH_BAR_HEIGHT_PX.value
   filterFixed.value = currentScrollTop >= filterThreshold
+}
+
+async function loadCategories() {
+  loadingCategories.value = true
+  try {
+    const res = await merchantApi.getCategories()
+    if (res.success && res.data) {
+      // 添加"全部"选项
+      categories.value = [
+        { label: '全部', value: 'all' },
+        ...res.data.map((cat: any) => ({
+          label: cat.name,
+          value: cat.id, // 使用分类 ID 作为 value
+        })),
+      ]
+      console.log('✅ 分类数据加载成功:', categories.value)
+    }
+  } catch (error) {
+    console.error('❌ 加载分类失败:', error)
+    // 失败时使用默认分类
+    categories.value = [
+      { label: '全部', value: 'all' },
+    ]
+  } finally {
+    loadingCategories.value = false
+  }
 }
 
 async function loadMerchants() {
@@ -247,7 +278,7 @@ function handleImageError(e: any) {
 
             <!-- 商户类别 -->
             <text class="merchant-category">
-              {{ merchant.category }} | {{ merchant.category }}
+              {{ merchant.category?.name || merchant.category || '未分类' }}{{ merchant.description ? ` · ${merchant.description}` : '' }}
             </text>
 
             <!-- 商户地址 -->
@@ -605,6 +636,9 @@ function handleImageError(e: any) {
   color: rgba(110, 120, 129, 0.8);
   /* 使用首页次要文字色 */
   line-height: 1.5;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* 商户地址：灰色小字 */

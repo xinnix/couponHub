@@ -39,6 +39,7 @@ export class MerchantService extends BaseService<'Merchant'> {
 
     // Add default include for counts if not specified
     const include = args?.include || {
+      category: true, // 关联查询类别
       _count: {
         select: {
           handlers: true,
@@ -52,5 +53,29 @@ export class MerchantService extends BaseService<'Merchant'> {
       where,
       include,
     });
+  }
+
+  /**
+   * 获取所有商户分类
+   */
+  async getCategories() {
+    const categories = await this.prisma.merchantCategory.findMany({
+      where: {
+        status: 'ACTIVE',
+      },
+      orderBy: {
+        sortOrder: 'asc',
+      },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        icon: true,
+        description: true,
+        sortOrder: true,
+      },
+    });
+
+    return categories;
   }
 }

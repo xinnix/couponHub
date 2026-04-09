@@ -38,6 +38,14 @@ export class MerchantController {
     });
   }
 
+  @Get('categories')
+  @Public()
+  @ApiOperation({ summary: '获取商户分类列表' })
+  @ApiResponse({ status: 200, description: '获取成功' })
+  async getCategories() {
+    return this.merchantService.getCategories();
+  }
+
   @Get(':id')
   @Public()
   @ApiOperation({ summary: '获取商户详情' })

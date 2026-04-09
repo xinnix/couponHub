@@ -8,6 +8,7 @@ import { adminRouter } from "../modules/admin/trpc/admin.router";
 import { roleRouter } from "../modules/role/trpc/role.router";
 import { permissionRouter } from "../modules/permission/trpc/permission.router";
 import { merchantRouter } from "../modules/merchant/trpc/merchant.router";
+import { merchantCategoryRouter } from "../modules/merchantCategory/trpc/merchantCategory.router";
 import { newsRouter } from "../modules/news/trpc/news.router";
 import { templateRouter } from "../modules/coupon/trpc/template.router";
 import { orderRouter } from "../modules/order/trpc/order.router";
@@ -26,6 +27,7 @@ export const appRouter = router({
   role: roleRouter,
   permission: permissionRouter,
   merchant: merchantRouter,
+  merchantCategory: merchantCategoryRouter,
   news: newsRouter,
   couponTemplate: templateRouter,
   order: orderRouter,

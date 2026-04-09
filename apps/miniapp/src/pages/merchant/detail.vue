@@ -39,6 +39,11 @@ const displayName = computed(() => {
 
 const displayCategory = computed(() => {
   if (merchant.value && merchant.value.category) {
+    // 如果 category 是对象，取 name 字段
+    if (typeof merchant.value.category === 'object') {
+      return merchant.value.category.name || '其他'
+    }
+    // 如果 category 是字符串，直接返回
     return merchant.value.category
   }
   return '其他'

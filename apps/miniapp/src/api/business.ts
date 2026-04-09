@@ -17,6 +17,13 @@ export const merchantApi = {
   getDetail: (id: string) => {
     return http.get(`/merchants/${id}`);
   },
+
+  /**
+   * 获取商户分类列表
+   */
+  getCategories: () => {
+    return http.get('/merchants/categories');
+  },
 };
 
 /**

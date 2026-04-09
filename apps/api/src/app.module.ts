@@ -9,6 +9,7 @@ import { AuthModule } from "./modules/auth/module";
 import { TodoModule } from "./modules/todo/module";
 import { UserModule } from "./modules/user/module";
 import { MerchantModule } from "./modules/merchant/module";
+import { MerchantCategoryModule } from "./modules/merchantCategory/module";
 import { NewsModule } from "./modules/news/module";
 import { CouponModule } from "./modules/coupon/module";
 import { RoleModule } from "./modules/role/module";
@@ -40,6 +41,7 @@ import { FileStorageService } from "./shared/services/file-storage.service";
     TodoModule,
     UserModule,
     MerchantModule,
+    MerchantCategoryModule,
     NewsModule,
     CouponModule,
     RoleModule,

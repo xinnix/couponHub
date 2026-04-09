@@ -22,11 +22,22 @@ import { MerchantForm } from "../components/MerchantForm";
 import { HandlerList } from "../components/HandlerList";
 import { useNavigate } from "react-router-dom";
 
+interface MerchantCategory {
+  id: string;
+  name: string;
+  slug: string;
+  description?: string;
+  icon?: string;
+  sortOrder: number;
+  status: string;
+}
+
 interface Merchant {
   id: string;
   name: string;
   logo?: string;
-  category: string;
+  categoryId: string;
+  category?: MerchantCategory;
   area?: string;
   floor?: string;
   phone?: string;
@@ -76,6 +87,15 @@ export const MerchantListPage = () => {
     );
   };
 
+  // 获取商户分类列表用于筛选
+  const { result: categoriesResult } = useList<MerchantCategory>({
+    resource: "merchantCategory",
+    pagination: { pageSize: 100 },
+    filters: [{ field: "status", operator: "eq", value: "ACTIVE" }],
+  });
+
+  const categories = categoriesResult?.data || [];
+
   const { result, query } = useList<Merchant>({
     resource: "merchant",
     pagination: {
@@ -84,9 +104,20 @@ export const MerchantListPage = () => {
     filters: [
       ...(searchText ? [{ field: "search", operator: "contains", value: searchText }] as any : []),
       ...(statusFilter ? [{ field: "status", operator: "eq", value: statusFilter }] as any : []),
-      ...(categoryFilter ? [{ field: "category", operator: "eq", value: categoryFilter }] as any : []),
+      ...(categoryFilter ? [{ field: "categoryId", operator: "eq", value: categoryFilter }] as any : []),
       ...(areaFilter ? [{ field: "area", operator: "eq", value: areaFilter }] as any : []),
     ],
+    meta: {
+      include: {
+        category: true,
+        _count: {
+          select: {
+            handlers: true,
+            orders: true,
+          },
+        },
+      },
+    },
   });
 
   const handleCreate = () => {
@@ -97,7 +128,11 @@ export const MerchantListPage = () => {
 
   const handleEdit = (record: Merchant) => {
     setEditingRecord(record);
-    form.setFieldsValue(record);
+    // 需要设置 categoryId 而不是 category 对象
+    form.setFieldsValue({
+      ...record,
+      categoryId: record.categoryId,
+    });
     setIsModalVisible(true);
   };
 
@@ -207,7 +242,8 @@ export const MerchantListPage = () => {
       title: "分类",
       dataIndex: "category",
       width: 100,
-      render: (category: string) => {
+      render: (category: MerchantCategory) => {
+        if (!category) return '-';
         const colorMap: Record<string, string> = {
           '餐饮': 'orange',
           '服装': 'blue',
@@ -215,7 +251,7 @@ export const MerchantListPage = () => {
           '美容': 'pink',
           '其他': 'default',
         };
-        return <Tag color={colorMap[category] || 'default'}>{category}</Tag>;
+        return <Tag color={colorMap[category.name] || 'default'}>{category.name}</Tag>;
       },
     },
     {
@@ -348,11 +384,11 @@ export const MerchantListPage = () => {
               style={{ width: 120 }}
               allowClear
             >
-              <Select.Option value="餐饮">餐饮</Select.Option>
-              <Select.Option value="服装">服装</Select.Option>
-              <Select.Option value="娱乐">娱乐</Select.Option>
-              <Select.Option value="美容">美容</Select.Option>
-              <Select.Option value="其他">其他</Select.Option>
+              {categories.map((cat) => (
+                <Select.Option key={cat.id} value={cat.id}>
+                  {cat.name}
+                </Select.Option>
+              ))}
             </Select>
             <Select
               placeholder="筛选区域"

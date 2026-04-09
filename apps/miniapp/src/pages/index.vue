@@ -133,10 +133,13 @@ async function loadHomeData() {
           ? m.logo
           : `https://picsum.photos/seed/merchant-${m.id}/200/200`
 
+        // 处理 category：如果是对象取 name，否则直接使用
+        const categoryDisplay = m.category?.name || m.category || ''
+
         const merchantItem = {
           id: m.id,
           name: m.name,
-          desc: m.description || m.category,
+          desc: m.description || categoryDisplay,
           image: imageUrl,
           area: m.area || 'A区',
         }

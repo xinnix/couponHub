@@ -425,7 +425,13 @@ export class AuthService {
     // 2. 查询核销员信息
     const handler = await this.prisma.handler.findUnique({
       where: { id: user.handlerId },
-      include: { merchant: true },
+      include: {
+        merchant: {
+          include: {
+            category: true,
+          },
+        },
+      },
     });
 
     if (!handler || !handler.isActive) {
@@ -444,7 +450,7 @@ export class AuthService {
         phone: handler.phone,
         merchantId: handler.merchantId,
         merchantName: handler.merchant.name,
-        merchantCategory: handler.merchant.category,
+        merchantCategory: handler.merchant.category?.name || '',
         merchantArea: handler.merchant.area,
       },
     };

@@ -46,6 +46,12 @@ export function AdminLayout() {
           onClick: () => navigate("/merchants"),
         },
         {
+          key: "/merchant-categories",
+          icon: <AppstoreOutlined />,
+          label: "商户分类管理",
+          onClick: () => navigate("/merchant-categories"),
+        },
+        {
           key: "/coupon-templates",
           icon: <TagOutlined />,
           label: "券模板管理",
@@ -135,6 +141,7 @@ export function AdminLayout() {
     if (
       [
         "/merchants",
+        "/merchant-categories",
         "/coupon-templates",
         "/orders",
         "/settlements",
