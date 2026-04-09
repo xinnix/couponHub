@@ -16,6 +16,23 @@ export default defineConfig({
       '@styles': path.resolve(__dirname, './src/styles'),
     },
   },
+  optimizeDeps: {
+    include: ['quill'],
+  },
+  build: {
+    commonjsOptions: {
+      include: [/quill/, /node_modules/],
+    },
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'quill': ['quill'],
+          'antd': ['antd'],
+          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+        },
+      },
+    },
+  },
   server: {
     proxy: {
       '/api': {

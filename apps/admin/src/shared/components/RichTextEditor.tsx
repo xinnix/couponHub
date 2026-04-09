@@ -1,6 +1,6 @@
 // apps/admin/src/shared/components/RichTextEditor.tsx
-import { useEffect, useRef } from "react";
-import { useQuill } from "react-quilljs";
+import { useEffect, useRef, useState } from "react";
+import Quill from "quill";
 import "quill/dist/quill.snow.css";
 
 interface RichTextEditorProps {
@@ -14,30 +14,40 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
   onChange,
   placeholder = "请输入内容...",
 }) => {
+  const quillRef = useRef<HTMLDivElement>(null);
+  const [quill, setQuill] = useState<Quill | null>(null);
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
   const isInternalChange = useRef(false);
   const initialized = useRef(false);
 
-  const { quillRef, quill } = useQuill({
-    placeholder,
-    modules: {
-      toolbar: [
-        [{ header: [1, 2, 3, false] }],
-        ["bold", "italic", "underline", "strike"],
-        [{ list: "ordered" }, { list: "bullet" }],
-        [{ color: [] }, { background: [] }],
-        ["link", "image"],
-        [{ align: [] }],
-        ["clean"],
-      ],
-    },
-  });
+  // 初始化 Quill 实例
+  useEffect(() => {
+    if (!quillRef.current || initialized.current) return;
+    initialized.current = true;
+
+    const quillInstance = new Quill(quillRef.current, {
+      theme: "snow",
+      placeholder,
+      modules: {
+        toolbar: [
+          [{ header: [1, 2, 3, false] }],
+          ["bold", "italic", "underline", "strike"],
+          [{ list: "ordered" }, { list: "bullet" }],
+          [{ color: [] }, { background: [] }],
+          ["link", "image"],
+          [{ align: [] }],
+          ["clean"],
+        ],
+      },
+    });
+
+    setQuill(quillInstance);
+  }, [placeholder]);
 
   // quill 实例就绪后设置初始值和监听
   useEffect(() => {
-    if (!quill || initialized.current) return;
-    initialized.current = true;
+    if (!quill) return;
 
     if (value) {
       isInternalChange.current = true;
@@ -55,7 +65,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
 
   // 外部 value 变化时同步到编辑器
   useEffect(() => {
-    if (!quill || !initialized.current) return;
+    if (!quill) return;
     const currentHtml = quill.root.innerHTML;
     const normalizedValue = value || "";
     const normalizedCurrent = currentHtml === "<p><br></p>" ? "" : currentHtml;
