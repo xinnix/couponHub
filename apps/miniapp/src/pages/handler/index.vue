@@ -152,14 +152,23 @@ async function loadHandlerData() {
     ]);
 
     // 3. 计算统计数据
-    if (todayRecords.data?.data) {
-      stats.value.todayRedemptions = todayRecords.data.data.length;
+    console.log('今日核销记录返回:', todayRecords);
+    console.log('今日核销记录数据:', todayRecords.data);
+
+    if (todayRecords.data && Array.isArray(todayRecords.data)) {
+      stats.value.todayRedemptions = todayRecords.data.length;
+      console.log('今日核销数量:', stats.value.todayRedemptions);
     }
 
-    if (monthRecords.data?.data) {
-      stats.value.monthEstimate = monthRecords.data.data.reduce((sum: number, order: any) => {
-        return sum + Number(order.faceValue || 0);
+    if (monthRecords.data && Array.isArray(monthRecords.data)) {
+      stats.value.monthEstimate = monthRecords.data.reduce((sum: number, order: any) => {
+        // 使用 settlementAmount，为空时 fallback 到 faceValue
+        const amount = order.template?.settlementAmount
+          ? Number(order.template.settlementAmount)
+          : Number(order.faceValue || 0);
+        return sum + amount;
       }, 0);
+      console.log('本月预估结算:', stats.value.monthEstimate);
     }
 
     // 4. 获取最近核销流水
@@ -168,8 +177,16 @@ async function loadHandlerData() {
       pageSize: 5,
     });
 
-    if (recentRes.data?.data) {
-      recentRecords.value = recentRes.data.data.map((order: any) => {
+    console.log('最近核销记录返回:', recentRes);
+    console.log('最近核销记录数据:', recentRes.data);
+
+    if (recentRes.data && Array.isArray(recentRes.data)) {
+      recentRecords.value = recentRes.data.map((order: any) => {
+        console.log('处理核销记录 - 完整对象:', JSON.stringify(order, null, 2));
+        console.log('核销记录 handler:', order.handler);
+        console.log('核销记录 template:', order.template);
+        console.log('核销记录 merchant:', order.merchant);
+
         // 获取尾号（订单号后4位）
         const tailNo = order.orderNo.slice(-4);
 
@@ -179,8 +196,13 @@ async function loadHandlerData() {
         const minutes = redeemedAt.getMinutes().toString().padStart(2, '0');
         const time = `${hours}:${minutes}`;
 
-        // 格式化金额
-        const amount = order.isFreeOrder ? '已通过' : `+ ¥${Number(order.faceValue).toFixed(2)}`;
+        // 格式化金额：显示商户结算金额
+        // settlementAmount：商户实际结算金额（补贴场景）
+        // faceValue：fallback，当 settlementAmount 为空时使用
+        const settlementAmount = order.template?.settlementAmount
+          ? Number(order.template.settlementAmount)
+          : Number(order.faceValue);
+        const amount = `+ ¥${settlementAmount.toFixed(2)}`;
 
         // 获取核销员姓名
         const handlerName = order.handler?.name || '未知核销员';
@@ -194,6 +216,8 @@ async function loadHandlerData() {
           handlerName,
         };
       });
+
+      console.log('处理后的核销记录:', recentRecords.value);
     }
   } catch (error) {
     console.error('加载核销员数据失败:', error);

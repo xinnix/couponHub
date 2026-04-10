@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import UQRCode from 'uqrcodejs'
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, getCurrentInstance, onMounted, onUnmounted, ref } from 'vue'
 import { orderApi } from '@/api/business'
 import CustomTabBar from '@/components/CustomTabBar.vue'
+
+const instance = getCurrentInstance()
 
 definePage({
   type: 'page',
@@ -14,13 +16,12 @@ definePage({
 const loading = ref(true)
 const error = ref('')
 const order = ref<any>(null)
-const countdown = ref(30)
-const canvasSize = ref(200)
+const countdown = ref(300) // 5分钟倒计时
+const canvasSize = ref(200) // 标准尺寸，适合屏幕显示和扫描
 const statusBarHeight = ref(0)
 const refunding = ref(false)
 
 let timer: any = null
-let qrcode: UQRCode | null = null
 
 // 计算属性 - 简化模板显示
 const orderTitle = computed(() => {
@@ -53,7 +54,12 @@ const statusText = computed(() => {
 
 const canRefund = computed(() => {
   // 只有已支付且未核销的订单才能退款
-  return order.value && order.value.status === 'PAID'
+  // 且必须是非免费订单（用户实际支付了金额）
+  if (!order.value || order.value.status !== 'PAID')
+    return false
+
+  // 免费领取的订单不显示退款按钮
+  return !order.value.isFreeOrder
 })
 
 // 获取状态栏高度
@@ -141,17 +147,19 @@ async function generateQRCode() {
     const qrcodeRes = await orderApi.generateQRCode(order.value.id)
     const code = qrcodeRes.data.code
 
-    qrcode = new UQRCode()
-    qrcode.data = code // 使用后端生成的安全二维码
-    qrcode.size = canvasSize.value * 2 // 2倍分辨率
-    qrcode.margin = 10
-    qrcode.make()
+    // 获取uQRCode实例
+    const qr = new UQRCode()
+    qr.data = code // 使用后端生成的安全二维码
+    qr.size = canvasSize.value // 必须与canvas设置的宽高一致
+    qr.margin = 0
+    qr.make()
 
-    const canvasContext = uni.createCanvasContext('qrcode-canvas')
-    qrcode.canvasContext = canvasContext
-    qrcode.drawCanvas()
+    // 获取canvas上下文，必须传入组件实例
+    const canvasContext = uni.createCanvasContext('qrcode-canvas', instance?.proxy)
+    qr.canvasContext = canvasContext
+    qr.drawCanvas()
 
-    countdown.value = 30
+    countdown.value = 300
   }
   catch (err: any) {
     console.error('生成二维码失败:', err)
@@ -287,10 +295,8 @@ async function handleRefund() {
         <!-- 二维码卡片 -->
         <view
           class="qrcode-card relative flex flex-col items-center overflow-hidden rounded-lg bg-white p-8 shadow-card">
-          <view class="absolute left-0 top-0 h-full w-1 rounded-l bg-primary-container" />
-          <canvas id="qrcode-canvas" canvas-id="qrcode-canvas" class="qrcode-canvas"
-            :style="{ width: `${canvasSize}px`, height: `${canvasSize}px` }" />
-          <text class="refresh-tip mt-4 text-sm text-on-surface-variant font-medium">
+          <canvas id="qrcode-canvas" canvas-id="qrcode-canvas" class="qrcode-canvas" />
+          <text class="refresh-tip font-medium" mt-4 text-sm text-on-surface-variant>
             二维码将在 {{ countdown }} 秒后刷新
           </text>
         </view>
