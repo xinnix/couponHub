@@ -209,15 +209,6 @@ function onShareAppMessage() {
           </view>
         </view>
       </view>
-
-      <!-- 无优惠券提示 -->
-      <view v-else class="px-6 pb-6">
-        <view class="empty-coupon-card rounded-xl p-6 text-center">
-          <text class="text-xs text-on-surface-variant font-medium">
-            该新闻暂无关联优惠券
-          </text>
-        </view>
-      </view>
     </view>
 
     <!-- 错误状态 -->

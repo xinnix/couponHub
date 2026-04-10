@@ -237,7 +237,8 @@ async function handleBuy() {
   // 新增：根据价格分流
   if (buyPriceNum === 0) {
     await handleFreeClaim() // 免费领取流程
-  } else {
+  }
+  else {
     await handlePaidPurchase() // 付费购买流程（保持原有逻辑）
   }
 }
@@ -260,12 +261,14 @@ async function handleFreeClaim() {
       setTimeout(() => {
         uni.navigateTo({ url: '/pages/wallet/index' })
       }, 1000)
-    } else {
+    }
+    else {
       // 异常：价格 0 但后端标记需要支付
       uni.hideLoading()
       uni.showToast({ title: '系统异常，请联系客服', icon: 'none' })
     }
-  } catch (error: any) {
+  }
+  catch (error: any) {
     uni.hideLoading()
 
     // ✅ 特殊处理 401 未登录错误
@@ -300,7 +303,8 @@ async function handleFreeClaim() {
     }
 
     uni.showToast({ title: errorMsg, icon: 'none' })
-  } finally {
+  }
+  finally {
     buying.value = false
   }
 }
@@ -428,6 +432,16 @@ async function handlePaidPurchase() {
 function formatDate(date: string | Date) {
   const d = new Date(date)
   return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`
+}
+
+// 跳转到商户详情
+function goToMerchant(merchantId?: string) {
+  if (!merchantId) {
+    return
+  }
+  uni.navigateTo({
+    url: `/pages/merchant/detail?id=${merchantId}`,
+  })
 }
 </script>
 
@@ -581,6 +595,34 @@ function formatDate(date: string | Date) {
           </view>
         </view>
 
+        <!-- 适用商户 -->
+        <view v-if="coupon?.merchants && coupon.merchants.length > 0" class="merchant-section">
+          <view class="merchant-header">
+            <view class="merchant-bar" />
+            <text class="merchant-title">
+              适用商户（{{ coupon.merchants.length }}家）
+            </text>
+          </view>
+
+          <view class="merchant-grid">
+            <view v-for="merchant in coupon.merchants" :key="merchant.id" class="merchant-card"
+              @click="goToMerchant(merchant.id)">
+              <!-- 商户 Logo（头像式圆角方形） -->
+              <view v-if="merchant.logo" class="merchant-avatar-box">
+                <image class="merchant-avatar" :src="merchant.logo" mode="aspectFill" />
+              </view>
+              <view v-else class="merchant-avatar-placeholder">
+                <text class="iconfont icon-youhuiquan merchant-avatar-icon" />
+              </view>
+
+              <!-- 商户名称 -->
+              <text class="merchant-card-name">
+                {{ merchant.name }}
+              </text>
+            </view>
+          </view>
+        </view>
+
         <!-- 底部保障区域 -->
         <!-- <view class="trust-row">
           <view class="trust-card trust-card-primary">
@@ -729,7 +771,8 @@ function formatDate(date: string | Date) {
 .price-free {
   font-size: 60rpx;
   font-weight: 900;
-  color: #00AEEF; /* 主题色 */
+  color: #00AEEF;
+  /* 主题色 */
   letter-spacing: -2rpx;
 }
 
@@ -880,6 +923,102 @@ function formatDate(date: string | Date) {
   line-height: 1.6;
 }
 
+/* ========== 适用商户 ========== */
+.merchant-section {
+  background: #eff4fa;
+  border-radius: 24rpx;
+  padding: 36rpx 32rpx;
+  margin-bottom: 32rpx;
+}
+
+.merchant-header {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  margin-bottom: 36rpx;
+}
+
+.merchant-bar {
+  width: 8rpx;
+  height: 44rpx;
+  background: #00AEEF;
+  border-radius: 8rpx;
+}
+
+.merchant-title {
+  font-size: 36rpx;
+  font-weight: 700;
+  color: #171c20;
+  letter-spacing: -0.5rpx;
+}
+
+/* 商户网格布局（横向排列，自动换行） */
+.merchant-grid {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 20rpx;
+}
+
+.merchant-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  /* gap: 12rpx; */
+  /* width: calc((100% - 40rpx) / 3); */
+  /* 每行3个，间距20rpx */
+  transition: all 0.2s ease;
+}
+
+.merchant-card:active {
+  transform: scale(0.95);
+  opacity: 0.9;
+}
+
+/* 商户头像（圆角方形） */
+.merchant-avatar-box {
+  width: 60rpx;
+  height: 60rpx;
+  border-radius: 16rpx;
+  overflow: hidden;
+  flex-shrink: 0;
+  background-color: #fff;
+}
+
+.merchant-avatar {
+  width: 100%;
+  height: 100%;
+}
+
+.merchant-avatar-placeholder {
+  width: 100rpx;
+  height: 100rpx;
+  border-radius: 16rpx;
+  background: #dee3e8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.merchant-avatar-icon {
+  font-size: 48rpx;
+  color: #00AEEF;
+}
+
+/* 商户名称（居中显示） */
+.merchant-card-name {
+  font-size: 18rpx;
+  color: #171c20;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+  margin-top: 6rpx;
+}
+
 /* ========== 底部保障区域 ========== */
 .trust-row {
   display: flex;
@@ -972,7 +1111,8 @@ function formatDate(date: string | Date) {
 .bar-price-free {
   font-size: 44rpx;
   font-weight: 700;
-  color: #00AEEF; /* 主题色 */
+  color: #00AEEF;
+  /* 主题色 */
 }
 
 .bar-btn {
