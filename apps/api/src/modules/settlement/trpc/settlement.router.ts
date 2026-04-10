@@ -7,6 +7,8 @@ import {
 import { createCrudRouterWithCustom } from '../../../trpc/trpc.helper';
 import { protectedProcedure } from '../../../trpc/trpc';
 import { TRPCError } from '@trpc/server';
+import ExcelJS from 'exceljs';
+import { z } from 'zod';
 
 /**
  * Settlement tRPC Router
@@ -20,6 +22,74 @@ export const settlementRouter = createCrudRouterWithCustom(
     getMany: SettlementListQuerySchema,
   },
   (t) => ({
+    // 重写 getMany 以包含 merchant 关系
+    getMany: protectedProcedure
+      .input(SettlementListQuerySchema)
+      .query(async ({ ctx, input }) => {
+        const { page = 1, pageSize = 10, merchantId, status, period } = input;
+
+        // 构建 where 条件
+        const where: any = {};
+        if (merchantId) where.merchantId = merchantId;
+        if (status) where.status = status;
+        if (period) where.period = { contains: period };
+
+        const [items, total] = await Promise.all([
+          ctx.prisma.settlement.findMany({
+            skip: (page - 1) * pageSize,
+            take: pageSize,
+            where,
+            orderBy: { createdAt: 'desc' },
+            include: {
+              merchant: {
+                select: {
+                  id: true,
+                  name: true,
+                  phone: true,
+                  category: {
+                    select: {
+                      name: true,
+                    },
+                  },
+                },
+              },
+            },
+          }),
+          ctx.prisma.settlement.count({ where }),
+        ]);
+
+        return {
+          items,
+          total,
+          page,
+          pageSize,
+          totalPages: Math.ceil(total / pageSize),
+        };
+      }),
+
+    // 重写 getOne 以包含 merchant 关系
+    getOne: protectedProcedure
+      .input(z.object({ id: z.string() }))
+      .query(async ({ ctx, input }) => {
+        return ctx.prisma.settlement.findUnique({
+          where: { id: input.id },
+          include: {
+            merchant: {
+              select: {
+                id: true,
+                name: true,
+                phone: true,
+                category: {
+                  select: {
+                    name: true,
+                  },
+                },
+              },
+            },
+          },
+        });
+      }),
+
     // 生成结算单
     createSettlement: protectedProcedure
       .input(GenerateSettlementSchema)
@@ -75,7 +145,7 @@ export const settlementRouter = createCrudRouterWithCustom(
           }
 
           // 生成快照数据
-          const snapshotData = orders.map((order) => ({
+          const ordersSnapshot = orders.map((order) => ({
             orderId: order.id,
             orderNo: order.orderNo,
             price: Number(order.price),
@@ -87,6 +157,13 @@ export const settlementRouter = createCrudRouterWithCustom(
             redeemedAt: order.redeemedAt,
             userNickname: order.user.nickname,
           }));
+
+          // 包装成完整的快照对象
+          const snapshotData = {
+            orders: ordersSnapshot,
+            generatedAt: new Date(),
+            generatedBy: ctx.user.email || 'system',
+          };
 
           // 计算结算金额（使用 settlementAmount，为空时 fallback 到 faceValue）
           const totalAmount = orders.reduce(
@@ -228,6 +305,154 @@ export const settlementRouter = createCrudRouterWithCustom(
         });
 
         return updated;
+      }),
+
+    // 导出结算单为 Excel
+    exportExcel: protectedProcedure
+      .input(ConfirmSettlementSchema)
+      .mutation(async ({ input, ctx }) => {
+        const { settlementId } = input;
+
+        const settlement = await ctx.prisma.settlement.findUnique({
+          where: { id: settlementId },
+          include: { merchant: true },
+        });
+
+        if (!settlement) {
+          throw new TRPCError({
+            code: 'NOT_FOUND',
+            message: '结算单不存在',
+          });
+        }
+
+        // 创建 Excel 工作簿
+        const workbook = new ExcelJS.Workbook();
+        workbook.creator = 'OpenCode';
+        workbook.created = new Date();
+
+        // 添加结算单信息工作表
+        const infoSheet = workbook.addWorksheet('结算单信息');
+        infoSheet.columns = [
+          { header: '项目', key: 'item', width: 20 },
+          { header: '内容', key: 'content', width: 40 },
+        ];
+
+        // 添加结算单基本信息
+        const statusText = {
+          PENDING: '待确认',
+          CONFIRMED: '已确认',
+          PAID: '已支付',
+        };
+
+        infoSheet.addRows([
+          { item: '结算期间', content: settlement.period },
+          { item: '商户名称', content: settlement.merchant?.name || '-' },
+          { item: '商户分类', content: settlement.merchant?.category?.name || '-' },
+          { item: '商户电话', content: settlement.merchant?.phone || '-' },
+          { item: '订单数量', content: `${settlement.orderCount} 笔` },
+          { item: '结算金额', content: `${Number(settlement.totalAmount).toFixed(2)} 元` },
+          { item: '状态', content: statusText[settlement.status] },
+          { item: '创建时间', content: new Date(settlement.createdAt).toLocaleString('zh-CN') },
+        ]);
+
+        // 设置表头样式
+        infoSheet.getRow(1).font = { bold: true, size: 12 };
+        infoSheet.getRow(1).fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FFE0E0E0' },
+        };
+
+        // 添加订单明细工作表
+        const ordersSheet = workbook.addWorksheet('订单明细');
+        ordersSheet.columns = [
+          { header: '序号', key: 'index', width: 8 },
+          { header: '订单号', key: 'orderNo', width: 20 },
+          { header: '优惠券', key: 'templateTitle', width: 25 },
+          { header: '用户', key: 'userNickname', width: 15 },
+          { header: '购买价格(元)', key: 'price', width: 15 },
+          { header: '面值(元)', key: 'faceValue', width: 15 },
+          { header: '结算金额(元)', key: 'settlementAmount', width: 15 },
+          { header: '核销时间', key: 'redeemedAt', width: 20 },
+        ];
+
+        // 设置订单明细表头样式
+        ordersSheet.getRow(1).font = { bold: true, size: 11 };
+        ordersSheet.getRow(1).fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FF4472C4' },
+        };
+        ordersSheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+
+        // 添加订单数据
+        const snapshotData = settlement.snapshotData as any;
+        if (snapshotData && snapshotData.orders) {
+          snapshotData.orders.forEach((order: any, index: number) => {
+            ordersSheet.addRow({
+              index: index + 1,
+              orderNo: order.orderNo,
+              templateTitle: order.templateTitle,
+              userNickname: order.userNickname,
+              price: Number(order.price).toFixed(2),
+              faceValue: Number(order.faceValue).toFixed(2),
+              settlementAmount: Number(order.settlementAmount).toFixed(2),
+              redeemedAt: new Date(order.redeemedAt).toLocaleString('zh-CN'),
+            });
+          });
+        }
+
+        // 添加汇总行
+        const totalRow = ordersSheet.addRow({
+          index: '合计',
+          orderNo: `${settlement.orderCount} 笔`,
+          templateTitle: '',
+          userNickname: '',
+          price: snapshotData?.orders?.reduce((sum: number, o: any) => sum + Number(o.price), 0).toFixed(2),
+          faceValue: snapshotData?.orders?.reduce((sum: number, o: any) => sum + Number(o.faceValue), 0).toFixed(2),
+          settlementAmount: Number(settlement.totalAmount).toFixed(2),
+          redeemedAt: '',
+        });
+        totalRow.font = { bold: true };
+        totalRow.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FFFFF2CC' },
+        };
+
+        // 添加签字区域工作表
+        const signSheet = workbook.addWorksheet('签字确认');
+        signSheet.columns = [
+          { header: '确认事项', key: 'item', width: 50 },
+          { header: '签字', key: 'sign', width: 30 },
+        ];
+
+        signSheet.addRows([
+          { item: '商户确认以上订单明细无误', sign: '' },
+          { item: '商户签字：', sign: '' },
+          { item: '', sign: '' },
+          { item: '签字日期：', sign: '' },
+          { item: '', sign: '' },
+          { item: '平台审核人签字：', sign: '' },
+          { item: '', sign: '' },
+          { item: '审核日期：', sign: '' },
+        ]);
+
+        signSheet.getRow(1).font = { bold: true, size: 12 };
+
+        // 生成 Excel 文件的 Buffer
+        const buffer = await workbook.xlsx.writeBuffer();
+
+        // 转换为 Uint8Array 然后转为 base64
+        const uint8Array = new Uint8Array(buffer as ArrayBuffer);
+        const base64 = btoa(String.fromCharCode(...uint8Array));
+
+        // 返回 base64 编码的文件内容
+        return {
+          fileName: `结算单_${settlement.period}_${settlement.merchant?.name || '未知商户'}.xlsx`,
+          fileContent: base64,
+          mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        };
       }),
   }),
   {
