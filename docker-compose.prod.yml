@@ -14,6 +14,9 @@ services:
     container_name: couponHub-api-prod
     env_file:
       - 1panel.env
+    environment:
+      # ===== 时区配置（关键修复）=====
+      - TZ=Asia/Shanghai
     ports:
       - "${API_PORT:-3001}:3000"
     volumes:
@@ -38,6 +41,9 @@ services:
     container_name: couponHub-admin-prod
     env_file:
       - 1panel.env
+    environment:
+      # ===== 时区配置（关键修复）=====
+      - TZ=Asia/Shanghai
     ports:
       - "${ADMIN_PORT:-8081}:80"
     depends_on:

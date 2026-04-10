@@ -50,6 +50,15 @@ WORKDIR /app
 # Stage 4: Production (Nginx)
 FROM nginx:alpine AS production
 
+# ===== 时区配置（关键修复）=====
+# 设置时区为北京时间（Asia/Shanghai）
+# 确保 Admin 后台显示时间与数据库一致
+ENV TZ=Asia/Shanghai
+RUN apk add --no-cache tzdata && \
+    ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime && \
+    echo "Asia/Shanghai" > /etc/timezone && \
+    apk del tzdata  # 删除包减小镜像体积（软链接已生效）
+
 # Copy nginx config
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 

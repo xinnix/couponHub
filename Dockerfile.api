@@ -62,6 +62,18 @@ RUN pnpm deploy --filter @opencode/api --legacy /out
 FROM node:22-alpine AS runner
 WORKDIR /app
 
+# ===== 时区配置（关键修复）=====
+# 设置时区为北京时间（Asia/Shanghai）
+# 解决所有 DateTime 字段（createdAt, updatedAt 等）的时间偏差问题
+ENV TZ=Asia/Shanghai
+RUN apk add --no-cache tzdata && \
+    ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime && \
+    echo "Asia/Shanghai" > /etc/timezone && \
+    apk del tzdata  # 安装后可删除以减小镜像体积（软链接已生效）
+
+# 验证时区设置
+RUN date && echo "Timezone set to: $TZ"
+
 # 1. 从 deployer 阶段拷贝 pnpm deploy 的输出（包含 node_modules 和配置文件）
 # pnpm deploy 会将整个包的内容输出到指定目录，但不包含编译产物和 workspace 源文件
 COPY --from=deployer /out/package.json ./package.json
@@ -85,14 +97,21 @@ COPY --from=builder /app/infra/shared/dist ./node_modules/@opencode/shared/dist
 # 5. 拷贝完整的 Prisma Schema 以便在生产环境运行迁移
 COPY --from=builder /app/infra/database ./infra/database
 
-# 6. 创建证书目录（用于微信支付证书）
+# 6. 确保 Prisma CLI 可用（关键修复）
+# pnpm deploy 可能不会创建 node_modules/.bin 软链接，需要手动拷贝 Prisma CLI
+# 从 builder 阶段拷贝完整的 prisma 包
+COPY --from=builder /app/node_modules/.pnpm/prisma@*/node_modules/prisma ./node_modules/prisma-standalone
+
+# 创建软链接以便快速访问
+RUN ln -sf /app/node_modules/prisma-standalone/build/index.js /app/node_modules/.bin/prisma || mkdir -p /app/node_modules/.bin && ln -sf /app/node_modules/prisma-standalone/build/index.js /app/node_modules/.bin/prisma
+
+# 7. 创建证书目录（用于微信支付证书）
 # 注意：证书文件不会包含在镜像中，需要通过 volume 挂载或 Docker secrets 提供
 RUN mkdir -p /app/certs
 
-# 7. 拷贝启动脚本（可选诊断版本）
-# 生产环境使用 entrypoint-simple.sh，排查问题时使用 entrypoint-diagnostic.sh
-COPY apps/api/entrypoint-diagnostic.sh ./entrypoint.sh
-# COPY apps/api/entrypoint-diagnostic.sh ./entrypoint.sh  # 排查问题时启用此行
+# 8. 拷贝启动脚本（终极优化版）
+# 特性：数据库预检查、多级CLI查找、跳过迁移支持、快速失败
+COPY apps/api/entrypoint-final.sh ./entrypoint.sh
 RUN chmod +x ./entrypoint.sh
 
 EXPOSE 3000
