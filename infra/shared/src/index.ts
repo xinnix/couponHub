@@ -484,11 +484,11 @@ export const NewsSchema = z.object({
   title: z.string(),
   bannerUrl: z.string().url().optional().nullable(),
   content: z.string(),
-  linkedCouponId: z.string().optional().nullable(),
   viewCount: z.number().int(),
   status: z.enum(["DRAFT", "PUBLISHED"]),
   isHero: z.boolean(),
   isPopup: z.boolean(), // 新增字段：是否为首页弹窗新闻
+  coupons: z.array(z.any()).optional(), // 新增：关联的优惠券列表（类型稍后定义）
   createdAt: z.date(),
   updatedAt: z.date(),
 });
@@ -497,7 +497,7 @@ export const CreateNewsSchema = z.object({
   title: z.string().min(1, "标题不能为空").max(200, "标题最多200字"),
   bannerUrl: z.string().url("Banner URL格式无效").optional().nullable(),
   content: z.string().min(1, "内容不能为空"),
-  linkedCouponId: z.string().optional().nullable(),
+  couponIds: z.array(z.string()).optional(), // 新增：优惠券ID数组
   status: z.enum(["DRAFT", "PUBLISHED"]).default("DRAFT"),
   isHero: z.boolean().default(false),
   isPopup: z.boolean().default(false), // 新增字段：是否为首页弹窗新闻
@@ -601,6 +601,20 @@ export type CouponTemplateInput = z.infer<typeof CouponTemplateSchema>;
 export type CreateCouponTemplateInput = z.infer<typeof CreateCouponTemplateSchema>;
 export type UpdateCouponTemplateInput = z.infer<typeof UpdateCouponTemplateSchema>;
 export type CouponTemplateListQueryInput = z.infer<typeof CouponTemplateListQuerySchema>;
+
+// ============================================
+// News Coupon Relation Schemas
+// ============================================
+
+export const NewsCouponRelationSchema = z.object({
+  id: z.string(),
+  newsId: z.string(),
+  couponId: z.string(),
+  createdAt: z.date(),
+  coupon: CouponTemplateSchema, // 嵌套的优惠券信息
+});
+
+export type NewsCouponRelationInput = z.infer<typeof NewsCouponRelationSchema>;
 
 // ============================================
 // Order Schemas

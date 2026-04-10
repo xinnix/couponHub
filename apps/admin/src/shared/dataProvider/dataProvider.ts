@@ -300,6 +300,16 @@ export const dataProvider = {
    */
   getOne: async ({ resource, id, meta }: any) => {
     try {
+      // 支持自定义方法（如 getOneForAdmin）
+      if (meta?.method) {
+        const result = await (trpcClient as any)[resource][meta.method].query({
+          id,
+          include: meta?.include,
+          select: meta?.select,
+        });
+        return { data: result };
+      }
+
       const result = await (trpcClient as any)[resource].getOne.query({
         id,
         include: meta?.include,

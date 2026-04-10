@@ -53,7 +53,7 @@ export class NewsController {
   @ApiOperation({ summary: '获取新闻详情' })
   @ApiResponse({ status: 200, description: '获取成功' })
   async findOne(@Param('id') id: string) {
-    return this.newsService.getOne(id);
+    return this.newsService.getNewsWithCoupons(id);
   }
 
   @Post()
@@ -62,7 +62,7 @@ export class NewsController {
   @ApiOperation({ summary: '创建新闻' })
   @ApiResponse({ status: 201, description: '创建成功' })
   async create(@Body() body: any) {
-    return this.newsService.create(body);
+    return this.newsService.createWithCoupons(body);
   }
 
   @Put(':id')
@@ -71,7 +71,7 @@ export class NewsController {
   @ApiOperation({ summary: '更新新闻' })
   @ApiResponse({ status: 200, description: '更新成功' })
   async update(@Param('id') id: string, @Body() body: any) {
-    return this.newsService.update(id, body);
+    return this.newsService.updateWithCoupons(id, body);
   }
 
   @Delete(':id')

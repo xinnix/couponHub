@@ -1,7 +1,7 @@
 // apps/admin/src/modules/news/pages/NewsDetailPage.tsx
 import { useParams, useNavigate } from "react-router-dom";
 import { useOne } from "@refinedev/core";
-import { Card, Descriptions, Tag, Button, Space, Empty, Spin, Divider, Image } from "antd";
+import { Card, Descriptions, Tag, Button, Space, Empty, Spin, Divider, Image, Table } from "antd";
 import { ArrowLeftOutlined, EyeFilled, TagOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 
@@ -10,11 +10,11 @@ interface News {
   title: string;
   bannerUrl?: string;
   content: string;
-  linkedCouponId?: string;
   viewCount: number;
   status: 'DRAFT' | 'PUBLISHED';
   createdAt: Date;
   updatedAt: Date;
+  coupons?: any[];
 }
 
 export const NewsDetailPage = () => {
@@ -38,6 +38,63 @@ export const NewsDetailPage = () => {
     return <Empty description="新闻不存在" />;
   }
 
+  // 优惠券列表列定义
+  const couponColumns = [
+    {
+      title: '序号',
+      key: 'index',
+      render: (_: any, __: any, index: number) => index + 1,
+      width: 80,
+    },
+    {
+      title: '优惠券标题',
+      dataIndex: ['coupon', 'title'],
+      key: 'title',
+    },
+    {
+      title: '价格',
+      dataIndex: ['coupon', 'buyPrice'],
+      key: 'buyPrice',
+      render: (price: number) => `¥${price}`,
+    },
+    {
+      title: '面值',
+      dataIndex: ['coupon', 'faceValue'],
+      key: 'faceValue',
+      render: (value: number) => `¥${value}`,
+    },
+    {
+      title: '状态',
+      dataIndex: ['coupon', 'status'],
+      key: 'status',
+      render: (status: string) => {
+        const colorMap: Record<string, string> = {
+          ACTIVE: 'success',
+          EXPIRED: 'warning',
+          DISABLED: 'default',
+        };
+        const textMap: Record<string, string> = {
+          ACTIVE: '正常',
+          EXPIRED: '已过期',
+          DISABLED: '已下架',
+        };
+        return <Tag color={colorMap[status]}>{textMap[status]}</Tag>;
+      },
+    },
+    {
+      title: '操作',
+      key: 'action',
+      render: (record: any) => (
+        <Button
+          type="link"
+          onClick={() => navigate(`/coupon-template/show/${record.coupon.id}`)}
+        >
+          查看
+        </Button>
+      ),
+    },
+  ];
+
   return (
     <div style={{ maxWidth: 1200, margin: "0 auto", padding: "24px" }}>
       <Card>
@@ -57,9 +114,9 @@ export const NewsDetailPage = () => {
               <EyeFilled />
               <span>{news.viewCount || 0} 次浏览</span>
             </Space>
-            {news.linkedCouponId && (
+            {news.coupons && news.coupons.length > 0 && (
               <Tag color="blue" icon={<TagOutlined />}>
-                已关联券模板
+                关联 {news.coupons.length} 个优惠券
               </Tag>
             )}
           </Space>
@@ -82,6 +139,18 @@ export const NewsDetailPage = () => {
           />
         </Card>
 
+        {/* 关联优惠券表格 */}
+        {news.coupons && news.coupons.length > 0 && (
+          <Card title="关联优惠券" style={{ marginBottom: 24 }}>
+            <Table
+              dataSource={news.coupons}
+              columns={couponColumns}
+              rowKey="id"
+              pagination={false}
+            />
+          </Card>
+        )}
+
         <Divider />
 
         <Descriptions bordered column={2}>
@@ -99,11 +168,6 @@ export const NewsDetailPage = () => {
           <Descriptions.Item label="浏览量">
             {news.viewCount || 0}
           </Descriptions.Item>
-          {news.linkedCouponId && (
-            <Descriptions.Item label="关联券模板ID" span={2}>
-              {news.linkedCouponId}
-            </Descriptions.Item>
-          )}
         </Descriptions>
       </Card>
     </div>

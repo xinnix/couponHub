@@ -1,5 +1,5 @@
 // apps/admin/src/modules/news/components/NewsForm.tsx
-import { Form, Input, Select, Switch, Alert } from "antd";
+import { Form, Input, Select, Switch, Alert, Tag } from "antd";
 import { useList } from "@refinedev/core";
 import { RichTextEditor } from "../../../shared/components/RichTextEditor";
 import { OSSUpload } from "../../../shared/components/OSSUpload";
@@ -44,20 +44,38 @@ export const NewsForm: React.FC<NewsFormProps> = ({ form, isEdit }) => {
         <RichTextEditor placeholder="请输入新闻内容..." />
       </Form.Item>
 
-      <Form.Item name="linkedCouponId" label="关联券模板" extra="关联后，小程序端将显示'立即购买'按钮">
+      <Form.Item
+        name="couponIds"
+        label="关联优惠券"
+        extra="可选择多个优惠券，按选择顺序展示。允许选择购买未开始的优惠券（用于预告）"
+      >
         <Select
-          placeholder="选择关联的券模板（可选）"
+          mode="multiple"
+          placeholder="选择关联的优惠券（可选）"
           allowClear
           showSearch
           filterOption={(input, option) =>
-            (option?.children as string)?.toLowerCase().includes(input.toLowerCase())
+            (option?.label as string)?.toLowerCase().includes(input.toLowerCase())
           }
+          optionLabelProp="label"
         >
-          {templates.map((t: any) => (
-            <Select.Option key={t.id} value={t.id}>
-              {t.title} - ¥{t.buyPrice}
-            </Select.Option>
-          ))}
+          {templates.map((t: any) => {
+            const isUpcoming = new Date(t.validFrom) > new Date();
+            return (
+              <Select.Option
+                key={t.id}
+                value={t.id}
+                label={`${t.title} - ¥${t.buyPrice}${isUpcoming ? ' (即将上线)' : ''}`}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span>{t.title} - ¥{t.buyPrice}</span>
+                  {isUpcoming && (
+                    <Tag color="blue" style={{ marginLeft: 8 }}>即将上线</Tag>
+                  )}
+                </div>
+              </Select.Option>
+            );
+          })}
         </Select>
       </Form.Item>
 

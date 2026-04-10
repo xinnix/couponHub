@@ -68,4 +68,144 @@ export class NewsService extends BaseService<'News'> {
       },
     });
   }
+
+  /**
+   * 获取新闻详情（包含关联的优惠券）- 小程序端使用
+   * 过滤条件：status='ACTIVE' 且 validFrom<=now
+   */
+  async getNewsWithCoupons(id: string) {
+    const news = await this.model.findUnique({
+      where: { id },
+      include: {
+        coupons: {
+          include: {
+            coupon: {
+              select: {
+                id: true,
+                title: true,
+                buyPrice: true,
+                faceValue: true,
+                description: true,
+                status: true,
+                validFrom: true,
+                stock: true,
+              },
+            },
+          },
+          orderBy: { createdAt: 'asc' },
+        },
+      },
+    });
+
+    if (!news) return null;
+
+    // 应用状态过滤（静默过滤，不返回提示）
+    const filteredCoupons = this.filterCouponsByStatus(news.coupons as any[]);
+
+    return {
+      ...news,
+      coupons: filteredCoupons,
+    };
+  }
+
+  /**
+   * 获取新闻详情（包含关联的优惠券）- Admin端使用
+   * 显示所有关联的优惠券（不过滤），方便管理员管理
+   */
+  async getNewsWithCouponsForAdmin(id: string) {
+    const news = await this.model.findUnique({
+      where: { id },
+      include: {
+        coupons: {
+          include: {
+            coupon: true, // Admin端返回完整信息
+          },
+          orderBy: { createdAt: 'asc' },
+        },
+      },
+    });
+
+    return news;
+  }
+
+  /**
+   * 状态过滤逻辑（小程序端）：
+   * - status = 'ACTIVE'
+   * - validFrom <= now（购买已开始）
+   */
+  private filterCouponsByStatus(relations: any[]) {
+    const now = new Date();
+
+    return relations.filter((r) => {
+      const isActive = r.coupon.status === 'ACTIVE';
+      const hasStarted = new Date(r.coupon.validFrom) <= now;
+      return isActive && hasStarted;
+    });
+  }
+
+  /**
+   * 创建新闻时关联优惠券
+   */
+  async createWithCoupons(data: any, userId?: string) {
+    const { couponIds, ...newsData } = data;
+
+    // 创建新闻
+    const news = await this.model.create({
+      data: {
+        ...newsData,
+        createdById: userId,
+        updatedById: userId,
+      },
+    });
+
+    // 创建优惠券关联
+    if (couponIds && couponIds.length > 0) {
+      await this.createCouponRelations(news.id, couponIds);
+    }
+
+    return news;
+  }
+
+  /**
+   * 更新新闻时更新优惠券关联
+   */
+  async updateWithCoupons(id: string, data: any, userId?: string) {
+    const { couponIds, ...newsData } = data;
+
+    // 更新新闻基本信息
+    const news = await this.model.update({
+      where: { id },
+      data: {
+        ...newsData,
+        updatedById: userId,
+      },
+    });
+
+    // 更新优惠券关联
+    if (couponIds !== undefined) {
+      // 1. 删除旧的关联
+      await this.prisma.newsCouponRelation.deleteMany({
+        where: { newsId: id },
+      });
+
+      // 2. 创建新的关联
+      if (couponIds.length > 0) {
+        await this.createCouponRelations(id, couponIds);
+      }
+    }
+
+    return news;
+  }
+
+  /**
+   * 创建优惠券关联记录
+   */
+  private async createCouponRelations(newsId: string, couponIds: string[]) {
+    await this.prisma.newsCouponRelation.createMany({
+      data: couponIds.map((couponId) => ({
+        newsId,
+        couponId,
+      })),
+    });
+  }
 }

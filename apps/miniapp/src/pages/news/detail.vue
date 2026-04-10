@@ -21,6 +21,14 @@ const statusBarHeight = ref(0)
 const loading = ref(false)
 const newsDetail = ref<any>(null)
 
+// 处理富文本内容，强制图片宽度
+function processContent(content: string): string {
+  if (!content) return ''
+
+  // 给所有 img 标签添加内联样式，强制宽度 100%
+  return content.replace(/<img/gi, '<img style="width: 100%; max-width: 100%; height: auto; display: block; border-radius: 8rpx; margin: 1em 0;"')
+}
+
 // 加载新闻详情
 async function loadNewsDetail() {
   if (!props.id) {
@@ -35,7 +43,10 @@ async function loadNewsDetail() {
   try {
     const res = await newsApi.getDetail(props.id)
     if (res.success && res.data) {
-      newsDetail.value = res.data
+      newsDetail.value = {
+        ...res.data,
+        content: processContent(res.data.content), // 处理图片样式
+      }
       console.log('新闻详情:', newsDetail.value)
     }
     else {
@@ -153,25 +164,60 @@ function onShareAppMessage() {
           :nodes="newsDetail.content" />
       </view>
 
-      <!-- 关联优惠券（如果有） -->
-      <!-- <view v-if="newsDetail.linkedCouponId" class="px-6 pb-6">
-        <view class="linked-coupon-card rounded-xl p-4 shadow-ambient">
-          <view class="flex items-center justify-between">
-            <view>
-              <text class="text-xs text-primary-container font-bold">
-                相关优惠
-              </text>
-              <text class="mt-1 text-sm text-on-surface font-bold">
-                点击查看详情
-              </text>
+      <!-- 关联优惠券列表（如果有） -->
+      <view v-if="newsDetail.coupons && newsDetail.coupons.length > 0" class="px-6 pb-6">
+        <view class="mb-4">
+          <text class="text-sm text-on-surface font-bold">
+            相关优惠
+          </text>
+        </view>
+
+        <!-- 优惠券卡片列表 -->
+        <view class="space-y-3">
+          <view v-for="(item, index) in newsDetail.coupons" :key="item.id"
+            class="coupon-card rounded-xl p-4 shadow-ambient">
+            <view class="flex items-center justify-between">
+              <!-- 左侧信息 -->
+              <view class="flex-1">
+                <text class="mb-2 block text-sm text-on-surface font-bold">
+                  {{ item.coupon.title }}
+                </text>
+
+                <!-- 价格信息 -->
+                <view class="mb-2 flex items-center gap-2">
+                  <text class="text-lg text-primary-container font-bold">
+                    ¥{{ item.coupon.buyPrice }}
+                  </text>
+                  <text class="text-xs text-on-surface-variant line-through">
+                    面值 ¥{{ item.coupon.faceValue }}
+                  </text>
+                </view>
+
+                <!-- 优惠券简介 -->
+                <text v-if="item.coupon.description" class="block text-xs text-on-surface-variant">
+                  {{ item.coupon.description }}
+                </text>
+              </view>
+
+              <!-- 右侧按钮 -->
+              <view
+                class="buy-btn rounded-md bg-primary-container px-4 py-1.5 text-xs text-white font-bold transition-transform"
+                @click="goToCoupon(item.coupon.id)">
+                立即抢
+              </view>
             </view>
-            <button class="rounded-lg bg-primary-container px-4 py-2 text-xs text-white font-bold"
-              @click="goToCoupon(newsDetail.linkedCouponId)">
-              查看优惠券
-            </button>
           </view>
         </view>
-      </view> -->
+      </view>
+
+      <!-- 无优惠券提示 -->
+      <view v-else class="px-6 pb-6">
+        <view class="empty-coupon-card rounded-xl p-6 text-center">
+          <text class="text-xs text-on-surface-variant font-medium">
+            该新闻暂无关联优惠券
+          </text>
+        </view>
+      </view>
     </view>
 
     <!-- 错误状态 -->
@@ -253,21 +299,23 @@ function onShareAppMessage() {
   word-break: break-word;
   line-height: 1.8;
 
-  /* 可以添加更多富文本样式 */
-  p {
-    margin-bottom: 1em;
-  }
-
-  img {
-    max-width: 100%;
-    height: auto;
+  /* 使用深度选择器穿透 rich-text 组件 */
+  :deep(img) {
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    display: block;
     border-radius: 8rpx;
     margin: 1em 0;
   }
 
-  h1,
-  h2,
-  h3 {
+  :deep(p) {
+    margin-bottom: 1em;
+  }
+
+  :deep(h1),
+  :deep(h2),
+  :deep(h3) {
     font-weight: bold;
     margin-top: 1.5em;
     margin-bottom: 0.8em;
@@ -278,6 +326,39 @@ function onShareAppMessage() {
 .linked-coupon-card {
   background: rgba(255, 255, 255, 0.95);
   border: 2rpx solid rgba(189, 200, 209, 0.2);
+}
+
+/* 多优惠券卡片样式 */
+.coupon-card {
+  background: rgba(255, 255, 255, 0.95);
+  border: 2rpx solid rgba(189, 200, 209, 0.2);
+  transition: all 0.2s ease;
+}
+
+/* 立即抢按钮 - 参考首页样式 */
+.buy-btn {
+  transition: transform 0.2s ease;
+  box-shadow: none;
+}
+
+.buy-btn:active {
+  transform: scale(0.95);
+}
+
+/* 删除线样式 */
+.line-through {
+  text-decoration: line-through;
+}
+
+/* 空优惠券卡片 */
+.empty-coupon-card {
+  background: rgba(255, 255, 255, 0.6);
+  border: 2rpx solid rgba(189, 200, 209, 0.3);
+}
+
+/* 优惠券卡片间距（不使用通配符选择器） */
+.coupon-card+.coupon-card {
+  margin-top: 0.75rem;
 }
 
 /* 查看优惠券按钮 */

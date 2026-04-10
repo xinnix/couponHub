@@ -36,13 +36,21 @@ interface News {
   title: string;
   bannerUrl?: string;
   content: string;
-  linkedCouponId?: string;
   viewCount: number;
   status: 'DRAFT' | 'PUBLISHED';
   isHero: boolean;
-  isPopup: boolean; // 新增字段
+  isPopup: boolean;
   createdAt: Date;
   updatedAt: Date;
+  coupons?: Array<{
+    id: string;
+    couponId: string;
+    coupon: {
+      id: string;
+      title: string;
+      status: string;
+    };
+  }>;
 }
 
 export const NewsListPage = () => {
@@ -101,9 +109,30 @@ export const NewsListPage = () => {
     setIsModalVisible(true);
   };
 
-  const handleEdit = (record: News) => {
+  const handleEdit = async (record: News) => {
     setEditingRecord(record);
-    form.setFieldsValue(record);
+
+    // 使用 getOneForAdmin 获取完整的优惠券列表（包括未开始和过期的）
+    try {
+      const trpcClient = (await import('../../../shared/trpc/trpcClient')).getTrpcClient();
+      const fullRecord = await trpcClient.news.getOneForAdmin.query({ id: record.id });
+
+      // 将 coupons 数组转换为 couponIds 数组
+      const couponIds = fullRecord.coupons?.map((c: any) => c.couponId) || [];
+
+      form.setFieldsValue({
+        ...fullRecord,
+        couponIds, // 设置优惠券ID数组
+      });
+    } catch (error) {
+      console.error('Failed to fetch news details:', error);
+      // 降级处理：使用列表数据
+      form.setFieldsValue({
+        ...record,
+        couponIds: [],
+      });
+    }
+
     setIsModalVisible(true);
   };
 
@@ -243,9 +272,14 @@ export const NewsListPage = () => {
     },
     {
       title: "关联券",
-      dataIndex: "linkedCouponId",
-      width: 100,
-      render: (id: string) => id ? <Tag color="blue">已关联</Tag> : '-',
+      dataIndex: "coupons",
+      width: 120,
+      render: (coupons: any[]) => {
+        const count = coupons?.length || 0;
+        return count > 0 ? (
+          <Tag color="blue">{count} 个优惠券</Tag>
+        ) : '-';
+      },
     },
     {
       title: "头图",

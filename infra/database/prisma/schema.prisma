@@ -330,7 +330,6 @@ model News {
   title          String
   bannerUrl      String?
   content        String // 富文本内容
-  linkedCouponId String? // 关联的券模板 ID
 
   viewCount Int     @default(0)
   status    String  @default("DRAFT") // DRAFT, PUBLISHED
@@ -340,6 +339,9 @@ model News {
   // 创建者和更新者 (Admin)
   createdById String?
   updatedById String?
+
+  // 关联优惠券（多对多）
+  coupons NewsCouponRelation[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -351,6 +353,25 @@ model News {
   @@index([isPopup]) // 添加索引便于查询弹窗新闻
   @@index([status, isPopup]) // 复合索引优化小程序端查询
   @@map("news")
+}
+
+// ============================================
+// 新闻优惠券关联 (NewsCouponRelation)
+// ============================================
+model NewsCouponRelation {
+  id        String   @id @default(cuid())
+  newsId    String
+  couponId  String
+  createdAt DateTime @default(now())
+
+  // 关联关系
+  news   News           @relation(fields: [newsId], references: [id], onDelete: Cascade)
+  coupon CouponTemplate @relation(fields: [couponId], references: [id], onDelete: Cascade)
+
+  @@unique([newsId, couponId]) // 防止重复关联
+  @@index([newsId])
+  @@index([couponId])
+  @@map("news_coupon_relations")
 }
 
 // ============================================
@@ -393,6 +414,7 @@ model CouponTemplate {
   // 关联
   category MerchantCategory? @relation(fields: [categoryId], references: [id])
   orders   Order[]
+  news     NewsCouponRelation[] // 反向关联：哪些新闻引用了此优惠券
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
