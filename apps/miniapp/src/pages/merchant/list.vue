@@ -315,10 +315,12 @@ function handleImageError(e: any) {
 <style lang="scss" scoped>
 .merchant-list-page {
   min-height: 100vh;
+  max-width: 100vw;
+  width: 100vw;
   background: #F5FAFF;
   font-family: 'Plus Jakarta Sans', sans-serif;
-  overflow: hidden;
-  /* 禁止页面滚动，只允许 scroll-view 滚动 */
+  overflow-x: hidden; /* 强制禁止横向滚动 */
+  overflow-y: hidden; /* 页面级别禁止纵向滚动，只允许 scroll-view 滚动 */
 }
 
 /* ===== 固定搜索栏 ===== */
@@ -327,6 +329,8 @@ function handleImageError(e: any) {
   top: 0;
   left: 0;
   right: 0;
+  width: 100vw;
+  max-width: 100vw;
   z-index: 999;
   height: 88rpx;
   /* 固定高度 */
@@ -334,6 +338,7 @@ function handleImageError(e: any) {
   /* 确保容器背景透明 */
   pointer-events: none;
   /* 允许点击穿透到下层 */
+  overflow-x: hidden; /* 强制禁止横向滚动 */
 }
 
 .search-bar-bg {
@@ -406,18 +411,21 @@ function handleImageError(e: any) {
 
 /* ===== 滚动内容区域 ===== */
 .scroll-content {
+  width: 100vw;
+  max-width: 100vw;
   height: 100vh;
-  overflow-y: auto;
-  /* 移除paddingTop，让背景图能从顶部开始显示 */
+  overflow-x: hidden; /* 强制禁止横向滚动 */
+  overflow-y: auto; /* 只允许纵向滚动 */
   padding-top: 0 !important;
 }
 
 /* ===== 头部背景图区域 ===== */
 .header-image-section {
   position: relative;
-  width: 100%;
+  width: 100vw;
+  max-width: 100vw;
   height: 320rpx;
-  overflow: hidden;
+  overflow-x: hidden; /* 强制禁止横向溢出 */
   /* 负margin，让背景图延伸到搜索栏下方 */
   margin-top: -88rpx;
   /* 搜索栏高度 */
@@ -445,10 +453,13 @@ function handleImageError(e: any) {
 
 /* ===== 筛选栏容器（分类+楼层） ===== */
 .filter-container {
+  width: 100%;
+  max-width: 100vw;
   position: relative;
   background: rgba(245, 250, 255, 1);
   backdrop-filter: blur(20rpx);
   transition: all 0.1s ease;
+  overflow-x: hidden; /* 强制禁止横向滚动 */
 }
 
 /* 筛选栏固定状态 */
@@ -466,19 +477,20 @@ function handleImageError(e: any) {
   /* 分类栏72rpx + 楼层栏80rpx */
 }
 
-/* ===== 分类导航栏 ===== */
-.category-nav {
-  padding: 32rpx 24rpx;
-  border-bottom: 1rpx solid rgba(189, 200, 209, 0.15);
-}
-
 /* ===== 区域选择栏 ===== */
 .area-nav {
+  width: 100%;
+  max-width: 100vw;
   padding: 24rpx 24rpx 32rpx;
+  overflow-x: hidden; /* 禁止容器横向滚动 */
 }
 
 .area-scroll {
+  width: 100%;
+  max-width: 100vw;
   white-space: nowrap;
+  overflow-x: auto; /* 只允许 scroll-view 内部横向滚动 */
+  overflow-y: hidden;
 }
 
 .area-item-active,
@@ -496,11 +508,7 @@ function handleImageError(e: any) {
   margin-right: 16rpx;
 }
 
-.area-item-active:first-child,
-.area-item-inactive:first-child {
-  margin-left: 0;
-}
-
+/* 移除最后一个 item 的右边距，防止溢出 */
 .area-item-active:last-child,
 .area-item-inactive:last-child {
   margin-right: 0;
@@ -532,12 +540,19 @@ function handleImageError(e: any) {
 
 /* ===== 分类导航栏 ===== */
 .category-nav {
+  width: 100%;
+  max-width: 100vw;
   padding: 32rpx 24rpx;
   border-bottom: 1rpx solid rgba(189, 200, 209, 0.15);
+  overflow-x: hidden; /* 禁止容器横向滚动 */
 }
 
 .category-scroll {
+  width: 100%;
+  max-width: 100vw;
   white-space: nowrap;
+  overflow-x: auto; /* 只允许 scroll-view 内部横向滚动 */
+  overflow-y: hidden;
 }
 
 .category-item-active,
@@ -548,6 +563,12 @@ function handleImageError(e: any) {
   padding: 12rpx 32rpx;
   border-radius: 0;
   margin-right: 24rpx;
+}
+
+/* 移除最后一个 item 的右边距，防止溢出 */
+.category-item-active:last-child,
+.category-item-inactive:last-child {
+  margin-right: 0;
 }
 
 .category-text {
@@ -569,16 +590,19 @@ function handleImageError(e: any) {
 
 /* ===== 商户列表 ===== */
 .merchant-list {
+  width: 100%;
   padding: 0 24rpx;
   display: flex;
   flex-direction: column;
   gap: 24rpx;
   padding-bottom: 140rpx;
   /* 底部留出 TabBar 空间 */
+  box-sizing: border-box; /* 确保 padding 不增加总宽度 */
 }
 
 /* ===== 商户卡片 ===== */
 .merchant-card {
+  width: 100%;
   background: rgba(255, 255, 255, 0.9);
   /* 使用首页白色卡片背景 */
   backdrop-filter: blur(20rpx);
@@ -591,6 +615,7 @@ function handleImageError(e: any) {
   transition: all 0.3s ease;
   border: 2rpx solid rgba(189, 200, 209, 0.3);
   /* 使用首页边框色 */
+  box-sizing: border-box; /* 确保 padding 和 border 不增加宽度 */
 }
 
 .merchant-card:active {
@@ -615,10 +640,10 @@ function handleImageError(e: any) {
 /* 信息区域 */
 .card-info {
   flex: 1;
+  min-width: 0; /* 确保文本截断正常工作 */
   display: flex;
   flex-direction: column;
   gap: 8rpx;
-  min-width: 0;
 }
 
 /* 商户名称：黑色粗体 */

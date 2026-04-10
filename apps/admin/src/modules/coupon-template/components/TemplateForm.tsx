@@ -1,6 +1,6 @@
 // apps/admin/src/modules/coupon-template/components/TemplateForm.tsx
 import { useList } from "@refinedev/core";
-import { Form, Input, InputNumber, Select, DatePicker, Row, Col, Tooltip } from "antd";
+import { Form, Input, InputNumber, Select, DatePicker, Row, Col, Tooltip, Checkbox } from "antd";
 import { QuestionCircleOutlined } from '@ant-design/icons';
 import { MerchantScopeSelector } from './MerchantScopeSelector';
 
@@ -174,6 +174,27 @@ export const TemplateForm: React.FC<TemplateFormProps> = ({ form, isEdit }) => {
               <Select.Option value="ACTIVE">上架</Select.Option>
               <Select.Option value="DISABLED">下架</Select.Option>
             </Select>
+          </Form.Item>
+        </Col>
+      </Row>
+
+      {/* 首页展示设置 */}
+      <Row gutter={16}>
+        <Col span={24}>
+          <Form.Item
+            name="featuredOnHome"
+            label={
+              <span>
+                展示到首页超值优惠&nbsp;
+                <Tooltip title="勾选后，该优惠券将在小程序首页的「热门优惠券」区域展示">
+                  <QuestionCircleOutlined style={{ color: '#1890ff' }} />
+                </Tooltip>
+              </span>
+            }
+            valuePropName="checked"
+            initialValue={false}
+          >
+            <Checkbox>展示到首页超值优惠列表</Checkbox>
           </Form.Item>
         </Col>
       </Row>

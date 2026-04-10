@@ -18,6 +18,7 @@ interface CouponTemplate {
   validUntil: Date;
   description?: string;
   usageRules?: string; // 使用规则说明
+  featuredOnHome?: boolean; // 是否展示到首页超值优惠
   status: 'ACTIVE' | 'EXPIRED' | 'DISABLED';
   createdAt: Date;
   updatedAt: Date;
@@ -163,6 +164,9 @@ export const TemplateDetailPage = () => {
             <Descriptions.Item label="券标题" span={2}>{template.title}</Descriptions.Item>
             <Descriptions.Item label="状态">{getStatusTag()}</Descriptions.Item>
             <Descriptions.Item label="库存">{template.stock}</Descriptions.Item>
+            <Descriptions.Item label="展示到首页超值优惠">
+              {template.featuredOnHome ? <Tag color="gold">是</Tag> : <Tag color="default">否</Tag>}
+            </Descriptions.Item>
             <Descriptions.Item label="结算金额">
               {template.settlementAmount
                 ? `¥${template.settlementAmount.toFixed(2)}`

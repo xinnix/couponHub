@@ -9,7 +9,19 @@ onLaunch(() => { })
 /* 引入 SVG 图标 */
 @import './static/iconfont/iconfont-weapp/iconfont-weapp-icon.css';
 
-/* 字体图标基础样式 - 只设置字体大小，颜色由各组件控制 */
+/* 全局页面样式 - 禁止页面横向滚动 */
+page {
+    background-color: #F5FAFF;
+    width: 100vw;
+    max-width: 100vw;
+    overflow-x: hidden;
+    overflow-y: auto;
+}
+
+/* 移除全局 view 的溢出限制，让各个组件自己控制 */
+/* 这样首页的优惠券横向滚动就能正常工作 */
+
+/* 字体图标基础样式 - 只设置字体大小,颜色由各组件控制 */
 .iconfont {
     font-size: 28px;
 }

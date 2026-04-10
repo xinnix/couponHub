@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
-import { couponApi, merchantApi, newsApi } from '@/api/business'
+import { computed, onMounted, ref } from 'vue'
 import { authApi } from '@/api/auth'
+import { couponApi, merchantApi, newsApi } from '@/api/business'
 import CustomTabBar from '@/components/CustomTabBar.vue'
 
 definePage({
@@ -107,6 +107,13 @@ function handleGoToMerchantList() {
   })
 }
 
+// 跳转到优惠券列表页面
+function goToCouponList() {
+  uni.navigateTo({
+    url: '/pages/coupon/list',
+  })
+}
+
 // 查看新闻详情
 function goToNewsDetail(news: any) {
   uni.navigateTo({
@@ -122,7 +129,7 @@ async function loadHomeData() {
     const [merchantsRes, newsRes, couponsRes] = await Promise.all([
       merchantApi.getList({ limit: 20, status: 'ACTIVE' }),
       newsApi.getList({ limit: 10, status: 'PUBLISHED' }),
-      couponApi.getList({ limit: 10, status: 'ACTIVE' }),
+      couponApi.getList({ limit: 10, status: 'ACTIVE', featuredOnHome: true }),
     ])
 
     // 处理商户数据
@@ -243,7 +250,8 @@ async function refreshUserInfo() {
         uni.setStorageSync('userInfo', res.data)
         console.log('用户信息已刷新:', res.data)
       }
-    } catch (error) {
+    }
+    catch (error) {
       console.error('刷新用户信息失败:', error)
       // 如果获取用户信息失败（可能 token 过期），不强制跳转登录页
       // 让用户在需要时主动登录
@@ -348,7 +356,7 @@ function getDefaultImage(type: string, id: string) {
           :autoplay="heroNews.length > 1" :interval="3000" :duration="500" :circular="true"
           indicator-color="rgba(255, 255, 255, 0.5)" indicator-active-color="#ffffff" @change="onSwiperChange">
           <swiper-item v-for="(news, index) in heroNews" :key="news.id">
-            <view class="relative h-full w-full overflow-hidden rounded-2xl shadow-lg" @click="goToNewsDetail(news)">
+            <view class="relative h-full w-full overflow-hidden rounded-lg shadow-lg" @click="goToNewsDetail(news)">
               <image class="h-full w-full" :src="news.image" mode="aspectFill" />
               <view class="banner-overlay-bg absolute inset-0 flex flex-col justify-end p-6">
                 <text class="banner-tag-text mb-1 text-xs font-bold tracking-widest uppercase">
@@ -361,7 +369,7 @@ function getDefaultImage(type: string, id: string) {
             </view>
           </swiper-item>
         </swiper>
-        <view v-else class="relative h-420rpx w-full overflow-hidden rounded-2xl shadow-lg">
+        <view v-else class="relative h-420rpx w-full overflow-hidden rounded-lg shadow-lg">
           <image class="h-full w-full"
             src="https://lh3.googleusercontent.com/aida-public/AB6AXuA7mJHuMWILTiyDVLj7hPfpemu_JwcxVMMIdJPiLn-fXWWoaB0jeEfPjPpckVoq8DGuUTMLmEW1sioMf5rF-Alszf7ueqCfBxbtZxktQOeg-fwlsly-BExX0WTaarT0zLBET3PTgZiS-0j-Igp8I3UCnScIAxeKd5q1a2x7qe_wJTbeVFPnOt0Pi0g3KvZBU91dA7wbvksDHTzP_XAukTEgFVPdai_G6ZLZcSB1FieEbEn5XkAij_r5lghZ_XoijlTZ38ubk-XNVnU"
             mode="aspectFill" />
@@ -387,31 +395,36 @@ function getDefaultImage(type: string, id: string) {
               Limited Offer
             </text>
           </view>
-          <text class="mb-0.5 text-xs text-primary-container font-bold">
+          <text class="mb-0.5 text-xs text-primary-container font-bold" @click="goToCouponList">
             更多优惠 →
           </text>
         </view>
         <scroll-view class="no-scrollbar overflow-x-auto px-6" scroll-x enable-flex>
-          <view class="flex gap-4 pb-2">
+          <view class="flex gap-3 pb-2">
             <view v-for="voucher in vouchers" :key="voucher.id"
-              class="voucher-card relative flex flex-none flex-col overflow-hidden rounded-xl p-2.5 shadow-ambient active-scale-95"
+              class="voucher-card relative flex flex-none flex-col overflow-hidden rounded-lg p-2 shadow-ambient active-scale-95"
               @click="grabVoucher(voucher)">
               <view class="absolute bottom-0 left-0 top-0 w-1 rounded-l bg-primary-container" />
-              <view class="mb-2 pl-2">
+              <view class="mb-1 pl-2">
                 <view class="mb-1 flex items-baseline gap-0.5">
-                  <text class="text-2xl text-primary-container font-extrabold">
-                    {{ voucher.price }}
+                  <text class="text-xl text-primary-container font-extrabold">
+                    {{ voucher.value }}
                   </text>
-                  <text class="text-xs text-on-surface-variant font-bold">
-                    元
+                  <text class="text-10px text-on-surface-variant font-bold">
+                    优惠券
                   </text>
                 </view>
-                <text class="voucher-desc-text text-10px font-medium leading-relaxed">
+                <view class="mb-1 flex items-center gap-0.5">
+                  <text class="text-xs text-on-surface font-bold">
+                    ¥{{ voucher.price }}抢购
+                  </text>
+                </view>
+                <view class="voucher-desc-text text-9px font-medium truncate">
                   {{ voucher.desc }}
-                </text>
+                </view>
               </view>
               <button
-                class="mt-auto w-full rounded-lg bg-primary-container py-1.5 text-xs text-white font-bold transition-transform active-scale-95">
+                class="mt-1 w-full rounded-md bg-primary-container py-1 text-10px text-white font-bold transition-transform active-scale-95">
                 立即抢
               </button>
             </view>
@@ -444,28 +457,21 @@ function getDefaultImage(type: string, id: string) {
         </scroll-view>
         <!-- Categories Grid -->
 
-        <view class="grid grid-cols-4 gap-3">
+        <view class="grid grid-cols-3 gap-2">
           <view v-for="merchant in filteredMerchants" :key="merchant.id"
-            class="merchant-card-bg border-outline-variant-30 flex flex-col overflow-hidden border rounded-xl transition-transform duration-200 shadow-card active-scale-98"
+            class="merchant-card-bg border-outline-variant-30 flex flex-col overflow-hidden border rounded-lg transition-transform duration-200 shadow-card active-scale-98"
             @click="goToMerchant(merchant)">
-            <view class="merchant-image-container bg-gray-100">
+            <view class="merchant-image-container-tall bg-gray-100">
               <image class="h-full w-full object-cover" :src="merchant.image" mode="aspectFill" lazy-load
                 @error="(e) => onImageError(e, '商户', merchant.id)" @load="onImageLoad('商户', merchant.id)" />
             </view>
-            <view class="flex flex-col gap-1 p-3">
-              <text class="truncate text-13px text-on-surface font-bold leading-tight">
+            <view class="flex flex-col gap-1 p-2">
+              <text class="truncate text-11px text-on-surface font-bold leading-tight text-left">
                 {{ merchant.name }}
               </text>
-              <text class="merchant-desc-text truncate text-11px font-medium">
+              <text class="merchant-desc-text truncate text-10px font-medium text-left">
                 {{ merchant.desc }}
               </text>
-              <!-- <view class="mt-1 flex items-center gap-1">
-                <view class="area-badge">
-                  <text class="text-10px font-bold">
-                    {{ merchant.area }}
-                  </text>
-                </view>
-              </view> -->
             </view>
           </view>
         </view>
@@ -473,7 +479,7 @@ function getDefaultImage(type: string, id: string) {
           <view v-for="cat in categories" :key="cat.id"
             class="group flex flex-col items-center gap-1.5 transition-transform active-scale-95">
             <view
-              class="category-icon-bg ring-primary-container-10 h-14 w-14 flex items-center justify-center rounded-2xl text-primary-container shadow-sm ring-1">
+              class="category-icon-bg ring-primary-container-10 h-14 w-14 flex items-center justify-center rounded-lg text-primary-container shadow-sm ring-1">
               <text class="iconfont" :class="cat.icon" />
             </view>
             <text class="text-10px text-on-surface-variant font-bold tracking-wider">
@@ -496,7 +502,7 @@ function getDefaultImage(type: string, id: string) {
         <view class="grid grid-cols-2 gap-4">
           <view v-for="news in newsList" :key="news.id"
             class="group flex flex-col gap-2 transition-transform active-scale-98" @click="goToNewsDetail(news)">
-            <view class="news-image-aspect relative overflow-hidden rounded-xl bg-gray-100 shadow-sm">
+            <view class="news-image-aspect relative overflow-hidden rounded-lg bg-gray-100 shadow-sm">
               <image class="h-full w-full object-cover" :src="news.image" mode="aspectFill" lazy-load
                 @error="(e) => onImageError(e, '新闻', news.id)" @load="onImageLoad('新闻', news.id)" />
             </view>
@@ -504,7 +510,7 @@ function getDefaultImage(type: string, id: string) {
               <text class="text-11px text-on-surface font-bold leading-snug line-clamp-2">
                 {{ news.title }}
               </text>
-              <text class="news-date-text mt-1 text-9px font-medium italic">
+              <text class="news-date-text mt-1 text-9px font-medium">
                 {{ news.date }}
               </text>
             </view>
@@ -534,7 +540,7 @@ function getDefaultImage(type: string, id: string) {
 .page-content {
   position: relative;
   z-index: 10;
-  // padding-bottom: calc(140rpx + env(safe-area-inset-bottom));
+  padding-bottom: calc(160rpx + env(safe-area-inset-bottom));
 }
 
 /* 顶部栏背景 */
@@ -591,6 +597,8 @@ function getDefaultImage(type: string, id: string) {
   width: 100%;
   height: 420rpx;
   /* 固定高度，约等于 16:9 比例 */
+  border-radius: 16rpx;
+  overflow: hidden;
 }
 
 .merchant-image-container {
@@ -602,6 +610,20 @@ function getDefaultImage(type: string, id: string) {
 }
 
 .merchant-image-container image {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.merchant-image-container-tall {
+  width: 100%;
+  height: 0;
+  padding-bottom: 110%;
+  /* 稍高的比例 */
+  position: relative;
+}
+
+.merchant-image-container-tall image {
   position: absolute;
   top: 0;
   left: 0;
@@ -627,7 +649,7 @@ function getDefaultImage(type: string, id: string) {
   align-items: center;
   justify-content: center;
   padding: 6rpx 20rpx;
-  border-radius: 24rpx;
+  border-radius: 16rpx;
   transition: all 0.3s ease;
   flex-shrink: 0;
   cursor: pointer;
@@ -695,8 +717,8 @@ function getDefaultImage(type: string, id: string) {
 
 /* 优惠券卡片 */
 .voucher-card {
-  width: 260rpx;
-  min-width: 260rpx;
+  width: 220rpx;
+  min-width: 220rpx;
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(20rpx);
   border: 2rpx solid rgba(189, 200, 209, 0.2);
@@ -705,7 +727,11 @@ function getDefaultImage(type: string, id: string) {
 /* 优惠券描述文字 */
 .voucher-desc-text {
   color: rgba(110, 120, 129, 0.7);
-  white-space: pre-line;
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* 分类图标背景 */

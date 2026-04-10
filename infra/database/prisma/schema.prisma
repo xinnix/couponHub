@@ -365,6 +365,9 @@ model CouponTemplate {
   claimLimit    Int?     @default(1)    // 每人限领数量（null=无限制，默认1张）
   isFree        Boolean  @default(false) // 是否为免费券（辅助查询字段）
 
+  // 首页展示标记
+  featuredOnHome Boolean @default(false) // 是否展示到首页超值优惠列表
+
   categoryId    String?  // 商户类别ID（可选）
   merchantScope Json     // 适用商户 ID 数组
 
@@ -397,6 +400,8 @@ model CouponTemplate {
   @@index([createdById])
   @@index([isFree])              // 新增索引：便于查询免费券
   @@index([status, isFree])      // 新增复合索引：优化小程序端查询
+  @@index([featuredOnHome])      // 新增索引：便于查询首页超值优惠
+  @@index([status, featuredOnHome]) // 新增复合索引：优化首页超值优惠查询
   @@map("coupon_templates")
 }
 

@@ -11,7 +11,6 @@ type _LocationUrl =
   "/pages/coupon/list" |
   "/pages/handler/index" |
   "/pages/handler/records" |
-  "/pages/home/index" |
   "/pages/merchant/detail" |
   "/pages/merchant/list" |
   "/pages/news/detail" |

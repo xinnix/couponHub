@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { onShow } from '@dcloudio/uni-app'
 import { computed, onMounted, ref, watch } from 'vue'
-import { orderApi, paymentApi } from '@/api/business'
 import { authApi } from '@/api/auth'
+import { orderApi, paymentApi } from '@/api/business'
 import CustomTabBar from '@/components/CustomTabBar.vue'
 
 const tabs = [
@@ -135,7 +135,8 @@ onShow(async () => {
         userInfo.value = res.data
         uni.setStorageSync('userInfo', res.data)
       }
-    } catch (error) {
+    }
+    catch (error) {
       console.error('刷新用户信息失败:', error)
       // 如果失败，使用本地存储的信息
       userInfo.value = uni.getStorageSync('userInfo')
@@ -300,7 +301,7 @@ async function handlePay(item: any) {
         </view>
 
         <!-- 汇总卡片 -->
-        <view class="summary-card">
+        <!-- <view class="summary-card">
           <text class="summary-label">
             当前可用优惠券
           </text>
@@ -312,7 +313,7 @@ async function handlePay(item: any) {
               张可用
             </text>
           </view>
-        </view>
+        </view> -->
 
         <!-- 筛选标签栏 -->
         <scroll-view scroll-x class="filter-scroll">

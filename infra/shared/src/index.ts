@@ -528,6 +528,7 @@ export const CouponTemplateSchema = z.object({
   stock: z.number().int().nonnegative(),
   claimLimit: z.number().int().positive().optional().nullable(), // 新增：每人限领数量
   isFree: z.boolean().optional(), // 新增：是否为免费券
+  featuredOnHome: z.boolean().optional(), // 新增：是否展示到首页超值优惠
   categoryId: z.string().optional().nullable(), // 商户类别ID（可选）
   merchantScope: z.array(z.string()),
   validFrom: z.date(),
@@ -547,6 +548,7 @@ const BaseCouponTemplateSchema = z.object({
   settlementAmount: z.number().nonnegative("结算金额不能为负").optional().nullable(), // 结算金额（可选）
   stock: z.number().int().nonnegative("库存不能为负").min(0, "库存不能为负"),
   claimLimit: z.number().int().positive("每人限领数量必须为正整数").optional().nullable(), // 新增：每人限领数量
+  featuredOnHome: z.boolean().optional(), // 新增：是否展示到首页超值优惠
   categoryId: z.string().optional().nullable(), // 商户类别ID（可选）
   merchantScope: z.array(z.string()), // 商户ID数组（允许空数组）
   validFrom: z.coerce.date(), // 自动将字符串转换为 Date

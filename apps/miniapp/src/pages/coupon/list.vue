@@ -101,7 +101,7 @@ onPullDownRefresh(() => {
 </script>
 
 <template>
-  <view class="relative min-h-screen bg-surface text-on-surface font-body antialiased">
+  <view class="coupon-list-page">
     <!-- 背景品牌图案 -->
     <view class="brand-pattern pointer-events-none fixed left-0 top-0 z--1 h-full w-full" :style="{
       backgroundImage: 'url(../static/bg.png)',
@@ -164,8 +164,8 @@ onPullDownRefresh(() => {
       </view>
 
       <!-- 优惠券列表 -->
-      <view v-else class="px-6 pb-6">
-        <view class="grid grid-cols-2 gap-4">
+      <view v-else class="coupon-list-container">
+        <view class="coupon-grid">
           <view
             v-for="coupon in filteredCoupons"
             :key="coupon.id"
@@ -221,6 +221,16 @@ onPullDownRefresh(() => {
 </template>
 
 <style lang="scss" scoped>
+/* 优惠券列表页面 */
+.coupon-list-page {
+  min-height: 100vh;
+  max-width: 100vw;
+  width: 100vw;
+  background: #F5FAFF;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  overflow-x: hidden; /* 强制禁止横向滚动 */
+}
+
 /* 品牌图案背景 */
 .brand-pattern {
   position: fixed;
@@ -234,14 +244,36 @@ onPullDownRefresh(() => {
 
 /* 页面内容区域 */
 .page-content {
+  width: 100%;
+  max-width: 100vw;
   position: relative;
   z-index: 10;
-  padding-bottom: 140rpx;
+  padding-bottom: 140rpx; /* 底部留出 TabBar 空间 */
+  overflow-x: hidden; /* 强制禁止横向滚动 */
+}
+
+/* 优惠券列表容器 */
+.coupon-list-container {
+  width: 100%;
+  padding: 0 24rpx 24rpx; /* 使用 rpx 单位，左右各 24rpx */
+  box-sizing: border-box; /* 确保 padding 不增加总宽度 */
+}
+
+/* 优惠券网格布局 */
+.coupon-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr); /* 两列，每列等宽 */
+  gap: 24rpx; /* 列间距 24rpx */
+  width: 100%;
+  box-sizing: border-box; /* 确保 gap 不增加总宽度 */
 }
 
 /* 顶部栏背景 */
 .top-bar-bg {
+  width: 100%;
+  max-width: 100vw;
   background: rgba(245, 250, 255, 0.9);
+  overflow-x: hidden;
 }
 
 /* Logo 图片 */
@@ -275,8 +307,10 @@ onPullDownRefresh(() => {
 
 /* 优惠券卡片背景 */
 .coupon-card-bg {
+  width: 100%;
   background: rgba(255, 255, 255, 0.9);
   border-color: rgba(189, 200, 209, 0.3);
+  box-sizing: border-box; /* 确保 padding 和 border 不增加宽度 */
 }
 
 /* 优惠券金额区域 */

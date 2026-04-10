@@ -24,10 +24,13 @@ export class TemplateController {
   @ApiOperation({ summary: '获取券模板列表' })
   @ApiResponse({ status: 200, description: '获取成功' })
   async findAll(@Query() query: any) {
-    const { page = 1, limit = 10, status } = query;
+    const { page = 1, limit = 10, status, featuredOnHome } = query;
     const where: any = {};
 
     if (status) where.status = status;
+    if (featuredOnHome !== undefined) {
+      where.featuredOnHome = featuredOnHome === 'true' || featuredOnHome === true;
+    }
 
     return this.templateService.list({
       skip: (Number(page) - 1) * Number(limit),

@@ -46,10 +46,6 @@ export default defineUniPages({
       type: "page",
     },
     {
-      path: "pages/home/index",
-      type: "page",
-    },
-    {
       path: "pages/merchant/detail",
       type: "page",
     },
