@@ -2,9 +2,10 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useOne, useUpdate } from "@refinedev/core";
 import { Card, Descriptions, Tag, Button, Space, App, Spin, Empty, Tabs, Alert, Statistic, Row, Col } from "antd";
-import { ArrowLeftOutlined, CheckCircleOutlined, DollarOutlined, LockOutlined } from "@ant-design/icons";
+import { ArrowLeftOutlined, CheckCircleOutlined, DollarOutlined, LockOutlined, DownloadOutlined } from "@ant-design/icons";
 import { SettlementSnapshot } from "../components/SettlementSnapshot";
 import { formatCurrency, toNumber } from "../../../shared/utils/decimal";
+import { trpcClient } from "../../../shared/dataProvider/dataProvider";
 import dayjs from "dayjs";
 import { useState } from "react";
 
@@ -24,8 +25,10 @@ interface Settlement {
   merchant?: {
     id: string;
     name: string;
-    category: string;
     phone?: string;
+    category?: {
+      name: string;
+    };
   };
 }
 
@@ -125,6 +128,33 @@ export const SettlementDetailPage = () => {
     }
   };
 
+  const handleExport = async () => {
+    setLoading(true);
+    try {
+      const data = await trpcClient.settlement.exportExcel.mutate({ settlementId: settlement.id });
+
+      // 创建下载链接
+      const blob = new Blob(
+        [Uint8Array.from(atob(data.fileContent), c => c.charCodeAt(0))],
+        { type: data.mimeType }
+      );
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = data.fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+
+      message.success('导出成功');
+      setLoading(false);
+    } catch (error) {
+      message.error('导出失败');
+      setLoading(false);
+    }
+  };
+
   const tabItems = [
     {
       key: 'info',
@@ -179,7 +209,7 @@ export const SettlementDetailPage = () => {
               {settlement.merchant?.name || '-'}
             </Descriptions.Item>
             <Descriptions.Item label="商户分类">
-              <Tag color="blue">{settlement.merchant?.category || '-'}</Tag>
+              <Tag color="blue">{settlement.merchant?.category?.name || '-'}</Tag>
             </Descriptions.Item>
             <Descriptions.Item label="商户电话">
               {settlement.merchant?.phone || '-'}
@@ -228,7 +258,25 @@ export const SettlementDetailPage = () => {
                     标记已支付
                   </Button>
                 )}
+                <Button
+                  icon={<DownloadOutlined />}
+                  loading={loading}
+                  onClick={handleExport}
+                >
+                  导出 Excel
+                </Button>
               </Space>
+            </Card>
+          )}
+          {settlement.status === 'PAID' && (
+            <Card style={{ marginTop: 24 }}>
+              <Button
+                icon={<DownloadOutlined />}
+                loading={loading}
+                onClick={handleExport}
+              >
+                导出 Excel
+              </Button>
             </Card>
           )}
         </div>
