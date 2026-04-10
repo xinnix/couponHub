@@ -85,6 +85,14 @@ export class RedemptionController {
 
     const handler = userWithHandler.handler;
 
+    // 验证商户范围
+    const merchantScope = order.template.merchantScope;
+    if (merchantScope && Array.isArray(merchantScope)) {
+      if (!merchantScope.includes(handler.merchantId)) {
+        throw new ForbiddenException('该券不适用于当前商户');
+      }
+    }
+
     // 更新订单状态，设置核销员和商户信息
     return this.prisma.order.update({
       where: { id: orderId },

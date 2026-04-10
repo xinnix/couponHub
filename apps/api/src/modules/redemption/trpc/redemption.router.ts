@@ -136,13 +136,15 @@ export const redemptionRouter = router({
 
       const handler = user.handler;
 
-      // TODO: 验证商户范围
-      // const merchantScope = order.template.merchantScope as string[];
-      // if (!merchantScope.includes(handler.merchantId)) {
-      //   throw new ForbiddenException('该券不适用于当前商户');
-      // }
+      // 6. 验证商户范围
+      const merchantScope = order.template.merchantScope;
+      if (merchantScope && Array.isArray(merchantScope)) {
+        if (!merchantScope.includes(handler.merchantId)) {
+          throw new ForbiddenException('该券不适用于当前商户');
+        }
+      }
 
-      // 6. 更新订单状态
+      // 7. 更新订单状态
       const updated = await ctx.prisma.order.update({
         where: { id: orderId },
         data: {

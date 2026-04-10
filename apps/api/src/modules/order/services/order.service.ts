@@ -67,12 +67,15 @@ export class OrderService extends BaseService<'Order'> {
 
       // ✅ 5. 检查每人限领数量
       if (template.claimLimit !== null) {
-        // 查询用户已领取的订单数量（PAID 状态）
+        // 查询用户已领取的订单数量（PAID + REDEEMED 状态）
+        // 注意：核销后订单仍计入限领数量，防止重复领取
         const userClaimedCount = await this.prisma.order.count({
           where: {
             userId,
             templateId,
-            status: 'PAID', // 只统计已支付（含免费领取）的订单
+            status: {
+              in: ['PAID', 'REDEEMED'], // 统计已支付和已核销的订单
+            },
           },
         });
 
