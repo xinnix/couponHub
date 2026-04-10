@@ -77,7 +77,7 @@ export class OrderController {
     return {
       code,
       orderNo: order.orderNo,
-      expiresIn: 30, // 30秒有效期
+      expiresIn: 300, // 5分钟有效期
     };
   }
 

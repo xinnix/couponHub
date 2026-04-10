@@ -4,7 +4,7 @@ import * as crypto from 'crypto';
  * 二维码配置
  */
 const QRCODE_SECRET = process.env.QRCODE_SECRET || 'your-secret-key-change-in-production';
-const QRCODE_EXPIRE_TIME = 30000; // 30秒
+const QRCODE_EXPIRE_TIME = 300000; // 5分钟（300秒），给用户和核销员足够时间
 
 /**
  * 生成核销二维码
@@ -58,8 +58,14 @@ export function verifyRedeemCode(code: string): {
   }
 
   // 验证签名
-  const expectedCode = generateRedeemCode(orderId);
-  if (code !== expectedCode) {
+  const payload = `${orderId}:${timestamp}`;
+  const expectedSignature = crypto
+    .createHmac('sha256', QRCODE_SECRET)
+    .update(payload)
+    .digest('hex')
+    .slice(0, 8);
+
+  if (signature !== expectedSignature) {
     return { orderId, timestamp, valid: false, reason: '签名验证失败' };
   }
 
