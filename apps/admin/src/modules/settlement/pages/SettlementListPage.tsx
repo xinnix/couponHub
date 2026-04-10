@@ -53,7 +53,10 @@ interface Settlement {
   merchant?: {
     id: string;
     name: string;
-    category: string;
+    phone?: string;
+    category?: {
+      name: string;
+    };
   };
 }
 
@@ -257,7 +260,7 @@ export const SettlementListPage = () => {
       title: "商户分类",
       width: 100,
       render: (_: any, record: Settlement) => (
-        <Tag color="blue">{record.merchant?.category || '-'}</Tag>
+        <Tag color="blue">{record.merchant?.category?.name || '-'}</Tag>
       ),
     },
     {
