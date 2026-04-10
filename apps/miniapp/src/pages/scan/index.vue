@@ -43,9 +43,9 @@ async function handleScan() {
 
     scanning.value = false;
 
-    if (scanResult[0]?.result) {
+    if (scanResult.result) {
       // 获取订单信息
-      await getOrderInfo(scanResult[0].result);
+      await getOrderInfo(scanResult.result);
     } else {
       uni.showToast({
         title: '未识别到二维码',

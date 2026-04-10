@@ -44,6 +44,13 @@ export default defineUniPages({
     {
       path: "pages/handler/records",
       type: "page",
+      style: {
+        backgroundColor: "#F5FAFF",
+        navigationStyle: "default",
+        navigationBarBackgroundColor: "#F5FAFF",
+        navigationBarTextStyle: "black",
+        navigationBarTitleText: "核销记录",
+      },
     },
     {
       path: "pages/merchant/detail",
@@ -79,7 +86,7 @@ export default defineUniPages({
         navigationStyle: "default",
         navigationBarBackgroundColor: "#F5FAFF",
         navigationBarTextStyle: "black",
-        navigationBarTitleText: "修改个人信息",
+        navigationBarTitleText: "优惠卷二维码",
       },
     },
     {
@@ -87,7 +94,10 @@ export default defineUniPages({
       type: "page",
       style: {
         backgroundColor: "#F5FAFF",
-        navigationStyle: "custom",
+        navigationStyle: "default",
+        navigationBarBackgroundColor: "#F5FAFF",
+        navigationBarTextStyle: "black",
+        navigationBarTitleText: "核销确认",
       },
     },
     {
