@@ -351,7 +351,7 @@ function getDefaultImage(type: string, id: string) {
     <!-- 主内容区域 -->
     <view v-else class="page-content">
       <!-- Hero Section - 轮播图 -->
-      <view class="px-6 pt-1">
+      <view class="px-4 pt-1">
         <swiper v-if="heroNews.length > 0" class="banner-swiper" :indicator-dots="heroNews.length > 1"
           :autoplay="heroNews.length > 1" :interval="3000" :duration="500" :circular="true"
           indicator-color="rgba(255, 255, 255, 0.5)" indicator-active-color="#ffffff" @change="onSwiperChange">
@@ -416,16 +416,16 @@ function getDefaultImage(type: string, id: string) {
                 </view>
                 <view class="mb-1 flex items-center gap-0.5">
                   <text class="text-xs text-on-surface font-bold">
-                    ¥{{ voucher.price }}抢购
+                    {{ voucher.price === 0 ? '免费领' : `¥${voucher.price}抢购` }}
                   </text>
                 </view>
-                <view class="voucher-desc-text text-9px font-medium truncate">
+                <view class="voucher-desc-text truncate text-9px font-medium">
                   {{ voucher.desc }}
                 </view>
               </view>
               <button
                 class="mt-1 w-full rounded-md bg-primary-container py-1 text-10px text-white font-bold transition-transform active-scale-95">
-                立即抢
+                {{ voucher.price === 0 ? '免费领' : '立即抢' }}
               </button>
             </view>
           </view>
@@ -433,7 +433,7 @@ function getDefaultImage(type: string, id: string) {
       </view>
 
       <!-- Merchant List -->
-      <view class="px-6">
+      <view class="px-4">
         <view class="mb-3 flex items-end justify-between">
           <view class="flex flex-col">
             <text class="text-xl text-on-surface font-extrabold leading-tight">
@@ -466,10 +466,10 @@ function getDefaultImage(type: string, id: string) {
                 @error="(e) => onImageError(e, '商户', merchant.id)" @load="onImageLoad('商户', merchant.id)" />
             </view>
             <view class="flex flex-col gap-1 p-2">
-              <text class="truncate text-11px text-on-surface font-bold leading-tight text-left">
+              <text class="truncate text-left text-11px text-on-surface font-bold leading-tight">
                 {{ merchant.name }}
               </text>
-              <text class="merchant-desc-text truncate text-10px font-medium text-left">
+              <text class="merchant-desc-text truncate text-left text-10px font-medium">
                 {{ merchant.desc }}
               </text>
             </view>
@@ -490,7 +490,7 @@ function getDefaultImage(type: string, id: string) {
       </view>
 
       <!-- Mall News Section -->
-      <view class="mt-4 px-6">
+      <view class="mt-4 px-4">
         <view class="mb-3 flex flex-col">
           <text class="text-xl text-on-surface font-extrabold leading-tight">
             商场快讯

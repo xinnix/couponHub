@@ -90,6 +90,13 @@ export const orderApi = {
   },
 
   /**
+   * 生成订单核销二维码
+   */
+  generateQRCode: (orderId: string) => {
+    return http.post(`/orders/${orderId}/qrcode`);
+  },
+
+  /**
    * 根据核销码获取订单信息（用于核销前确认）
    */
   getByCode: (code: string) => {

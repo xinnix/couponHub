@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { computed, ref } from 'vue'
 import { couponApi } from '@/api/business'
 import CustomTabBar from '@/components/CustomTabBar.vue'
 
@@ -14,7 +14,7 @@ const filteredCoupons = computed(() => {
     return couponList.value
   }
   return couponList.value.filter(coupon =>
-    coupon.title?.toLowerCase().includes(searchKeyword.value.toLowerCase())
+    coupon.title?.toLowerCase().includes(searchKeyword.value.toLowerCase()),
   )
 })
 
@@ -30,17 +30,20 @@ async function loadCoupons() {
 
     if (res.success && Array.isArray(res.data)) {
       couponList.value = res.data
-    } else {
+    }
+    else {
       couponList.value = []
     }
-  } catch (error) {
+  }
+  catch (error) {
     console.error('加载优惠券失败:', error)
     uni.showToast({
       title: '加载失败',
       icon: 'none',
     })
     couponList.value = []
-  } finally {
+  }
+  finally {
     loading.value = false
   }
 }
@@ -49,26 +52,80 @@ async function loadCoupons() {
 function formatCouponDiscount(item: any) {
   if (item.discountType === 'PERCENT') {
     return `${item.discountValue}%折扣`
-  } else if (item.discountType === 'FIXED') {
+  }
+  else if (item.discountType === 'FIXED') {
     return `减¥${item.discountValue}`
   }
   return ''
 }
 
-// 格式化有效期
-function formatValidity(item: any) {
-  if (item.validFrom && item.validUntil) {
-    const from = new Date(item.validFrom).toLocaleDateString('zh-CN', {
-      month: 'numeric',
-      day: 'numeric'
-    })
-    const until = new Date(item.validUntil).toLocaleDateString('zh-CN', {
-      month: 'numeric',
-      day: 'numeric'
-    })
-    return `${from}-${until}可用`
+// 计算剩余天数（倒计时）
+function calculateDaysLeft(item: any) {
+  if (!item.validUntil) {
+    return null // 长期有效
   }
-  return '长期有效'
+
+  const now = new Date()
+  const validUntil = new Date(item.validUntil)
+  const diffTime = validUntil.getTime() - now.getTime()
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+
+  return diffDays
+}
+
+// 格式化倒计时文案
+function formatCountdown(item: any) {
+  const daysLeft = calculateDaysLeft(item)
+
+  if (daysLeft === null) {
+    return '长期有效'
+  }
+
+  if (daysLeft <= 0) {
+    return '已过期'
+  }
+
+  if (daysLeft === 1) {
+    return '仅剩1天'
+  }
+
+  if (daysLeft <= 7) {
+    return `仅剩${daysLeft}天`
+  }
+
+  return `剩余${daysLeft}天`
+}
+
+// 格式化价格显示
+function formatPriceDisplay(item: any) {
+  const buyPrice = Number(item.buyPrice)
+  if (buyPrice === 0) {
+    return '免费领'
+  }
+  return `¥${item.buyPrice} 立即抢`
+}
+
+// 计算立省百分比
+function calculateSavePercent(item: any) {
+  const buyPrice = Number(item.buyPrice)
+  const faceValue = Number(item.faceValue)
+
+  if (buyPrice === 0) {
+    return '立省 100%'
+  }
+
+  if (faceValue <= 0) {
+    return ''
+  }
+
+  const saveAmount = faceValue - buyPrice
+  const savePercent = Math.round((saveAmount / faceValue) * 100)
+
+  if (savePercent <= 0) {
+    return ''
+  }
+
+  return `立省 ${savePercent}%`
 }
 
 // 跳转到优惠券详情
@@ -127,18 +184,16 @@ onPullDownRefresh(() => {
     <!-- 主内容区域 -->
     <view v-else class="page-content">
       <!-- 搜索栏 -->
-      <view class="px-6 pt-2 pb-4">
-        <view class="search-input-wrapper flex items-center bg-white rounded-2xl px-5 py-3 shadow-ambient">
-          <text class="text-xl mr-3">🔍</text>
-          <input
-            v-model="searchKeyword"
-            class="search-input flex-1 text-sm text-on-surface"
-            type="text"
-            placeholder="搜索优惠券"
-            placeholder-class="text-on-surface-variant"
-            @confirm="handleSearch"
-          />
-          <text v-if="searchKeyword" class="text-xl text-on-surface-variant" @click="clearSearch">✕</text>
+      <view class="px-6 pb-4 pt-2">
+        <view class="search-input-wrapper flex items-center rounded-2xl bg-white px-5 py-3 shadow-ambient">
+          <text class="mr-3 text-xl">
+            🔍
+          </text>
+          <input v-model="searchKeyword" class="search-input flex-1 text-sm text-on-surface" type="text"
+            placeholder="搜索优惠券" placeholder-class="text-on-surface-variant" @confirm="handleSearch">
+          <text v-if="searchKeyword" class="text-xl text-on-surface-variant" @click="clearSearch">
+            ✕
+          </text>
         </view>
       </view>
 
@@ -159,39 +214,42 @@ onPullDownRefresh(() => {
 
       <!-- 空状态 -->
       <view v-if="!loading && filteredCoupons.length === 0" class="flex flex-col items-center justify-center py-20">
-        <text class="text-6xl mb-4">🎫</text>
-        <text class="text-on-surface-variant text-sm">暂无优惠券</text>
+        <text class="mb-4 text-6xl">
+          🎫
+        </text>
+        <text class="text-sm text-on-surface-variant">
+          暂无优惠券
+        </text>
       </view>
 
       <!-- 优惠券列表 -->
       <view v-else class="coupon-list-container">
         <view class="coupon-grid">
-          <view
-            v-for="coupon in filteredCoupons"
-            :key="coupon.id"
+          <view v-for="coupon in filteredCoupons" :key="coupon.id"
             class="coupon-card-bg flex flex-col overflow-hidden border rounded-xl transition-transform duration-200 shadow-card active-scale-98"
-            @click="goToCouponDetail(coupon)"
-          >
+            @click="goToCouponDetail(coupon)">
             <!-- 优惠券金额展示 -->
-            <view class="coupon-value-section relative overflow-hidden bg-blue-50">
+            <view class="coupon-value-section relative overflow-hidden bg-blue-100">
               <view class="flex flex-col items-center justify-center py-6">
                 <view class="flex items-baseline gap-1">
-                  <text class="text-lg text-primary-container font-bold">¥</text>
+                  <text class="text-lg text-primary-container font-bold">
+                    ¥
+                  </text>
                   <text class="text-4xl text-primary-container font-extrabold leading-none">
                     {{ coupon.faceValue }}
                   </text>
                 </view>
-                <text class="mt-2 text-sm text-on-surface-variant font-bold">
-                  售价 ¥{{ coupon.buyPrice }}
-                </text>
               </view>
               <!-- 装饰性圆形 -->
-              <view class="absolute -bottom-3 -left-3 h-6 w-6 rounded-full bg-surface"></view>
-              <view class="absolute -bottom-3 -right-3 h-6 w-6 rounded-full bg-surface"></view>
+              <view class="absolute h-6 w-6 rounded-full bg-surface -bottom-3 -left-3" />
+              <view class="absolute h-6 w-6 rounded-full bg-surface -bottom-3 -right-3" />
             </view>
 
             <!-- 优惠券信息 -->
-            <view class="flex flex-col gap-2 p-4">
+            <view class="coupon-info-section relative flex flex-col gap-2 p-4">
+              <!-- 装饰性圆形（上方锯齿） -->
+              <view class="absolute h-6 w-6 rounded-full -top-3 -left-3" style="background: #F5FAFF;" />
+              <view class="absolute h-6 w-6 rounded-full -top-3 -right-3" style="background: #F5FAFF;" />
               <text class="truncate text-13px text-on-surface font-bold leading-tight">
                 {{ coupon.title }}
               </text>
@@ -199,14 +257,14 @@ onPullDownRefresh(() => {
                 {{ formatCouponDiscount(coupon) }}
               </text>
               <text class="coupon-desc-text text-10px font-medium">
-                {{ formatValidity(coupon) }}
+                {{ formatCountdown(coupon) }}
               </text>
               <view class="mt-2 flex items-center justify-between">
-                <text class="text-10px text-primary-container font-bold bg-blue-50 px-2 py-1 rounded">
-                  全场通用
+                <text class="rounded bg-blue-50 px-2 py-1 text-10px text-primary-container font-bold">
+                  {{ calculateSavePercent(coupon) }}
                 </text>
                 <text class="text-xs text-primary-container font-bold">
-                  立即抢 →
+                  {{ formatPriceDisplay(coupon) }}
                 </text>
               </view>
             </view>
@@ -228,7 +286,8 @@ onPullDownRefresh(() => {
   width: 100vw;
   background: #F5FAFF;
   font-family: 'Plus Jakarta Sans', sans-serif;
-  overflow-x: hidden; /* 强制禁止横向滚动 */
+  overflow-x: hidden;
+  /* 强制禁止横向滚动 */
 }
 
 /* 品牌图案背景 */
@@ -248,24 +307,31 @@ onPullDownRefresh(() => {
   max-width: 100vw;
   position: relative;
   z-index: 10;
-  padding-bottom: 140rpx; /* 底部留出 TabBar 空间 */
-  overflow-x: hidden; /* 强制禁止横向滚动 */
+  padding-bottom: 140rpx;
+  /* 底部留出 TabBar 空间 */
+  overflow-x: hidden;
+  /* 强制禁止横向滚动 */
 }
 
 /* 优惠券列表容器 */
 .coupon-list-container {
   width: 100%;
-  padding: 0 24rpx 24rpx; /* 使用 rpx 单位，左右各 24rpx */
-  box-sizing: border-box; /* 确保 padding 不增加总宽度 */
+  padding: 0 24rpx 24rpx;
+  /* 使用 rpx 单位，左右各 24rpx */
+  box-sizing: border-box;
+  /* 确保 padding 不增加总宽度 */
 }
 
 /* 优惠券网格布局 */
 .coupon-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr); /* 两列，每列等宽 */
-  gap: 24rpx; /* 列间距 24rpx */
+  grid-template-columns: repeat(2, 1fr);
+  /* 两列，每列等宽 */
+  gap: 24rpx;
+  /* 列间距 24rpx */
   width: 100%;
-  box-sizing: border-box; /* 确保 gap 不增加总宽度 */
+  box-sizing: border-box;
+  /* 确保 gap 不增加总宽度 */
 }
 
 /* 顶部栏背景 */
@@ -310,13 +376,21 @@ onPullDownRefresh(() => {
   width: 100%;
   background: rgba(255, 255, 255, 0.9);
   border-color: rgba(189, 200, 209, 0.3);
-  box-sizing: border-box; /* 确保 padding 和 border 不增加宽度 */
+  box-sizing: border-box;
+  /* 确保 padding 和 border 不增加宽度 */
 }
 
 /* 优惠券金额区域 */
 .coupon-value-section {
   position: relative;
   border-bottom: 2rpx dashed rgba(189, 200, 209, 0.3);
+  background: #E0F2FF; /* 深一点的蓝色背景 */
+}
+
+/* 优惠券信息区域 */
+.coupon-info-section {
+  position: relative;
+  background: rgba(255, 255, 255, 0.9);
 }
 
 /* 优惠券描述文字 */

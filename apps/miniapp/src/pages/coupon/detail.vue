@@ -115,6 +115,26 @@ const stockColor = computed(() => {
   return '#3a637c'
 })
 
+// 每人限领文案
+const claimLimitText = computed(() => {
+  if (!coupon.value)
+    return ''
+
+  const claimLimit = coupon.value.claimLimit
+
+  // null 或 undefined 表示无限制
+  if (claimLimit === null || claimLimit === undefined) {
+    return '不限购'
+  }
+
+  const limit = Number.parseInt(claimLimit)
+  if (isNaN(limit) || limit <= 0) {
+    return '不限购'
+  }
+
+  return `每人限领${limit}张`
+})
+
 // 购买截止日期
 const displayEndTime = computed(() => {
   if (coupon.value && coupon.value.validUntil) {
@@ -188,6 +208,23 @@ async function handleBuy() {
   if (!coupon.value)
     return
 
+  // ✅ 先检查登录状态
+  const token = uni.getStorageSync('token')
+  if (!token) {
+    uni.showModal({
+      title: '请先登录',
+      content: '您尚未登录，无法领取或购买优惠券。是否立即登录？',
+      confirmText: '立即登录',
+      cancelText: '稍后再说',
+      success: (res) => {
+        if (res.confirm) {
+          uni.navigateTo({ url: '/pages/login' })
+        }
+      },
+    })
+    return
+  }
+
   // 检查库存
   const stockNum = Number.parseInt(coupon.value.stock) || 0
   if (stockNum <= 0) {
@@ -230,6 +267,22 @@ async function handleFreeClaim() {
     }
   } catch (error: any) {
     uni.hideLoading()
+
+    // ✅ 特殊处理 401 未登录错误
+    if (error.statusCode === 401 || error.message?.includes('No auth token')) {
+      uni.showModal({
+        title: '请先登录',
+        content: '您尚未登录，无法领取优惠券。是否立即登录？',
+        confirmText: '立即登录',
+        cancelText: '稍后再说',
+        success: (res) => {
+          if (res.confirm) {
+            uni.navigateTo({ url: '/pages/login' })
+          }
+        },
+      })
+      return
+    }
 
     // 处理领取上限错误
     let errorMsg = '领取失败'
@@ -288,13 +341,13 @@ async function handlePaidPurchase() {
     // 2. 创建支付，获取微信支付参数
     uni.showLoading({ title: '调起支付...', mask: true })
     const payRes = await paymentApi.create({ orderId })
-    const payData = payRes.data as any
-    let payParams = null
-    if (payData && payData.payParams) {
-      payParams = payData.payParams
+    const payParams = payRes.data as any
+    let paymentParams = null
+    if (payParams && payParams.payParams) {
+      paymentParams = payParams.payParams
     }
 
-    if (!payParams) {
+    if (!paymentParams) {
       throw new Error('获取支付参数失败')
     }
 
@@ -304,11 +357,11 @@ async function handlePaidPurchase() {
     await new Promise<void>((resolve, reject) => {
       uni.requestPayment({
         provider: 'wxpay',
-        timeStamp: payParams.timeStamp,
-        nonceStr: payParams.nonceStr,
-        package: payParams.package,
-        signType: payParams.signType as 'MD5' | 'RSA',
-        paySign: payParams.paySign,
+        timeStamp: paymentParams.timeStamp,
+        nonceStr: paymentParams.nonceStr,
+        package: paymentParams.package,
+        signType: paymentParams.signType as 'MD5' | 'RSA',
+        paySign: paymentParams.paySign,
         success: () => resolve(),
         fail: (err: any) => {
           let errMsg = ''
@@ -334,6 +387,22 @@ async function handlePaidPurchase() {
   }
   catch (error: any) {
     uni.hideLoading()
+
+    // ✅ 特殊处理 401 未登录错误
+    if (error.statusCode === 401 || error.message?.includes('No auth token')) {
+      uni.showModal({
+        title: '请先登录',
+        content: '您尚未登录，无法购买优惠券。是否立即登录？',
+        confirmText: '立即登录',
+        cancelText: '稍后再说',
+        success: (res) => {
+          if (res.confirm) {
+            uni.navigateTo({ url: '/pages/login' })
+          }
+        },
+      })
+      return
+    }
 
     // 处理领取上限错误
     let errorMsg = '购买失败'
@@ -412,7 +481,7 @@ function formatDate(date: string | Date) {
             </view>
           </view>
 
-          <!-- 标签行：折扣 + 库存 -->
+          <!-- 标签行：折扣 + 库存 + 限领 -->
           <view class="badge-row">
             <view class="badge badge-primary">
               <text class="badge-text badge-text-primary">
@@ -423,6 +492,12 @@ function formatDate(date: string | Date) {
               <text class="iconfont icon-youhuiquan badge-icon-font" />
               <text class="badge-text" :style="{ color: stockColor }">
                 {{ stockText }}
+              </text>
+            </view>
+            <view v-if="claimLimitText" class="badge badge-limit">
+              <text class="iconfont icon-youhuiquan badge-icon-font" />
+              <text class="badge-text badge-text-limit">
+                {{ claimLimitText }}
               </text>
             </view>
           </view>
@@ -656,7 +731,7 @@ function formatDate(date: string | Date) {
 .price-free {
   font-size: 60rpx;
   font-weight: 900;
-  color: #52c41a; /* 绿色表示免费 */
+  color: #00AEEF; /* 主题色 */
   letter-spacing: -2rpx;
 }
 
@@ -700,8 +775,16 @@ function formatDate(date: string | Date) {
   background: #dee3e8;
 }
 
+.badge-limit {
+  background: rgba(141, 79, 0, 0.1);
+}
+
 .badge-icon-font {
   font-size: 24rpx;
+}
+
+.badge-text-limit {
+  color: #8d4f00;
 }
 
 /* 购买截止 */
@@ -891,7 +974,7 @@ function formatDate(date: string | Date) {
 .bar-price-free {
   font-size: 44rpx;
   font-weight: 700;
-  color: #52c41a; /* 绿色表示免费 */
+  color: #00AEEF; /* 主题色 */
 }
 
 .bar-btn {

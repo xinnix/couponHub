@@ -68,12 +68,19 @@ export default defineUniPages({
         navigationStyle: "default",
         navigationBarBackgroundColor: "#F5FAFF",
         navigationBarTextStyle: "black",
-        navigationBarTitleText: "修改个人信息",
+        navigationBarTitleText: "核销二维码",
       },
     },
     {
       path: "pages/qrcode/index",
       type: "page",
+      style: {
+        backgroundColor: "#F5FAFF",
+        navigationStyle: "default",
+        navigationBarBackgroundColor: "#F5FAFF",
+        navigationBarTextStyle: "black",
+        navigationBarTitleText: "修改个人信息",
+      },
     },
     {
       path: "pages/redemption/confirm",

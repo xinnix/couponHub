@@ -91,8 +91,36 @@ export class OrderService extends BaseService<'Order'> {
 
       this.logger.log(`订单创建成功: ${orderNo}, 用户: ${userId}`);
 
-      // 8. 返回订单信息
-      return { order };
+      // ✅ 8. 免费券自动支付
+      const buyPrice = Number(template.buyPrice);
+      if (buyPrice === 0) {
+        // 免费券：自动标记为 PAID
+        const paidOrder = await this.prisma.order.update({
+          where: { id: order.id },
+          data: {
+            status: 'PAID',
+            paidAt: new Date(),
+            isFreeOrder: true,
+          },
+          include: {
+            template: true,
+          },
+        });
+
+        this.logger.log(`免费券自动支付成功: ${orderNo}`);
+
+        // 返回已支付订单信息，标记无需支付
+        return {
+          order: paidOrder,
+          needPayment: false,
+        };
+      }
+
+      // 9. 返回订单信息（需要支付）
+      return {
+        order,
+        needPayment: true,
+      };
     } finally {
       // 9. 释放锁
       await this.redisService.releaseLock(lockKey, lock);

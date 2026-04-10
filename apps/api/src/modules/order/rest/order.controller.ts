@@ -21,7 +21,7 @@ import { JwtAuthGuard } from '../../../core/guards/jwt.guard';
 import { CurrentUser } from '../../auth/decorators/decorators';
 import { OrderService } from '../services/order.service';
 import { PrismaService } from '../../../prisma/prisma.service';
-import { verifyRedeemCode } from '../../../shared/utils/qrcode.util';
+import { verifyRedeemCode, generateRedeemCode } from '../../../shared/utils/qrcode.util';
 
 @ApiTags('orders')
 @Controller('orders')
@@ -46,6 +46,39 @@ export class OrderController {
   @ApiResponse({ status: 200, description: '获取成功' })
   async getMyOrders(@Query('status') status: string | undefined, @CurrentUser() user: any) {
     return this.orderService.getMyOrders(user.id, status);
+  }
+
+  @Post(':id/qrcode')
+  @ApiOperation({ summary: '生成订单核销二维码' })
+  @ApiResponse({ status: 200, description: '生成成功' })
+  async generateQRCode(@Param('id') id: string, @CurrentUser() user: any) {
+    // 1. 查询订单
+    const order = await this.prisma.order.findUnique({
+      where: { id },
+    });
+
+    if (!order) {
+      throw new NotFoundException('订单不存在');
+    }
+
+    // 2. 验证权限（用户只能生成自己的订单二维码）
+    if (user?.type === 'user' && order.userId !== user.id) {
+      throw new ForbiddenException('无权访问该订单');
+    }
+
+    // 3. 验证订单状态（必须是已支付）
+    if (order.status !== 'PAID') {
+      throw new BadRequestException('订单状态异常，无法生成核销二维码');
+    }
+
+    // 4. 生成带签名的核销码
+    const code = generateRedeemCode(order.id);
+
+    return {
+      code,
+      orderNo: order.orderNo,
+      expiresIn: 30, // 30秒有效期
+    };
   }
 
   @Post('get-by-code')

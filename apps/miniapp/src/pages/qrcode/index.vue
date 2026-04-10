@@ -1,57 +1,15 @@
-<template>
-  <view class="container">
-    <view class="nav-bar" :style="{ paddingTop: statusBarHeight + 'px' }">
-      <view class="nav-inner">
-        <view class="back-btn" @click="goBack">
-          <text class="back-icon">‹</text>
-        </view>
-        <text class="nav-title">核销二维码</text>
-        <view class="nav-placeholder" />
-      </view>
-    </view>
-
-    <view v-show="loading" class="loading">
-      <text>加载中...</text>
-    </view>
-
-    <view v-show="!loading && error" class="error">
-      <text>{{ error }}</text>
-    </view>
-
-    <view v-show="!loading && !error" class="qrcode-content">
-      <view class="qrcode-box">
-        <canvas
-          id="qrcode-canvas"
-          canvas-id="qrcode-canvas"
-          class="qrcode-canvas"
-          :style="{ width: canvasSize + 'px', height: canvasSize + 'px' }"
-        />
-        <text class="refresh-tip">二维码将在 {{ countdown }} 秒后刷新</text>
-      </view>
-
-      <view class="order-info">
-        <text class="coupon-title">{{ orderTitle }}</text>
-        <text class="order-no">订单号: {{ orderNo }}</text>
-        <text class="amount">面值: ¥{{ orderFaceValue }}</text>
-        <text class="status">状态: {{ statusText }}</text>
-      </view>
-
-      <button
-        v-if="canRefund"
-        class="refund-btn"
-        :disabled="refunding"
-        @click="handleRefund"
-      >
-        {{ refunding ? '处理中...' : '申请退款' }}
-      </button>
-    </view>
-  </view>
-</template>
-
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed } from 'vue'
-import { orderApi } from '@/api/business'
 import UQRCode from 'uqrcodejs'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { orderApi } from '@/api/business'
+import CustomTabBar from '@/components/CustomTabBar.vue'
+
+definePage({
+  type: 'page',
+  style: {
+    backgroundColor: '#F5FAFF',
+  },
+})
 
 const loading = ref(true)
 const error = ref('')
@@ -67,36 +25,36 @@ let qrcode: UQRCode | null = null
 // 计算属性 - 简化模板显示
 const orderTitle = computed(() => {
   if (order.value && order.value.template && order.value.template.title) {
-    return order.value.template.title;
+    return order.value.template.title
   }
-  return '未知券';
-});
+  return '未知券'
+})
 
 const orderNo = computed(() => {
   if (order.value && order.value.orderNo) {
-    return order.value.orderNo;
+    return order.value.orderNo
   }
-  return '';
-});
+  return ''
+})
 
 const orderFaceValue = computed(() => {
   if (order.value && order.value.faceValue) {
-    return order.value.faceValue;
+    return order.value.faceValue
   }
-  return 0;
-});
+  return 0
+})
 
 const statusText = computed(() => {
   if (order.value && order.value.status) {
-    return getStatusText(order.value.status);
+    return getStatusText(order.value.status)
   }
-  return '';
-});
+  return ''
+})
 
 const canRefund = computed(() => {
   // 只有已支付且未核销的订单才能退款
-  return order.value && order.value.status === 'PAID';
-});
+  return order.value && order.value.status === 'PAID'
+})
 
 // 获取状态栏高度
 const sysInfo = uni.getSystemInfoSync()
@@ -107,15 +65,15 @@ function goBack() {
 }
 
 onLoad(async (options: any) => {
-  let id1 = '';
-  let id2 = '';
+  let id1 = ''
+  let id2 = ''
   if (options && options.id) {
-    id1 = options.id;
+    id1 = options.id
   }
   if (options && options.orderId) {
-    id2 = options.orderId;
+    id2 = options.orderId
   }
-  const orderId = id1 || id2;
+  const orderId = id1 || id2
   if (!orderId) {
     error.value = '缺少订单信息'
     loading.value = false
@@ -134,35 +92,37 @@ async function loadOrder(id: string) {
   try {
     loading.value = true
     error.value = ''
+
+    // 1. 获取订单详情
     const res = await orderApi.getDetail(id)
     order.value = res.data
 
-    let orderStatus = '';
+    let orderStatus = ''
     if (order.value && order.value.status) {
-      orderStatus = order.value.status;
+      orderStatus = order.value.status
     }
     if (orderStatus !== 'PAID') {
-      error.value = '该订单无法核销（状态：' + getStatusText(orderStatus) + '）'
+      error.value = `该订单无法核销（状态：${getStatusText(orderStatus)}）`
       return
     }
 
-    // 生成二维码
+    // 2. 生成二维码
     await nextTick()
-    generateQRCode()
+    await generateQRCode()
     startCountdown()
   }
   catch (err: any) {
-    let respData = null;
+    let respData = null
     if (err && err.response && err.response.data) {
-      respData = err.response.data;
+      respData = err.response.data
     }
-    let respMsg = '';
+    let respMsg = ''
     if (respData && respData.message) {
-      respMsg = respData.message;
+      respMsg = respData.message
     }
-    let errMsg = '';
+    let errMsg = ''
     if (err && err.message) {
-      errMsg = err.message;
+      errMsg = err.message
     }
     const msg = respMsg || errMsg || '加载失败'
     error.value = msg
@@ -172,31 +132,39 @@ async function loadOrder(id: string) {
   }
 }
 
-function generateQRCode() {
-  if (!order.value || !order.value.id) return
+async function generateQRCode() {
+  if (!order.value || !order.value.id)
+    return
 
-  // 每次刷新生成新的核销码（含时间戳防截屏）
-  const code = JSON.stringify({
-    orderId: order.value.id,
-    orderNo: order.value.orderNo,
-    ts: Date.now(),
-  })
+  try {
+    // 调用后端API生成带签名的二维码
+    const qrcodeRes = await orderApi.generateQRCode(order.value.id)
+    const code = qrcodeRes.data.code
 
-  qrcode = new UQRCode()
-  qrcode.data = code
-  qrcode.size = canvasSize.value * 2 // 2倍分辨率
-  qrcode.margin = 10
-  qrcode.make()
+    qrcode = new UQRCode()
+    qrcode.data = code // 使用后端生成的安全二维码
+    qrcode.size = canvasSize.value * 2 // 2倍分辨率
+    qrcode.margin = 10
+    qrcode.make()
 
-  const canvasContext = uni.createCanvasContext('qrcode-canvas')
-  qrcode.canvasContext = canvasContext
-  qrcode.drawCanvas()
+    const canvasContext = uni.createCanvasContext('qrcode-canvas')
+    qrcode.canvasContext = canvasContext
+    qrcode.drawCanvas()
 
-  countdown.value = 30
+    countdown.value = 30
+  }
+  catch (err: any) {
+    console.error('生成二维码失败:', err)
+    uni.showToast({
+      title: '生成二维码失败',
+      icon: 'none',
+    })
+  }
 }
 
 function startCountdown() {
-  if (timer) clearInterval(timer)
+  if (timer)
+    clearInterval(timer)
   timer = setInterval(() => {
     countdown.value--
     if (countdown.value <= 0) {
@@ -218,8 +186,10 @@ function getStatusText(status: string) {
 }
 
 async function handleRefund() {
-  if (refunding.value) return
-  if (!order.value) return
+  if (refunding.value)
+    return
+  if (!order.value)
+    return
 
   // 确认退款
   await new Promise<void>((resolve) => {
@@ -229,7 +199,8 @@ async function handleRefund() {
       confirmText: '确认退款',
       confirmColor: '#ff4d4f',
       success: (res) => {
-        if (res.confirm) resolve()
+        if (res.confirm)
+          resolve()
       },
     })
   })
@@ -258,17 +229,17 @@ async function handleRefund() {
   }
   catch (err: any) {
     uni.hideLoading()
-    let respData = null;
+    let respData = null
     if (err && err.response && err.response.data) {
-      respData = err.response.data;
+      respData = err.response.data
     }
-    let respMsg = '';
+    let respMsg = ''
     if (respData && respData.message) {
-      respMsg = respData.message;
+      respMsg = respData.message
     }
-    let errMsg = '';
+    let errMsg = ''
     if (err && err.message) {
-      errMsg = err.message;
+      errMsg = err.message
     }
     const msg = respMsg || errMsg || '退款失败'
     uni.showToast({
@@ -282,71 +253,114 @@ async function handleRefund() {
 }
 </script>
 
-<style scoped>
-.container {
-  padding: 0;
-  min-height: 100vh;
-  background: #f5f5f5;
+<template>
+  <view class="relative mt-4 min-h-screen bg-surface text-on-surface font-body antialiased">
+    <!-- 背景品牌图案 -->
+    <view class="brand-pattern pointer-events-none fixed left-0 top-0 z--1 h-full w-full" :style="{
+      backgroundImage: 'url(../static/bg.png)',
+      backgroundRepeat: 'repeat',
+      backgroundSize: '400rpx',
+      backgroundPosition: 'center',
+      opacity: 0.03,
+    }" />
+
+    <!-- TopAppBar -->
+
+    <!-- 主内容区域 -->
+    <view class="page-content relative z-10 px-6 pb-4">
+      <!-- 加载状态 -->
+      <view v-if="loading" class="flex items-center justify-center py-20">
+        <text class="text-on-surface-variant">
+          加载中...
+        </text>
+      </view>
+
+      <!-- 错误状态 -->
+      <view v-else-if="error" class="flex items-center justify-center py-20">
+        <text class="text-error">
+          {{ error }}
+        </text>
+      </view>
+
+      <!-- 二维码内容 -->
+      <view v-else class="flex flex-col gap-4">
+        <!-- 二维码卡片 -->
+        <view
+          class="qrcode-card relative flex flex-col items-center overflow-hidden rounded-lg bg-white p-8 shadow-card">
+          <view class="absolute left-0 top-0 h-full w-1 rounded-l bg-primary-container" />
+          <canvas id="qrcode-canvas" canvas-id="qrcode-canvas" class="qrcode-canvas"
+            :style="{ width: `${canvasSize}px`, height: `${canvasSize}px` }" />
+          <text class="refresh-tip mt-4 text-sm text-on-surface-variant font-medium">
+            二维码将在 {{ countdown }} 秒后刷新
+          </text>
+        </view>
+
+        <!-- 订单信息卡片 -->
+        <view class="order-card relative flex flex-col overflow-hidden rounded-lg bg-white p-6 shadow-card">
+          <view class="absolute left-0 top-0 h-full w-1 rounded-l bg-primary-container" />
+          <view class="flex flex-col gap-2 pl-2">
+            <text class="text-lg text-on-surface font-extrabold">
+              {{ orderTitle }}
+            </text>
+            <text class="text-sm text-on-surface-variant font-medium">
+              订单号: {{ orderNo }}
+            </text>
+            <text class="text-sm text-on-surface-variant font-medium">
+              面值: ¥{{ orderFaceValue }}
+            </text>
+            <view class="status-badge mt-2 flex items-center self-start rounded-full bg-primary-container px-3 py-1">
+              <text class="text-xs text-white font-bold">
+                {{ statusText }}
+              </text>
+            </view>
+          </view>
+        </view>
+
+        <!-- 退款按钮 -->
+        <button v-if="canRefund"
+          class="refund-btn mt-4 w-full rounded-lg bg-error py-3 text-base text-white font-bold transition-transform shadow-ambient active-scale-95"
+          :disabled="refunding" @click="handleRefund">
+          {{ refunding ? '处理中...' : '申请退款' }}
+        </button>
+      </view>
+    </view>
+  </view>
+</template>
+
+<style lang="scss" scoped>
+/* 品牌图案背景 */
+.brand-pattern {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+  pointer-events: none;
 }
 
-.nav-bar {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+/* 页面内容区域 */
+.page-content {
+  padding-bottom: calc(160rpx + env(safe-area-inset-bottom));
 }
 
-.nav-inner {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  height: 88rpx;
-  padding: 0 20rpx;
+/* 顶部栏背景 */
+.top-bar-bg {
+  background: rgba(245, 250, 255, 0.9);
+  backdrop-filter: blur(20rpx);
 }
 
+/* 返回按钮 */
 .back-btn {
-  width: 64rpx;
-  height: 64rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  background: rgba(255, 255, 255, 0.9);
 }
 
-.back-icon {
-  font-size: 48rpx;
-  color: #ffffff;
-  line-height: 1;
-  margin-right: 8rpx;
+/* 二维码卡片 */
+.qrcode-card {
+  border: 2rpx solid rgba(189, 200, 209, 0.2);
 }
 
-.nav-title {
-  font-size: 32rpx;
-  font-weight: bold;
-  color: #ffffff;
-}
-
-.nav-placeholder {
-  width: 64rpx;
-}
-
-.loading, .error {
-  text-align: center;
-  padding: 100rpx;
-}
-
-.error {
-  color: #ff4d4f;
-}
-
-.qrcode-content {
-  padding: 20rpx;
-}
-
-.qrcode-box {
-  background: #fff;
-  padding: 40rpx;
-  border-radius: 12rpx;
-  margin-bottom: 20rpx;
-  text-align: center;
-}
-
+/* 二维码画布 */
 .qrcode-canvas {
   width: 200px;
   height: 200px;
@@ -354,48 +368,43 @@ async function handleRefund() {
   display: block;
 }
 
+/* 刷新提示文字 */
 .refresh-tip {
-  display: block;
-  font-size: 24rpx;
-  color: #999;
-  margin-top: 20rpx;
+  color: rgba(110, 120, 129, 0.7);
 }
 
-.order-info {
-  background: #fff;
-  padding: 30rpx;
-  border-radius: 12rpx;
-  margin-bottom: 20rpx;
+/* 订单信息卡片 */
+.order-card {
+  border: 2rpx solid rgba(189, 200, 209, 0.2);
 }
 
-.coupon-title {
-  display: block;
-  font-size: 32rpx;
-  font-weight: bold;
-  margin-bottom: 10rpx;
+/* 状态徽章 */
+.status-badge {
+  background: #00aeef;
 }
 
-.order-no, .amount, .status {
-  display: block;
-  font-size: 28rpx;
-  color: #666;
-  margin-bottom: 10rpx;
-}
-
+/* 退款按钮 */
 .refund-btn {
-  width: 100%;
-  padding: 24rpx;
-  background: #ff4d4f;
-  color: #fff;
-  border-radius: 12rpx;
-  font-size: 32rpx;
-  font-weight: bold;
+  background: #00aeef;
   border: none;
-  margin-top: 20rpx;
 }
 
 .refund-btn[disabled] {
-  background: #ccc;
-  color: #fff;
+  background: rgba(189, 200, 209, 0.3);
+  color: rgba(110, 120, 129, 0.6);
+}
+
+/* 自定义阴影效果 */
+.shadow-ambient {
+  box-shadow: 0 8rpx 32rpx rgba(23, 28, 32, 0.04);
+}
+
+.shadow-card {
+  box-shadow: 0 4rpx 16rpx rgba(23, 28, 32, 0.03);
+}
+
+/* 激活态缩放效果 */
+.active-scale-95:active {
+  transform: scale(0.95);
 }
 </style>

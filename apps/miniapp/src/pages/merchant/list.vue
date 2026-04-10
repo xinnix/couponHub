@@ -725,8 +725,8 @@ function handleImageError(e: any) {
 
 .empty-icon {
   font-size: 120rpx;
-  color: #6e7881;
-  /* 使用首页次要文字色 */
+  color: rgba(110, 120, 129, 0.4);
+  /* 使用首页次要文字色，但更淡 */
 }
 
 .empty-text {

@@ -640,6 +640,9 @@ async function handlePay(item: any) {
   border-radius: 16rpx;
   background: #e4e9ee;
   border: 2rpx solid rgba(189, 200, 209, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .filter-tab-active {
@@ -818,6 +821,9 @@ async function handlePay(item: any) {
   padding: 14rpx 36rpx;
   background: #00AEEF;
   border-radius: 12rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .use-btn:active {
@@ -834,6 +840,9 @@ async function handlePay(item: any) {
 .use-btn-outline {
   background: transparent;
   border: 2rpx solid #00AEEF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .use-btn-text-outline {
