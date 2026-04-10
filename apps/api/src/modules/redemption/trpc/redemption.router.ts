@@ -118,22 +118,49 @@ export const redemptionRouter = router({
         throw new BadRequestException('该订单已核销');
       }
 
-      // TODO: 验证核销员权限
+      // 5. 获取核销员信息
+      const user = await ctx.prisma.user.findUnique({
+        where: { id: ctx.user.id },
+        include: {
+          handler: {
+            include: {
+              merchant: true,
+            },
+          },
+        },
+      });
+
+      if (!user || !user.handler) {
+        throw new ForbiddenException('您不是核销员，无法执行核销操作');
+      }
+
+      const handler = user.handler;
+
+      // TODO: 验证商户范围
       // const merchantScope = order.template.merchantScope as string[];
       // if (!merchantScope.includes(handler.merchantId)) {
       //   throw new ForbiddenException('该券不适用于当前商户');
       // }
 
-      // 5. 更新订单状态
+      // 6. 更新订单状态
       const updated = await ctx.prisma.order.update({
         where: { id: orderId },
         data: {
           status: 'REDEEMED',
-          // redeemMerchantId: handler.merchantId, // TODO: 从核销员信息获取
+          redeemMerchantId: handler.merchantId,
+          handlerId: handler.id,
           redeemedAt: new Date(),
         },
         include: {
           template: true,
+          merchant: true,
+          handler: {
+            select: {
+              id: true,
+              name: true,
+              phone: true,
+            },
+          },
           user: {
             select: {
               id: true,
@@ -167,9 +194,21 @@ export const redemptionRouter = router({
           where.redeemMerchantId = merchantId;
         }
       } else {
-        // 核销员只能查询自己商户的记录
-        // TODO: 从用户信息中获取商户 ID
-        // where.redeemMerchantId = handler.merchantId;
+        // 核销员：获取用户关联的核销员信息
+        const user = await ctx.prisma.user.findUnique({
+          where: { id: ctx.user.id },
+          include: {
+            handler: true,
+          },
+        });
+
+        if (user && user.handler) {
+          // 核销员只能查询自己商户的记录
+          where.redeemMerchantId = user.handler.merchantId;
+        } else if (merchantId) {
+          // 如果传入了 merchantId 参数，也支持筛选（兼容性）
+          where.redeemMerchantId = merchantId;
+        }
       }
 
       // 日期范围筛选

@@ -42,6 +42,7 @@ interface RedemptionRecord {
   template?: {
     id: string;
     title: string;
+    settlementAmount?: number;
   };
   merchant?: {
     id: string;
@@ -60,7 +61,7 @@ export const RedemptionRecordsPage = () => {
       pageSize: 20,
     },
     filters: [
-      ...(merchantFilter ? [{ field: "merchantId", operator: "eq", value: merchantFilter }] as any : []),
+      ...(merchantFilter ? [{ field: "redeemMerchantId", operator: "eq", value: merchantFilter }] as any : []),
       ...(dateRange && dateRange[0] && dateRange[1] ? [
         { field: "redeemedAt", operator: "gte", value: dateRange[0].startOf('day').toISOString() },
         { field: "redeemedAt", operator: "lte", value: dateRange[1].endOf('day').toISOString() },
@@ -81,6 +82,10 @@ export const RedemptionRecordsPage = () => {
   // 统计数据
   const totalAmount = records.reduce((sum: number, r: RedemptionRecord) => sum + toNumber(r.price), 0);
   const totalFaceValue = records.reduce((sum: number, r: RedemptionRecord) => sum + toNumber(r.faceValue), 0);
+  const totalSettlementAmount = records.reduce((sum: number, r: RedemptionRecord) => {
+    const settlement = r.template?.settlementAmount ? toNumber(r.template.settlementAmount) : toNumber(r.faceValue);
+    return sum + settlement;
+  }, 0);
   const merchantCount = new Set(records.map((r: RedemptionRecord) => r.merchantId)).size;
 
   const columns = [
@@ -126,6 +131,18 @@ export const RedemptionRecordsPage = () => {
       ),
     },
     {
+      title: "结算额",
+      width: 100,
+      render: (_: any, record: RedemptionRecord) => {
+        const settlement = record.template?.settlementAmount
+          ? toNumber(record.template.settlementAmount)
+          : toNumber(record.faceValue);
+        return (
+          <span style={{ color: '#faad14', fontWeight: 'bold' }}>{formatCurrency(settlement)}</span>
+        );
+      },
+    },
+    {
       title: "核销商户",
       width: 150,
       render: (_: any, record: RedemptionRecord) => (
@@ -167,7 +184,7 @@ export const RedemptionRecordsPage = () => {
 
           {/* Statistics */}
           <Row gutter={16} style={{ marginBottom: 24 }}>
-            <Col span={6}>
+            <Col span={4}>
               <Card>
                 <Statistic
                   title="核销订单数"
@@ -177,7 +194,7 @@ export const RedemptionRecordsPage = () => {
                 />
               </Card>
             </Col>
-            <Col span={6}>
+            <Col span={4}>
               <Card>
                 <Statistic
                   title="核销总额"
@@ -188,7 +205,7 @@ export const RedemptionRecordsPage = () => {
                 />
               </Card>
             </Col>
-            <Col span={6}>
+            <Col span={4}>
               <Card>
                 <Statistic
                   title="总面值"
@@ -199,7 +216,18 @@ export const RedemptionRecordsPage = () => {
                 />
               </Card>
             </Col>
-            <Col span={6}>
+            <Col span={4}>
+              <Card>
+                <Statistic
+                  title="结算总额"
+                  value={totalSettlementAmount}
+                  prefix="¥"
+                  precision={2}
+                  valueStyle={{ color: '#faad14' }}
+                />
+              </Card>
+            </Col>
+            <Col span={4}>
               <Card>
                 <Statistic
                   title="涉及商户数"
@@ -242,7 +270,7 @@ export const RedemptionRecordsPage = () => {
             rowKey="id"
             dataSource={records}
             loading={query.isLoading}
-            scroll={{ x: 1200 }}
+            scroll={{ x: 1300 }}
             pagination={{
               current: 1,
               pageSize: 20,
