@@ -25,6 +25,7 @@ import {
   FileTextOutlined,
   EyeFilled,
   StarFilled,
+  NotificationFilled,
 } from "@ant-design/icons";
 import { NewsForm } from "../components/NewsForm";
 import { useNavigate } from "react-router-dom";
@@ -39,6 +40,7 @@ interface News {
   viewCount: number;
   status: 'DRAFT' | 'PUBLISHED';
   isHero: boolean;
+  isPopup: boolean; // 新增字段
   createdAt: Date;
   updatedAt: Date;
 }
@@ -90,6 +92,7 @@ export const NewsListPage = () => {
   // 统计数据
   const publishedCount = news.filter((n: News) => n.status === 'PUBLISHED').length;
   const draftCount = news.filter((n: News) => n.status === 'DRAFT').length;
+  const popupCount = news.filter((n: News) => n.isPopup && n.status === 'PUBLISHED').length;
   const totalViews = news.reduce((sum: number, n: News) => sum + n.viewCount, 0);
 
   const handleCreate = () => {
@@ -254,6 +257,17 @@ export const NewsListPage = () => {
         </Tag>
       ),
     },
+    // 新增：弹窗列
+    {
+      title: "弹窗",
+      dataIndex: "isPopup",
+      width: 100,
+      render: (isPopup: boolean) => (
+        <Tag color={isPopup ? 'purple' : 'default'} icon={isPopup ? <NotificationFilled /> : null}>
+          {isPopup ? '弹窗' : '普通'}
+        </Tag>
+      ),
+    },
     {
       title: "创建时间",
       dataIndex: "createdAt",
@@ -339,17 +353,20 @@ export const NewsListPage = () => {
             <Col span={6}>
               <Card>
                 <Statistic
-                  title="总浏览量"
-                  value={totalViews}
-                  prefix={<EyeFilled />}
+                  title="弹窗新闻"
+                  value={popupCount}
+                  prefix={<NotificationFilled />}
+                  valueStyle={{ color: '#722ed1' }}
+                  suffix={popupCount > 1 ? '/ 1' : ''}
                 />
               </Card>
             </Col>
             <Col span={6}>
               <Card>
                 <Statistic
-                  title="总新闻数"
-                  value={news.length}
+                  title="总浏览量"
+                  value={totalViews}
+                  prefix={<EyeFilled />}
                 />
               </Card>
             </Col>

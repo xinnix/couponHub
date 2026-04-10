@@ -1,5 +1,5 @@
 // apps/admin/src/modules/news/components/NewsForm.tsx
-import { Form, Input, Select, Switch } from "antd";
+import { Form, Input, Select, Switch, Alert } from "antd";
 import { useList } from "@refinedev/core";
 import { RichTextEditor } from "../../../shared/components/RichTextEditor";
 import { OSSUpload } from "../../../shared/components/OSSUpload";
@@ -17,6 +17,10 @@ export const NewsForm: React.FC<NewsFormProps> = ({ form, isEdit }) => {
   });
 
   const templates = (templatesResult as any)?.data || [];
+
+  // 监听 isPopup 和 status 字段的变化
+  const isPopup = Form.useWatch('isPopup', form);
+  const status = Form.useWatch('status', form);
 
   return (
     <Form form={form} layout="vertical">
@@ -57,9 +61,34 @@ export const NewsForm: React.FC<NewsFormProps> = ({ form, isEdit }) => {
         </Select>
       </Form.Item>
 
+      {/* 新增：弹窗新闻开关 */}
+      <Form.Item
+        name="isPopup"
+        label="首页弹窗"
+        valuePropName="checked"
+        extra={
+          <div>
+            <p>开启后将在小程序首页以弹窗形式展示（页面加载时弹出一次）</p>
+            {isPopup && status === 'PUBLISHED' && (
+              <Alert
+                message="提示：只能设置一个弹窗新闻"
+                description="如果已存在其他发布状态的弹窗新闻，系统将自动取消其弹窗设置"
+                type="info"
+                showIcon
+                style={{ marginTop: 8 }}
+              />
+            )}
+          </div>
+        }
+        initialValue={false}
+      >
+        <Switch />
+      </Form.Item>
+
       <Form.Item
         name="isHero"
         label="头图文章"
+        valuePropName="checked"
         extra="开启后将在小程序顶部 Hero 区域展示，否则在底部区域展示"
         initialValue={false}
       >

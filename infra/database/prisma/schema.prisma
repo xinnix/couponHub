@@ -335,6 +335,7 @@ model News {
   viewCount Int     @default(0)
   status    String  @default("DRAFT") // DRAFT, PUBLISHED
   isHero    Boolean @default(false) // 是否头图文章（小程序顶部展示）
+  isPopup   Boolean @default(false) // 是否为首页弹窗新闻
 
   // 创建者和更新者 (Admin)
   createdById String?
@@ -347,6 +348,8 @@ model News {
   @@index([createdAt])
   @@index([createdById])
   @@index([isHero]) // 添加索引便于查询头图文章
+  @@index([isPopup]) // 添加索引便于查询弹窗新闻
+  @@index([status, isPopup]) // 复合索引优化小程序端查询
   @@map("news")
 }
 

@@ -4,6 +4,7 @@ import { computed, onMounted, ref } from 'vue'
 import { authApi } from '@/api/auth'
 import { couponApi, merchantApi, newsApi } from '@/api/business'
 import CustomTabBar from '@/components/CustomTabBar.vue'
+import NewsPopup from '@/components/NewsPopup.vue'
 
 definePage({
   type: 'home',
@@ -42,6 +43,10 @@ const newsList = ref<any[]>([])
 
 // Hero 新闻（头图）
 const heroNews = ref<any[]>([])
+
+// 弹窗新闻
+const popupNews = ref<any>(null)
+const showPopup = ref(false)
 
 // 当前 Hero 新闻索引
 const currentHeroIndex = ref(0)
@@ -125,11 +130,12 @@ function goToNewsDetail(news: any) {
 async function loadHomeData() {
   loading.value = true
   try {
-    // 并行加载三个接口数据
-    const [merchantsRes, newsRes, couponsRes] = await Promise.all([
+    // 并行加载四个接口数据（新增弹窗新闻）
+    const [merchantsRes, newsRes, couponsRes, popupRes] = await Promise.all([
       merchantApi.getList({ limit: 20, status: 'ACTIVE' }),
       newsApi.getList({ limit: 10, status: 'PUBLISHED' }),
       couponApi.getList({ limit: 10, status: 'ACTIVE', featuredOnHome: true }),
+      newsApi.getPopup(), // 新增：获取弹窗新闻
     ])
 
     // 处理商户数据
@@ -154,6 +160,40 @@ async function loadHomeData() {
         return merchantItem
       })
       console.log('商户列表:', merchants.value)
+    }
+
+    // 处理弹窗新闻
+    if (popupRes.success && popupRes.data) {
+      const news = popupRes.data
+
+      // 检查关闭记录
+      const closedPopups = uni.getStorageSync('closedPopups') || {}
+      const record = closedPopups[news.id]
+
+      if (record && record.lastClosed) {
+        const hoursPassed = (new Date().getTime() - new Date(record.lastClosed).getTime()) / (1000 * 60 * 60)
+
+        // 如果超过24小时，重置计数，重新显示弹窗
+        if (hoursPassed >= 24) {
+          // 重置计数
+          closedPopups[news.id] = { count: 0, lastClosed: null }
+          uni.setStorageSync('closedPopups', closedPopups)
+          popupNews.value = news
+          showPopup.value = true
+        } else {
+          // 24小时内，检查关闭次数
+          if (record.count < 5) {
+            // 关闭次数不足5次，继续显示弹窗
+            popupNews.value = news
+            showPopup.value = true
+          }
+          // 关闭次数 >= 5，不显示弹窗
+        }
+      } else {
+        // 从未关闭过，直接显示
+        popupNews.value = news
+        showPopup.value = true
+      }
     }
 
     // 处理新闻数据
@@ -218,6 +258,18 @@ async function loadHomeData() {
   finally {
     loading.value = false
   }
+}
+
+// 弹窗关闭处理
+function handlePopupClose() {
+  showPopup.value = false
+}
+
+// 查看弹窗新闻详情
+function handlePopupGoToDetail(id: string) {
+  uni.navigateTo({
+    url: `/pages/news/detail?id=${id}`,
+  })
 }
 
 // 页面加载时获取数据
@@ -341,6 +393,14 @@ function getDefaultImage(type: string, id: string) {
       <image class="logo-image" src="/static/logo.png" mode="aspectFit" />
     </view>
 
+    <!-- 弹窗新闻 -->
+    <NewsPopup
+      v-if="popupNews && showPopup"
+      :news="popupNews"
+      @close="handlePopupClose"
+      @goToDetail="handlePopupGoToDetail"
+    />
+
     <!-- 加载状态 -->
     <view v-if="loading && merchants.length === 0" class="flex items-center justify-center py-20">
       <text class="text-on-surface-variant">
@@ -386,7 +446,7 @@ function getDefaultImage(type: string, id: string) {
 
       <!-- Hot Vouchers -->
       <view class="py-4">
-        <view class="mb-3 flex items-end justify-between px-6">
+        <view class="mb-3 flex items-end justify-between px-4">
           <view class="flex flex-col">
             <text class="text-xl text-on-surface font-extrabold">
               抢购超值券
@@ -399,7 +459,7 @@ function getDefaultImage(type: string, id: string) {
             更多优惠 →
           </text>
         </view>
-        <scroll-view class="no-scrollbar overflow-x-auto px-6" scroll-x enable-flex>
+        <scroll-view class="no-scrollbar overflow-x-auto px-4" scroll-x enable-flex>
           <view class="flex gap-3 pb-2">
             <view v-for="voucher in vouchers" :key="voucher.id"
               class="voucher-card relative flex flex-none flex-col overflow-hidden rounded-lg p-2 shadow-ambient active-scale-95"

@@ -488,6 +488,7 @@ export const NewsSchema = z.object({
   viewCount: z.number().int(),
   status: z.enum(["DRAFT", "PUBLISHED"]),
   isHero: z.boolean(),
+  isPopup: z.boolean(), // 新增字段：是否为首页弹窗新闻
   createdAt: z.date(),
   updatedAt: z.date(),
 });
@@ -499,6 +500,7 @@ export const CreateNewsSchema = z.object({
   linkedCouponId: z.string().optional().nullable(),
   status: z.enum(["DRAFT", "PUBLISHED"]).default("DRAFT"),
   isHero: z.boolean().default(false),
+  isPopup: z.boolean().default(false), // 新增字段：是否为首页弹窗新闻
 });
 
 export const UpdateNewsSchema = CreateNewsSchema.partial();

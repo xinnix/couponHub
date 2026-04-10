@@ -37,6 +37,17 @@ export class NewsController {
     });
   }
 
+  @Get('popup')
+  @Public()
+  @ApiOperation({ summary: '获取当前弹窗新闻' })
+  @ApiResponse({
+    status: 200,
+    description: '返回当前设置为弹窗的新闻，如果没有则返回 null',
+  })
+  async getPopupNews() {
+    return this.newsService.getPopupNews();
+  }
+
   @Get(':id')
   @Public()
   @ApiOperation({ summary: '获取新闻详情' })

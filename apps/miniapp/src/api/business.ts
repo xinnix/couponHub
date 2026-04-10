@@ -43,6 +43,13 @@ export const newsApi = {
   getDetail: (id: string) => {
     return http.get(`/news/${id}`);
   },
+
+  /**
+   * 获取弹窗新闻
+   */
+  getPopup: () => {
+    return http.get('/news/popup');
+  },
 };
 
 /**
