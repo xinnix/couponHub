@@ -3,18 +3,20 @@ import { Table, Card, Empty } from 'antd';
 import { formatCurrency, toNumber } from '../../../shared/utils/decimal';
 import dayjs from 'dayjs';
 
+interface OrderSnapshot {
+  orderId: string;
+  orderNo: string;
+  price: number;
+  faceValue: number;
+  settlementAmount: number;
+  templateTitle: string;
+  redeemedAt: string;
+  userNickname: string;
+}
+
 interface SnapshotData {
-  orders: Array<{
-    orderId: string;
-    orderNo: string;
-    userId: string;
-    templateId: string;
-    price: number;
-    faceValue: number;
-    settlementAmount: number; // 结算金额
-    redeemedAt: string;
-  }>;
-  generatedAt: string;
+  orders: OrderSnapshot[];
+  generatedAt: string | Date;
   generatedBy: string;
 }
 
@@ -36,6 +38,19 @@ export const SettlementSnapshot: React.FC<SettlementSnapshotProps> = ({ snapshot
       render: (orderNo: string) => (
         <span style={{ fontFamily: 'monospace', fontSize: 12 }}>{orderNo}</span>
       ),
+    },
+    {
+      title: '优惠券',
+      dataIndex: 'templateTitle',
+      key: 'templateTitle',
+      width: 150,
+      render: (title: string) => <span style={{ fontWeight: 500 }}>{title}</span>,
+    },
+    {
+      title: '用户',
+      dataIndex: 'userNickname',
+      key: 'userNickname',
+      width: 120,
     },
     {
       title: '购买价格',
@@ -69,7 +84,7 @@ export const SettlementSnapshot: React.FC<SettlementSnapshotProps> = ({ snapshot
       dataIndex: 'redeemedAt',
       key: 'redeemedAt',
       width: 160,
-      render: (date: string) => dayjs(date).format('YYYY-MM-DD HH:mm'),
+      render: (date: string | Date) => dayjs(date).format('YYYY-MM-DD HH:mm'),
     },
   ];
 
@@ -117,7 +132,7 @@ export const SettlementSnapshot: React.FC<SettlementSnapshotProps> = ({ snapshot
           pageSize: 10,
           showTotal: (total) => `共 ${total} 条`,
         }}
-        scroll={{ x: 600 }}
+        scroll={{ x: 900 }}
       />
 
       <div style={{ marginTop: 16, fontSize: 12, color: '#8c8c8c' }}>
