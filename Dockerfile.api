@@ -91,7 +91,7 @@ RUN mkdir -p /app/certs
 
 # 7. 拷贝启动脚本（可选诊断版本）
 # 生产环境使用 entrypoint-simple.sh，排查问题时使用 entrypoint-diagnostic.sh
-COPY apps/api/entrypoint-simple.sh ./entrypoint.sh
+COPY apps/api/entrypoint-diagnostic.sh ./entrypoint.sh
 # COPY apps/api/entrypoint-diagnostic.sh ./entrypoint.sh  # 排查问题时启用此行
 RUN chmod +x ./entrypoint.sh
 
