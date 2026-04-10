@@ -6,16 +6,22 @@ import { useList } from "@refinedev/core";
 interface Merchant {
   id: string;
   name: string;
-  category: string;
+  categoryId: string;
+  category?: {
+    id: string;
+    name: string;
+    slug: string;
+  };
   status: string;
 }
 
 interface MerchantScopeSelectorProps {
   value?: string[];
   onChange?: (value: string[]) => void;
+  disabled?: boolean; // 新增：支持禁用状态
 }
 
-export const MerchantScopeSelector: React.FC<MerchantScopeSelectorProps> = ({ value, onChange }) => {
+export const MerchantScopeSelector: React.FC<MerchantScopeSelectorProps> = ({ value, onChange, disabled }) => {
   const [searchText, setSearchText] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const timerRef = useRef<ReturnType<typeof setTimeout>>();
@@ -41,12 +47,17 @@ export const MerchantScopeSelector: React.FC<MerchantScopeSelectorProps> = ({ va
       { field: "status", operator: "eq", value: "ACTIVE" },
       ...(debouncedSearch ? [{ field: "name", operator: "contains", value: debouncedSearch }] as any : []),
     ],
+    meta: {
+      include: {
+        category: true, // 包含商户类别信息
+      },
+    },
   });
 
   const merchants = (result as any)?.data || [];
 
-  const options = merchants.map((merchant: Merchant) => ({
-    label: `${merchant.name} (${merchant.category})`,
+  const options = merchants.map((merchant: any) => ({
+    label: `${merchant.name} (${merchant.category?.name || '未分类'})`,
     value: merchant.id,
   }));
 
@@ -59,22 +70,24 @@ export const MerchantScopeSelector: React.FC<MerchantScopeSelectorProps> = ({ va
         handleSearch("");
         onChange?.(val);
       }}
-      placeholder="请选择适用商户"
+      placeholder={disabled ? "已根据商户类别自动填充" : "请选择适用商户"}
       loading={isLoading}
       showSearch
       filterOption={false}
       onSearch={handleSearch}
       options={options}
       maxTagCount="responsive"
+      disabled={disabled} // 添加禁用状态
       tagRender={(props) => {
         const { label, value: tagValue, closable, onClose } = props;
-        const merchant = merchants.find((m: Merchant) => m.id === tagValue);
+        const merchant = merchants.find((m: any) => m.id === tagValue);
+        const categoryName = merchant?.category?.name || '未分类';
         return (
           <Tag
-            closable={closable}
+            closable={!disabled && closable} // 禁用时不可删除
             onClose={onClose}
             style={{ marginRight: 3 }}
-            color={merchant?.category === '餐饮' ? 'orange' : 'blue'}
+            color={categoryName === '餐饮' ? 'orange' : 'blue'}
           >
             {label}
           </Tag>

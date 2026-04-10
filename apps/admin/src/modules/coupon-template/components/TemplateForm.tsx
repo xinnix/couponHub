@@ -1,8 +1,9 @@
 // apps/admin/src/modules/coupon-template/components/TemplateForm.tsx
 import { useList } from "@refinedev/core";
-import { Form, Input, InputNumber, Select, DatePicker, Row, Col, Tooltip, Checkbox } from "antd";
-import { QuestionCircleOutlined } from '@ant-design/icons';
+import { Form, Input, InputNumber, Select, DatePicker, Row, Col, Tooltip, Checkbox, Alert } from "antd";
+import { QuestionCircleOutlined, InfoCircleOutlined } from '@ant-design/icons';
 import { MerchantScopeSelector } from './MerchantScopeSelector';
+import { useEffect } from 'react';
 
 const { TextArea } = Input;
 const { RangePicker } = DatePicker;
@@ -21,6 +22,37 @@ export const TemplateForm: React.FC<TemplateFormProps> = ({ form, isEdit }) => {
   });
 
   const categories = categoriesResult?.data || [];
+
+  // 监听 categoryId 变化，自动填充 merchantScope
+  const categoryId = Form.useWatch('categoryId', form);
+
+  // 获取该类别下的所有商户
+  const { result: categoryMerchantsResult } = useList({
+    resource: "merchant",
+    pagination: { pageSize: 1000 }, // 获取足够多的商户
+    filters: [
+      { field: "status", operator: "eq", value: "ACTIVE" },
+      ...(categoryId ? [{ field: "categoryId", operator: "eq", value: categoryId }] as any : []),
+    ],
+    meta: {
+      include: {
+        category: true, // 包含类别信息用于显示
+      },
+    },
+  });
+
+  const categoryMerchants = categoryMerchantsResult?.data || [];
+
+  useEffect(() => {
+    if (categoryId) {
+      // 自动填充该类别下的所有商户到 merchantScope
+      const merchantIds = categoryMerchants.map((m: any) => m.id);
+      form.setFieldValue('merchantScope', merchantIds);
+    } else {
+      // 清空类别时，清空商户范围（让用户重新手动选择）
+      form.setFieldValue('merchantScope', []);
+    }
+  }, [categoryId, categoryMerchants, form]);
 
   return (
     <Form form={form} layout="vertical">
@@ -265,7 +297,7 @@ export const TemplateForm: React.FC<TemplateFormProps> = ({ form, isEdit }) => {
         label={
           <span>
             商户类别&nbsp;
-            <Tooltip title="选择类别后，券模板将适用于该类别下的所有商户">
+            <Tooltip title="选择类别后，券模板将自动适用于该类别下的所有商户，商户范围将自动填充">
               <QuestionCircleOutlined style={{ color: '#1890ff' }} />
             </Tooltip>
           </span>
@@ -287,19 +319,30 @@ export const TemplateForm: React.FC<TemplateFormProps> = ({ form, isEdit }) => {
         </Select>
       </Form.Item>
 
+      {/* 当选择了商户类别时，显示提示信息 */}
+      {categoryId && (
+        <Alert
+          message={`已自动填充「${categories.find(c => c.id === categoryId)?.name}」类别下的 ${categoryMerchants.length} 家商户`}
+          type="info"
+          icon={<InfoCircleOutlined />}
+          showIcon
+          style={{ marginBottom: 16 }}
+        />
+      )}
+
       <Form.Item
         name="merchantScope"
         label={
           <span>
             适用商户&nbsp;
-            <Tooltip title="手动选择商户。如果已选择类别，将使用类别下的商户；否则使用手动选择的商户">
+            <Tooltip title="选择商户类别后自动填充；未选类别时可手动选择商户">
               <QuestionCircleOutlined style={{ color: '#1890ff' }} />
             </Tooltip>
           </span>
         }
-        extra="请选择商户类别或手动选择商户"
+        extra={categoryId ? "已根据商户类别自动填充，无需手动选择" : "请手动选择适用商户"}
       >
-        <MerchantScopeSelector />
+        <MerchantScopeSelector disabled={!!categoryId} />
       </Form.Item>
 
       <Form.Item name="description" label="券描述">

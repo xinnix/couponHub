@@ -45,7 +45,7 @@ export class TemplateController {
   @ApiOperation({ summary: '获取券模板详情' })
   @ApiResponse({ status: 200, description: '获取成功' })
   async findOne(@Param('id') id: string) {
-    return this.templateService.getOne(id);
+    return this.templateService.getDetailWithMerchants(id);
   }
 
   @Post()
