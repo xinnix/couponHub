@@ -65,10 +65,28 @@ export class OrderService extends BaseService<'Order'> {
         throw new ConflictException('库存不足');
       }
 
-      // 5. 生成订单号
+      // ✅ 5. 检查每人限领数量
+      if (template.claimLimit !== null) {
+        // 查询用户已领取的订单数量（PAID 状态）
+        const userClaimedCount = await this.prisma.order.count({
+          where: {
+            userId,
+            templateId,
+            status: 'PAID', // 只统计已支付（含免费领取）的订单
+          },
+        });
+
+        if (userClaimedCount >= template.claimLimit) {
+          throw new BadRequestException(
+            `每人限领 ${template.claimLimit} 张，您已领取 ${userClaimedCount} 张`,
+          );
+        }
+      }
+
+      // 6. 生成订单号
       const orderNo = this.generateOrderNo();
 
-      // 6. 创建订单
+      // 7. 创建订单
       const order = await this.prisma.order.create({
         data: {
           orderNo,
@@ -83,7 +101,7 @@ export class OrderService extends BaseService<'Order'> {
         },
       });
 
-      // 7. 预扣库存
+      // 8. 预扣库存
       await this.prisma.couponTemplate.update({
         where: { id: templateId },
         data: { stock: { decrement: 1 } },
@@ -91,7 +109,7 @@ export class OrderService extends BaseService<'Order'> {
 
       this.logger.log(`订单创建成功: ${orderNo}, 用户: ${userId}`);
 
-      // ✅ 8. 免费券自动支付
+      // ✅ 9. 免费券自动支付
       const buyPrice = Number(template.buyPrice);
       if (buyPrice === 0) {
         // 免费券：自动标记为 PAID
@@ -116,13 +134,13 @@ export class OrderService extends BaseService<'Order'> {
         };
       }
 
-      // 9. 返回订单信息（需要支付）
+      // 10. 返回订单信息（需要支付）
       return {
         order,
         needPayment: true,
       };
     } finally {
-      // 9. 释放锁
+      // 11. 释放锁
       await this.redisService.releaseLock(lockKey, lock);
     }
   }

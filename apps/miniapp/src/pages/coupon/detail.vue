@@ -286,8 +286,8 @@ async function handleFreeClaim() {
 
     // 处理领取上限错误
     let errorMsg = '领取失败'
-    if (error.response?.data?.message) {
-      errorMsg = error.response.data.message
+    if (error.message) {
+      errorMsg = error.message
       // 特殊处理领取上限错误
       if (errorMsg.includes('每人限领')) {
         uni.showModal({
@@ -406,8 +406,8 @@ async function handlePaidPurchase() {
 
     // 处理领取上限错误
     let errorMsg = '购买失败'
-    if (error.response?.data?.message) {
-      errorMsg = error.response.data.message
+    if (error.message) {
+      errorMsg = error.message
       if (errorMsg.includes('每人限领')) {
         uni.showModal({
           title: '购买限制',
@@ -416,8 +416,6 @@ async function handlePaidPurchase() {
         })
         return
       }
-    } else if (error.message) {
-      errorMsg = error.message
     }
 
     uni.showToast({ title: errorMsg, icon: 'none' })

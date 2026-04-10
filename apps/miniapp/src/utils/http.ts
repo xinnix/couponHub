@@ -69,18 +69,11 @@ class HttpClient {
             if (response.success !== false) {
               resolve(response)
             } else {
-              uni.showToast({
-                title: response.message || '请求失败',
-                icon: 'none',
-              })
+              // ❌ 移除自动 showToast，让页面自己处理
               reject(response)
             }
           } else {
-            const response = res.data as Response
-            uni.showToast({
-              title: response.message || '请求失败',
-              icon: 'none',
-            })
+            // ❌ 移除自动 showToast，让页面自己处理业务错误
             reject(res.data)
           }
         },
