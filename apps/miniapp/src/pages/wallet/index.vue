@@ -17,6 +17,7 @@ const statusBarHeight = ref(0)
 
 const isLoggedIn = ref(false)
 const userInfo = ref<any>(null)
+const isHandler = ref(false) // 是否是核销员
 const currentTab = ref('PAID')
 const loading = ref(false)
 const orderList = ref<any[]>([])
@@ -111,6 +112,11 @@ function editProfile() {
   uni.navigateTo({ url: '/pages/profile/index' })
 }
 
+// 核销员跳转到核销员首页
+function goToHandlerPage() {
+  uni.navigateTo({ url: '/pages/handler/index' })
+}
+
 onMounted(async () => {
   // 获取系统信息，设置状态栏高度
   const systemInfo = uni.getSystemInfoSync()
@@ -123,6 +129,11 @@ onMounted(async () => {
   }
   isLoggedIn.value = true
   userInfo.value = uni.getStorageSync('userInfo')
+
+  // 检查核销员身份
+  const handlerFlag = uni.getStorageSync('isHandler')
+  isHandler.value = handlerFlag === true
+
   await loadOrders()
 })
 
@@ -294,6 +305,12 @@ async function handlePay(item: any) {
             </view>
           </view>
           <view class="user-actions">
+            <!-- 核销员按钮 -->
+            <view v-if="isHandler" class="handler-btn" @tap="goToHandlerPage">
+              <text class="handler-btn-text">
+                去核销
+              </text>
+            </view>
             <view class="action-btn" @tap="editProfile">
               <text class="iconfont icon-xiugai action-icon" />
             </view>
@@ -484,6 +501,28 @@ async function handlePay(item: any) {
 .user-actions {
   display: flex;
   align-items: center;
+  gap: 16rpx;
+}
+
+.handler-btn {
+  padding: 14rpx 32rpx;
+  background: #00AEEF;
+  border-radius: 12rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8rpx 24rpx rgba(0, 174, 239, 0.2);
+}
+
+.handler-btn:active {
+  transform: scale(0.95);
+  opacity: 0.9;
+}
+
+.handler-btn-text {
+  font-size: 22rpx;
+  font-weight: 700;
+  color: #ffffff;
 }
 
 .action-btn {

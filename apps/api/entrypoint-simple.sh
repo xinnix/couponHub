@@ -7,16 +7,32 @@ cd /app
 
 # 运行数据库迁移
 echo "📡 Running Database Migrations..."
-# 切换到 infra/database 目录以便 Prisma CLI 能找到 prisma.config.ts
+
 if [ -n "$DATABASE_URL" ]; then
+  # 切换到 infra/database 目录以便 Prisma CLI 能找到 prisma.config.ts
   cd /app/infra/database
+
   # 创建临时的 .env 文件供 Prisma CLI 使用
   echo "DATABASE_URL=$DATABASE_URL" > .env
-  echo "Created .env file with DATABASE_URL in infra/database"
-  # 直接调用 Prisma CLI (pnpm deploy 后的路径结构)
-  node /app/node_modules/.pnpm/prisma@7.2.0_@types+react@19.2.7_react-dom@19.2.3_react@19.2.3__react@19.2.3_typescript@5.9.3/node_modules/prisma/build/index.js migrate deploy || echo "⚠️  Migration failed, continuing anyway..."
+  echo "✅ Created .env file with DATABASE_URL"
+
+  # 动态查找 Prisma CLI（避免硬编码版本路径）
+  PRISMA_CLI=$(find /app/node_modules -name "prisma" -path "*/node_modules/prisma/build/index.js" | head -1)
+
+  if [ -z "$PRISMA_CLI" ]; then
+    echo "⚠️  Could not find Prisma CLI, falling back to npx..."
+    # 使用 npx 并设置超时（避免无限等待）
+    timeout 120 npx prisma migrate deploy --schema=prisma/schema.prisma 2>&1 || echo "⚠️  Migration failed or timeout, continuing..."
+  else
+    echo "✅ Found Prisma CLI at: $PRISMA_CLI"
+    # 使用找到的 CLI 并设置超时
+    timeout 120 node $PRISMA_CLI migrate deploy --schema=prisma/schema.prisma 2>&1 || echo "⚠️  Migration failed or timeout, continuing..."
+  fi
+
+  # 清理
   rm -f .env
-  echo "Cleaned up .env file"
+  echo "✅ Cleaned up .env file"
+
   # 切换回根目录
   cd /app
 else

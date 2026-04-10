@@ -12,5 +12,6 @@ declare module 'vue' {
     CustomTabBar: typeof import('./components/CustomTabBar.vue')['default']
     HiCounter: typeof import('./components/HiCounter.vue')['default']
     InputEntry: typeof import('./components/InputEntry.vue')['default']
+    NewsPopup: typeof import('./components/NewsPopup.vue')['default']
   }
 }

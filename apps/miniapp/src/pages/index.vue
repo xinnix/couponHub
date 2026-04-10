@@ -279,7 +279,8 @@ onMounted(() => {
   statusBarHeight.value = systemInfo.statusBarHeight || 0
 
   // 检查核销员身份，如果是核销员则跳转到核销员首页
-  checkHandlerIdentity()
+  // 暂时注释掉自动跳转逻辑，改为在钱包页手动跳转
+  // checkHandlerIdentity()
 
   loadHomeData()
 })
@@ -312,16 +313,17 @@ async function refreshUserInfo() {
 }
 
 // 检查核销员身份
-function checkHandlerIdentity() {
-  const isHandler = uni.getStorageSync('isHandler')
-  const token = uni.getStorageSync('token')
-
-  // 已登录且是核销员，跳转到核销员首页
-  if (token && isHandler) {
-    console.log('用户是核销员，跳转到核销员首页')
-    uni.reLaunch({ url: '/pages/handler/index' })
-  }
-}
+// 暂时注释掉自动跳转逻辑
+// function checkHandlerIdentity() {
+//   const isHandler = uni.getStorageSync('isHandler')
+//   const token = uni.getStorageSync('token')
+//
+//   // 已登录且是核销员，跳转到核销员首页
+//   if (token && isHandler) {
+//     console.log('用户是核销员，跳转到核销员首页')
+//     uni.reLaunch({ url: '/pages/handler/index' })
+//   }
+// }
 
 // 页面下拉刷新
 onPullDownRefresh(() => {
