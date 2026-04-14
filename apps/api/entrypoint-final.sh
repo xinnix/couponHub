@@ -1,9 +1,10 @@
 #!/bin/sh
-# 生产环境启动脚本（终极优化版）
+# 生产环境启动脚本（优化版）
 # 特性：
 # - 数据库连接预检查（5秒快速失败）
-# - 多级 Prisma CLI 查找（避免 npx 慢）
-# - 可选跳过迁移（如果表已存在）
+# - 多级 Prisma CLI 查找（优先本地 CLI，避免 npx 下载）
+# - 无 timeout 限制（让迁移自然完成，适应慢速生产环境）
+# - 可选跳过迁移（SKIP_MIGRATION=true）
 # - 详细日志输出
 
 echo "🚀 Starting Production Environment..."
@@ -61,41 +62,47 @@ echo "DATABASE_URL=$DATABASE_URL" > .env
 
 MIGRATION_SUCCESS=false
 
-# ===== 方案1: node_modules/.bin/prisma（最快，<1s）=====
+# ===== 方案1: node_modules/.bin/prisma（推荐）=====
 if [ -x "/app/node_modules/.bin/prisma" ]; then
-  echo "✅ Method 1: Using node_modules/.bin/prisma (fast)"
-  timeout 45 /app/node_modules/.bin/prisma migrate deploy --schema=prisma/schema.prisma 2>&1 && {
+  echo "✅ Method 1: Using node_modules/.bin/prisma"
+  echo "   Running migration (this may take time for slow connections)..."
+
+  # 不使用 timeout，让迁移自然完成（生产环境可能需要几分钟）
+  /app/node_modules/.bin/prisma migrate deploy --schema=prisma/schema.prisma 2>&1 && {
     MIGRATION_SUCCESS=true
-    echo "✅ Migration completed via .bin/prisma"
+    echo "✅ Migration completed successfully"
   } || {
-    echo "⚠️  Method 1 failed or timeout (45s)"
+    echo "⚠️  Method 1 failed"
   }
 fi
 
-# ===== 方案2: 直接查找 prisma CLI（保底方案）=====
+# ===== 方案2: 直接查找 prisma CLI（备选）=====
 if [ "$MIGRATION_SUCCESS" = "false" ]; then
   PRISMA_CLI=$(find /app/node_modules -name "index.js" -path "*/prisma/build/*" 2>/dev/null | head -1)
 
   if [ -n "$PRISMA_CLI" ]; then
     echo "✅ Method 2: Found Prisma CLI at $PRISMA_CLI"
-    timeout 45 node "$PRISMA_CLI" migrate deploy --schema=prisma/schema.prisma 2>&1 && {
+    echo "   Running migration (this may take time for slow connections)..."
+
+    node "$PRISMA_CLI" migrate deploy --schema=prisma/schema.prisma 2>&1 && {
       MIGRATION_SUCCESS=true
-      echo "✅ Migration completed via direct CLI"
+      echo "✅ Migration completed successfully"
     } || {
-      echo "⚠️  Method 2 failed or timeout (45s)"
+      echo "⚠️  Method 2 failed"
     }
   fi
 fi
 
-# ===== 方案4: npx（最慢，5-30s，最后备选）=====
+# ===== 方案3: npx（最后备选）=====
 if [ "$MIGRATION_SUCCESS" = "false" ]; then
-  echo "⚠️  Method 4: Falling back to npx (may take 5-30s to resolve package)..."
-  # 使用 --yes 避免交互式确认，设置 60s 超时
-  timeout 60 npx --yes prisma migrate deploy --schema=prisma/schema.prisma 2>&1 && {
+  echo "⚠️  Method 3: Falling back to npx..."
+  echo "   This will download Prisma CLI first (5-30s), then run migration..."
+
+  npx --yes prisma migrate deploy --schema=prisma/schema.prisma 2>&1 && {
     MIGRATION_SUCCESS=true
-    echo "✅ Migration completed via npx"
+    echo "✅ Migration completed successfully"
   } || {
-    echo "⚠️  Method 4 failed or timeout (60s)"
+    echo "⚠️  Method 3 failed"
   }
 fi
 
