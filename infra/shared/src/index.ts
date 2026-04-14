@@ -533,8 +533,11 @@ export const CouponTemplateSchema = z.object({
   featuredOnHome: z.boolean().optional(), // 新增：是否展示到首页超值优惠
   categoryId: z.string().optional().nullable(), // 商户类别ID（可选）
   merchantScope: z.array(z.string()),
-  validFrom: z.date(),
-  validUntil: z.date(),
+  saleFrom: z.date(), // 销售开始时间
+  saleUntil: z.date(), // 销售结束时间
+  useFrom: z.date(), // 使用开始时间
+  useUntil: z.date(), // 使用结束时间
+  validDays: z.number().int().positive().optional().nullable(), // 相对有效天数
   description: z.string().optional().nullable(),
   usageRules: z.string().optional().nullable(), // 使用规则说明
   status: z.enum(["ACTIVE", "EXPIRED", "DISABLED"]),
@@ -550,11 +553,14 @@ const BaseCouponTemplateSchema = z.object({
   settlementAmount: z.number().nonnegative("结算金额不能为负").optional().nullable(), // 结算金额（可选）
   stock: z.number().int().nonnegative("库存不能为负").min(0, "库存不能为负"),
   claimLimit: z.number().int().positive("每人限领数量必须为正整数").optional().nullable(), // 新增：每人限领数量
+  validDays: z.number().int().positive("有效天数必须为正整数").optional().nullable(), // 新增：相对有效天数
   featuredOnHome: z.boolean().optional(), // 新增：是否展示到首页超值优惠
   categoryId: z.string().optional().nullable(), // 商户类别ID（可选）
   merchantScope: z.array(z.string()), // 商户ID数组（允许空数组）
-  validFrom: z.coerce.date(), // 自动将字符串转换为 Date
-  validUntil: z.coerce.date(), // 自动将字符串转换为 Date
+  saleFrom: z.coerce.date(), // 销售开始时间
+  saleUntil: z.coerce.date(), // 销售结束时间
+  useFrom: z.coerce.date(), // 使用开始时间
+  useUntil: z.coerce.date(), // 使用结束时间
   description: z.string().optional().nullable(),
   usageRules: z.string().optional().nullable(), // 使用规则说明（可选，可为空）
   status: z.enum(["ACTIVE", "EXPIRED", "DISABLED"]).optional(),
@@ -562,10 +568,16 @@ const BaseCouponTemplateSchema = z.object({
 
 // 创建券模板 Schema（包含 refinement）
 export const CreateCouponTemplateSchema = BaseCouponTemplateSchema.refine(
-  (data) => data.validUntil > data.validFrom,
+  (data) => data.saleUntil > data.saleFrom,
   {
-    message: "有效期结束时间必须晚于开始时间",
-    path: ["validUntil"],
+    message: "销售结束时间必须晚于开始时间",
+    path: ["saleUntil"],
+  }
+).refine(
+  (data) => data.useUntil > data.useFrom,
+  {
+    message: "使用结束时间必须晚于开始时间",
+    path: ["useUntil"],
   }
 ).refine(
   (data) => data.categoryId || data.merchantScope.length > 0,
@@ -579,14 +591,26 @@ export const CreateCouponTemplateSchema = BaseCouponTemplateSchema.refine(
 export const UpdateCouponTemplateSchema = BaseCouponTemplateSchema.partial().refine(
   (data) => {
     // 只有当两个日期都存在时才验证
-    if (data.validFrom && data.validUntil) {
-      return data.validUntil > data.validFrom;
+    if (data.saleFrom && data.saleUntil) {
+      return data.saleUntil > data.saleFrom;
     }
     return true;
   },
   {
-    message: "有效期结束时间必须晚于开始时间",
-    path: ["validUntil"],
+    message: "销售结束时间必须晚于开始时间",
+    path: ["saleUntil"],
+  }
+).refine(
+  (data) => {
+    // 只有当两个日期都存在时才验证
+    if (data.useFrom && data.useUntil) {
+      return data.useUntil > data.useFrom;
+    }
+    return true;
+  },
+  {
+    message: "使用结束时间必须晚于开始时间",
+    path: ["useUntil"],
   }
 );
 
@@ -647,9 +671,11 @@ export const CreateOrderSchema = z.object({
 
 export const OrderListQuerySchema = z.object({
   page: z.number().int().positive().optional(),
-  pageSize: z.number().int().positive().optional(),
-  status: z.enum(["UNPAID", "PAID", "REDEEMED", "REFUNDING", "REFUNDED", "EXPIRED"]).optional(),
-  userId: z.string().optional(),
+  limit: z.number().int().positive().optional(),
+  where: z.any().optional(),
+  orderBy: z.any().optional(),
+  include: z.any().optional(),
+  select: z.any().optional(),
 });
 
 export const RefundOrderSchema = z.object({

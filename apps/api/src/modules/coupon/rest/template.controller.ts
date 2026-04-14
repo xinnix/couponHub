@@ -24,7 +24,7 @@ export class TemplateController {
   @ApiOperation({ summary: '获取券模板列表' })
   @ApiResponse({ status: 200, description: '获取成功' })
   async findAll(@Query() query: any) {
-    const { page = 1, limit = 10, status, featuredOnHome } = query;
+    const { page = 1, limit = 10, status, featuredOnHome, merchantId } = query;
     const where: any = {};
 
     if (status) where.status = status;
@@ -32,12 +32,30 @@ export class TemplateController {
       where.featuredOnHome = featuredOnHome === 'true' || featuredOnHome === true;
     }
 
-    return this.templateService.list({
+    // 如果传入 merchantId，使用专门的过滤方法
+    if (merchantId) {
+      const templates = await this.templateService.findByMerchantId(merchantId);
+      return {
+        success: true,
+        data: templates,
+      };
+    }
+
+    // 否则使用标准列表查询
+    const result = await this.templateService.list({
       skip: (Number(page) - 1) * Number(limit),
       take: Number(limit),
       where,
       orderBy: { createdAt: 'desc' },
     });
+
+    return {
+      success: true,
+      data: result.data,
+      total: result.total,
+      page: result.page,
+      pageSize: result.pageSize,
+    };
   }
 
   @Get(':id')

@@ -6,7 +6,7 @@ import { RedisService } from '../../../shared/services/redis.service';
  * 券模板销售期过期处理服务
  *
  * 职责：
- * - 查询销售期过期的券模板（validUntil < now）
+ * - 查询销售期过期的券模板（saleUntil < now）
  * - 批量更新券模板状态为 EXPIRED（已停止销售）
  */
 @Injectable()
@@ -41,19 +41,19 @@ export class CouponTemplateExpirationService {
 
     try {
       // 2. 查询销售期过期的券模板
-      // 注意：validUntil 是销售截止时间，不是使用截止时间
+      // saleUntil 是销售截止时间，销售期结束后用户无法购买
       const now = new Date();
       const expiredTemplates = await this.prisma.couponTemplate.findMany({
         where: {
           status: 'ACTIVE',
-          validUntil: {
+          saleUntil: {
             lt: now,
           },
         },
         select: {
           id: true,
           title: true,
-          validUntil: true,
+          saleUntil: true,
         },
       });
 
@@ -81,7 +81,7 @@ export class CouponTemplateExpirationService {
       // 记录详细信息
       expiredTemplates.forEach((template) => {
         this.logger.debug(
-          `券模板已过期: ${template.title} (ID: ${template.id}, 销售截止: ${template.validUntil})`,
+          `券模板已过期: ${template.title} (ID: ${template.id}, 销售截止: ${template.saleUntil})`,
         );
       });
     } catch (error) {

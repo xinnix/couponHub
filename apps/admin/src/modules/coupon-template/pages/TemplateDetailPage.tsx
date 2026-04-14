@@ -1,10 +1,13 @@
 // apps/admin/src/modules/coupon-template/pages/TemplateDetailPage.tsx
 import { useParams, useNavigate } from "react-router-dom";
 import { useOne, useList } from "@refinedev/core";
-import { Card, Descriptions, Tag, Button, Tabs, Table, Space, App, Spin, Empty, Statistic, Row, Col } from "antd";
-import { ArrowLeftOutlined, DollarOutlined, TagOutlined, ShoppingCartOutlined } from "@ant-design/icons";
+import { Card, Descriptions, Tag, Button, Tabs, Table, Space, App, Spin, Empty, Statistic, Row, Col, Typography, Divider, Alert } from "antd";
+import { ArrowLeftOutlined, DollarOutlined, TagOutlined, ShoppingCartOutlined, ToolOutlined, ClockCircleOutlined, CalendarOutlined } from "@ant-design/icons";
 import { useState } from "react";
 import dayjs from "dayjs";
+import { StockAdjustModal } from "../components/StockAdjustModal";
+import { StockLogList } from "../components/StockLogList";
+import { StockStatistics } from "../components/StockStatistics";
 
 interface CouponTemplate {
   id: string;
@@ -14,8 +17,11 @@ interface CouponTemplate {
   settlementAmount?: number; // 结算金额
   stock: number;
   merchantScope: string[];
-  validFrom: Date;
-  validUntil: Date;
+  saleFrom: Date; // 销售开始时间
+  saleUntil: Date; // 销售结束时间
+  useFrom: Date; // 使用开始时间
+  useUntil: Date; // 使用结束时间
+  validDays?: number; // 相对有效天数（可选）
   description?: string;
   usageRules?: string; // 使用规则说明
   featuredOnHome?: boolean; // 是否展示到首页超值优惠
@@ -54,8 +60,9 @@ export const TemplateDetailPage = () => {
   const navigate = useNavigate();
   const { message } = App.useApp();
   const [activeTab, setActiveTab] = useState('info');
+  const [adjustModalVisible, setAdjustModalVisible] = useState(false);
 
-  const { result: template, isLoading } = useOne<CouponTemplate>({
+  const { result: template, isLoading, query } = useOne<CouponTemplate>({
     resource: "couponTemplate",
     id: id!,
   });
@@ -79,17 +86,21 @@ export const TemplateDetailPage = () => {
   }
 
   // 匹配适用商户
-  const applicableMerchants = (merchants || []).filter(m => template.merchantScope.includes(m.id));
+  const applicableMerchants = (merchants?.data || []).filter(m => template.merchantScope.includes(m.id));
 
   const getStatusTag = () => {
     const now = new Date();
-    const isExpired = new Date(template.validUntil) < now;
+    const isSaleExpired = new Date(template.saleUntil) < now;
+    const isUseExpired = new Date(template.useUntil) < now;
 
     if (template.status === 'DISABLED') {
       return <Tag color="default">已停用</Tag>;
     }
-    if (isExpired || template.status === 'EXPIRED') {
+    if (isUseExpired || template.status === 'EXPIRED') {
       return <Tag color="error">已过期</Tag>;
+    }
+    if (isSaleExpired) {
+      return <Tag color="warning">销售期已结束</Tag>;
     }
     return <Tag color="success">上架中</Tag>;
   };
@@ -105,7 +116,7 @@ export const TemplateDetailPage = () => {
               <Card>
                 <Statistic
                   title="购买价格"
-                  value={template.buyPrice}
+                  value={Number(template.buyPrice)}
                   prefix={<DollarOutlined />}
                   precision={2}
                   valueStyle={{ color: '#ff4d4f' }}
@@ -116,7 +127,7 @@ export const TemplateDetailPage = () => {
               <Card>
                 <Statistic
                   title="面值"
-                  value={template.faceValue}
+                  value={Number(template.faceValue)}
                   prefix={<DollarOutlined />}
                   precision={2}
                   valueStyle={{ color: '#52c41a' }}
@@ -150,7 +161,7 @@ export const TemplateDetailPage = () => {
               <Card>
                 <Statistic
                   title="结算金额"
-                  value={template.settlementAmount || template.faceValue}
+                  value={Number(template.settlementAmount || template.faceValue)}
                   prefix={<DollarOutlined />}
                   precision={2}
                   valueStyle={{ color: '#1890ff' }}
@@ -160,23 +171,123 @@ export const TemplateDetailPage = () => {
             </Col>
           </Row>
 
+          {/* 有效期规则展示 */}
+          <Card
+            title={
+              <Space>
+                <ClockCircleOutlined />
+                <span>有效期规则</span>
+              </Space>
+            }
+            style={{ marginBottom: 24 }}
+          >
+            <Row gutter={16}>
+              {/* 销售期 */}
+              <Col span={12}>
+                <Card type="inner" style={{ marginBottom: 16 }}>
+                  <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                    <Typography.Text type="secondary" strong>
+                      <CalendarOutlined /> 销售期（用户可购买时间）
+                    </Typography.Text>
+                    <Typography.Text>
+                      {dayjs(template.saleFrom).format('YYYY-MM-DD HH:mm')} 至 {dayjs(template.saleUntil).format('YYYY-MM-DD HH:mm')}
+                    </Typography.Text>
+                    <Tag color={new Date(template.saleUntil) > new Date() ? 'success' : 'error'}>
+                      {new Date(template.saleUntil) > new Date() ? '销售进行中' : '销售已结束'}
+                    </Tag>
+                  </Space>
+                </Card>
+              </Col>
+
+              {/* 使用期 */}
+              <Col span={12}>
+                <Card type="inner" style={{ marginBottom: 16 }}>
+                  <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                    <Typography.Text type="secondary" strong>
+                      <CalendarOutlined /> 使用期（用户可核销时间）
+                    </Typography.Text>
+                    <Typography.Text>
+                      {dayjs(template.useFrom).format('YYYY-MM-DD HH:mm')} 至 {dayjs(template.useUntil).format('YYYY-MM-DD HH:mm')}
+                    </Typography.Text>
+                    <Tag color={new Date(template.useUntil) > new Date() ? 'success' : 'error'}>
+                      {new Date(template.useUntil) > new Date() ? '可正常使用' : '已过期'}
+                    </Tag>
+                  </Space>
+                </Card>
+              </Col>
+            </Row>
+
+            {/* 相对有效期说明 */}
+            {template.validDays ? (
+              <Alert
+                type="info"
+                showIcon
+                message={
+                  <Space direction="vertical" size="small">
+                    <Typography.Text strong>相对有效期模式</Typography.Text>
+                    <Typography.Text>
+                      用户购买后 {template.validDays} 天内有效，但不超过使用截止时间 {dayjs(template.useUntil).format('YYYY-MM-DD HH:mm')}
+                    </Typography.Text>
+                    <Typography.Text type="secondary">
+                      实际过期时间 = min(购买时间 + {template.validDays}天, {dayjs(template.useUntil).format('YYYY-MM-DD')})
+                    </Typography.Text>
+                  </Space>
+                }
+                style={{ marginTop: 16 }}
+              />
+            ) : (
+              <Alert
+                type="warning"
+                showIcon
+                message={
+                  <Space direction="vertical" size="small">
+                    <Typography.Text strong>固定有效期模式</Typography.Text>
+                    <Typography.Text>
+                      所有用户统一在使用截止时间 {dayjs(template.useUntil).format('YYYY-MM-DD HH:mm')} 过期
+                    </Typography.Text>
+                    <Typography.Text type="secondary">
+                      无论何时购买，过期时间都相同
+                    </Typography.Text>
+                  </Space>
+                }
+                style={{ marginTop: 16 }}
+              />
+            )}
+
+            {/* 时间关系提示 */}
+            {new Date(template.useFrom) > new Date(template.saleUntil) && (
+              <Alert
+                type="warning"
+                showIcon
+                message={`用户购买后需等待 ${Math.ceil((new Date(template.useFrom).getTime() - new Date(template.saleUntil).getTime()) / (1000 * 60 * 60 * 24))} 天才能开始使用`}
+                style={{ marginTop: 16 }}
+              />
+            )}
+          </Card>
+
           <Descriptions bordered column={2}>
             <Descriptions.Item label="券标题" span={2}>{template.title}</Descriptions.Item>
             <Descriptions.Item label="状态">{getStatusTag()}</Descriptions.Item>
-            <Descriptions.Item label="库存">{template.stock}</Descriptions.Item>
+            <Descriptions.Item label="库存">
+              <Space>
+                <Typography.Text strong>{template.stock}</Typography.Text>
+                <Button
+                  type="link"
+                  size="small"
+                  icon={<ToolOutlined />}
+                  onClick={() => setAdjustModalVisible(true)}
+                >
+                  调整库存
+                </Button>
+              </Space>
+            </Descriptions.Item>
             <Descriptions.Item label="展示到首页超值优惠">
               {template.featuredOnHome ? <Tag color="gold">是</Tag> : <Tag color="default">否</Tag>}
             </Descriptions.Item>
             <Descriptions.Item label="结算金额">
               {template.settlementAmount
-                ? `¥${template.settlementAmount.toFixed(2)}`
-                : `¥${template.faceValue.toFixed(2)} (使用面值)`}
-            </Descriptions.Item>
-            <Descriptions.Item label="有效期开始">
-              {dayjs(template.validFrom).format('YYYY-MM-DD HH:mm:ss')}
-            </Descriptions.Item>
-            <Descriptions.Item label="有效期结束">
-              {dayjs(template.validUntil).format('YYYY-MM-DD HH:mm:ss')}
+                ? `¥${Number(template.settlementAmount).toFixed(2)}`
+                : `¥${Number(template.faceValue).toFixed(2)} (使用面值)`}
             </Descriptions.Item>
             <Descriptions.Item label="创建时间">
               {dayjs(template.createdAt).format('YYYY-MM-DD HH:mm:ss')}
@@ -241,6 +352,21 @@ export const TemplateDetailPage = () => {
         </div>
       ),
     },
+    {
+      key: 'stock',
+      label: '库存管理',
+      children: (
+        <div style={{ padding: '24px 0' }}>
+          <Space direction="vertical" size="large" style={{ width: '100%' }}>
+            {/* 库存统计 */}
+            <StockStatistics templateId={template.id} />
+
+            {/* 库存变更历史 */}
+            <StockLogList templateId={template.id} />
+          </Space>
+        </div>
+      ),
+    },
   ];
 
   return (
@@ -256,8 +382,8 @@ export const TemplateDetailPage = () => {
           <h1 style={{ margin: 0, fontSize: 28, fontWeight: "bold" }}>{template.title}</h1>
           <Space style={{ marginTop: 8 }}>
             {getStatusTag()}
-            <Tag color="orange">购买价 ¥{template.buyPrice}</Tag>
-            <Tag color="green">面值 ¥{template.faceValue}</Tag>
+            <Tag color="orange">购买价 ¥{Number(template.buyPrice)}</Tag>
+            <Tag color="green">面值 ¥{Number(template.faceValue)}</Tag>
           </Space>
         </div>
 
@@ -267,6 +393,17 @@ export const TemplateDetailPage = () => {
           items={tabItems}
         />
       </Card>
+
+      {/* 库存调整对话框 */}
+      <StockAdjustModal
+        visible={adjustModalVisible}
+        template={template}
+        onCancel={() => setAdjustModalVisible(false)}
+        onSuccess={() => {
+          setAdjustModalVisible(false);
+          query.refetch(); // 刷新券模板数据
+        }}
+      />
     </div>
   );
 };

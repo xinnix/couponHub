@@ -1,5 +1,6 @@
 // apps/admin/src/modules/coupon-template/pages/TemplateListPage.tsx
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useList, useCreate, useUpdate, useDelete, useDeleteMany } from "@refinedev/core";
 import { useMutation } from "@tanstack/react-query";
 import { List } from "@refinedev/antd";
@@ -20,6 +21,7 @@ import {
   Statistic,
   App,
   Image,
+  Tooltip,
 } from "antd";
 import {
   PlusOutlined,
@@ -40,10 +42,21 @@ interface CouponTemplate {
   title: string;
   buyPrice: number;
   faceValue: number;
+  settlementAmount?: number; // 结算金额（可选）
   stock: number;
+  claimLimit?: number; // 每人限领数量（可选）
+  isFree?: boolean; // 是否为免费券
+  featuredOnHome?: boolean; // 是否展示到首页超值优惠
+  categoryId?: string; // 商户类别ID（可选）
   merchantScope: string[];
-  validFrom: Date;
-  validUntil: Date;
+  // 销售期
+  saleFrom: Date;
+  saleUntil: Date;
+  // 使用期
+  useFrom: Date;
+  useUntil: Date;
+  // 相对有效期
+  validDays?: number;
   description?: string;
   usageRules?: string; // 使用规则说明
   status: 'ACTIVE' | 'EXPIRED' | 'DISABLED';
@@ -57,6 +70,7 @@ interface CouponTemplate {
 }
 
 export const TemplateListPage = () => {
+  const navigate = useNavigate();
   const { message } = App.useApp();
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editingRecord, setEditingRecord] = useState<CouponTemplate | null>(null);
@@ -119,9 +133,16 @@ export const TemplateListPage = () => {
       ...record,
       buyPrice: Number(record.buyPrice),
       faceValue: Number(record.faceValue),
-      validDays: record.validDays || 30, // 默认30天
-      validFrom: dayjs(record.validFrom),
-      validUntil: dayjs(record.validUntil),
+      settlementAmount: record.settlementAmount ? Number(record.settlementAmount) : undefined,
+      claimLimit: record.claimLimit || 1,
+      validDays: record.validDays || 30,
+      categoryId: record.categoryId || undefined,
+      featuredOnHome: record.featuredOnHome || false,
+      // 使用正确的字段名：saleFrom/saleUntil/useFrom/useUntil
+      saleFrom: dayjs(record.saleFrom),
+      saleUntil: dayjs(record.saleUntil),
+      useFrom: dayjs(record.useFrom),
+      useUntil: dayjs(record.useUntil),
     });
     setIsModalVisible(true);
   };
@@ -148,8 +169,10 @@ export const TemplateListPage = () => {
             id: editingRecord.id,
             values: {
               ...values,
-              validFrom: values.validFrom.toISOString(),
-              validUntil: values.validUntil.toISOString(),
+              saleFrom: values.saleFrom.toISOString(),
+              saleUntil: values.saleUntil.toISOString(),
+              useFrom: values.useFrom.toISOString(),
+              useUntil: values.useUntil.toISOString(),
             },
           },
           createMutationCallbacks(action, query, () => setIsModalVisible(false), message)
@@ -160,8 +183,10 @@ export const TemplateListPage = () => {
             resource: "couponTemplate",
             values: {
               ...values,
-              validFrom: values.validFrom.toISOString(),
-              validUntil: values.validUntil.toISOString(),
+              saleFrom: values.saleFrom.toISOString(),
+              saleUntil: values.saleUntil.toISOString(),
+              useFrom: values.useFrom.toISOString(),
+              useUntil: values.useUntil.toISOString(),
             },
           },
           createMutationCallbacks(action, query, () => setIsModalVisible(false), message)
@@ -220,12 +245,12 @@ export const TemplateListPage = () => {
   };
 
   const getStatusTag = (record: CouponTemplate) => {
-    const { status, validUntil } = record;
-    const isExpired = new Date(validUntil) < new Date();
+    const { status, useUntil } = record;
+    const isExpired = new Date(useUntil) < new Date();
 
     // 计算距离过期还有多少天
     const daysLeft = Math.ceil(
-      (new Date(validUntil).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+      (new Date(useUntil).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
     );
 
     if (status === 'DISABLED') {
@@ -261,7 +286,7 @@ export const TemplateListPage = () => {
       dataIndex: "buyPrice",
       width: 100,
       render: (price: number) => (
-        <span style={{ color: '#ff4d4f', fontWeight: 'bold' }}>¥{price}</span>
+        <span style={{ color: '#ff4d4f', fontWeight: 'bold' }}>¥{Number(price)}</span>
       ),
     },
     {
@@ -269,7 +294,7 @@ export const TemplateListPage = () => {
       dataIndex: "faceValue",
       width: 100,
       render: (value: number) => (
-        <span style={{ color: '#52c41a', fontWeight: 'bold' }}>¥{value}</span>
+        <span style={{ color: '#52c41a', fontWeight: 'bold' }}>¥{Number(value)}</span>
       ),
     },
     {
@@ -295,7 +320,7 @@ export const TemplateListPage = () => {
       width: 200,
       render: (_: any, record: CouponTemplate) => (
         <span style={{ fontSize: 12 }}>
-          {dayjs(record.validFrom).format('YYYY-MM-DD')} ~ {dayjs(record.validUntil).format('YYYY-MM-DD')}
+          {dayjs(record.saleFrom).format('YYYY-MM-DD')} ~ {dayjs(record.saleUntil).format('YYYY-MM-DD')}
         </span>
       ),
     },
@@ -331,6 +356,9 @@ export const TemplateListPage = () => {
       fixed: 'right' as const,
       render: (_: any, record: CouponTemplate) => (
         <Space size="small">
+          <Button size="small" type="link" onClick={() => navigate(`/coupon-templates/${record.id}`)}>
+            详情
+          </Button>
           <Button size="small" type="link" onClick={() => handleEdit(record)}>
             编辑
           </Button>
@@ -360,7 +388,7 @@ export const TemplateListPage = () => {
 
   // 统计数据
   const templates = (result as any)?.data || [];
-  const activeCount = templates.filter((t: CouponTemplate) => t.status === 'ACTIVE' && new Date(t.validUntil) > new Date()).length;
+  const activeCount = templates.filter((t: CouponTemplate) => t.status === 'ACTIVE' && new Date(t.useUntil) > new Date()).length;
   const totalStock = templates.reduce((sum: number, t: CouponTemplate) => sum + t.stock, 0);
 
   return (
@@ -403,7 +431,7 @@ export const TemplateListPage = () => {
               <Card>
                 <Statistic
                   title="总销售额"
-                  value={templates.reduce((sum: number, t: CouponTemplate) => sum + (t._count?.orders || 0) * t.buyPrice, 0)}
+                  value={templates.reduce((sum: number, t: CouponTemplate) => sum + (t._count?.orders || 0) * Number(t.buyPrice), 0)}
                   prefix={<DollarOutlined />}
                   precision={2}
                 />

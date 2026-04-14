@@ -182,15 +182,20 @@ export const TemplateForm: React.FC<TemplateFormProps> = ({ form, isEdit }) => {
           </Form.Item>
         </Col>
         <Col span={8}>
+          {/* 相对有效天数（可选） */}
           <Form.Item
             name="validDays"
-            label="有效天数"
-            initialValue={30}
+            label={
+              <span>
+                有效天数（可选）&nbsp;
+                <Tooltip title="购买后X天内有效。如果不填写，则使用固定的使用截止时间。填写后，过期时间取两者最小值">
+                  <QuestionCircleOutlined style={{ color: '#1890ff' }} />
+                </Tooltip>
+              </span>
+            }
             rules={[
-              { required: true, message: '请输入有效天数' },
               { type: 'number', min: 1, message: '有效天数必须大于0' },
             ]}
-            tooltip="购买后多少天内有效，每个用户根据购买时间独立计算"
           >
             <InputNumber
               style={{ width: '100%' }}
@@ -200,6 +205,9 @@ export const TemplateForm: React.FC<TemplateFormProps> = ({ form, isEdit }) => {
             />
           </Form.Item>
         </Col>
+      </Row>
+
+      <Row gutter={16}>
         <Col span={8}>
           <Form.Item name="status" label="状态" initialValue="ACTIVE">
             <Select>
@@ -209,6 +217,165 @@ export const TemplateForm: React.FC<TemplateFormProps> = ({ form, isEdit }) => {
           </Form.Item>
         </Col>
       </Row>
+
+      {/* 销售期设置 */}
+      <Form.Item
+        noStyle
+        shouldUpdate={(prevValues, currentValues) =>
+          prevValues.saleFrom !== currentValues.saleFrom || prevValues.saleUntil !== currentValues.saleUntil
+        }
+      >
+        {({ getFieldValue }) => {
+          const saleFrom = getFieldValue('saleFrom');
+          const saleUntil = getFieldValue('saleUntil');
+
+          return (
+            <Form.Item
+              label={
+                <span>
+                  销售期&nbsp;
+                  <Tooltip title="设置用户可以购买的时间范围，只能在此时间段内购买">
+                    <QuestionCircleOutlined style={{ color: '#1890ff' }} />
+                  </Tooltip>
+                </span>
+              }
+              required
+              rules={[
+                {
+                  validator: () => {
+                    if (!saleFrom || !saleUntil) {
+                      return Promise.reject(new Error('请选择销售期'));
+                    }
+                    if (saleUntil.isBefore(saleFrom)) {
+                      return Promise.reject(new Error('销售结束时间必须晚于开始时间'));
+                    }
+                    return Promise.resolve();
+                  },
+                },
+              ]}
+            >
+              <Row gutter={16}>
+                <Col span={12}>
+                  <Form.Item
+                    name="saleFrom"
+                    noStyle
+                    rules={[{ required: true, message: "请选择销售开始时间" }]}
+                  >
+                    <DatePicker
+                      placeholder="销售开始时间"
+                      style={{ width: '100%' }}
+                      showTime
+                      format="YYYY-MM-DD HH:mm:ss"
+                    />
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item
+                    name="saleUntil"
+                    noStyle
+                    rules={[{ required: true, message: "请选择销售结束时间" }]}
+                  >
+                    <DatePicker
+                      placeholder="销售结束时间"
+                      style={{ width: '100%' }}
+                      showTime
+                      format="YYYY-MM-DD HH:mm:ss"
+                    />
+                  </Form.Item>
+                </Col>
+              </Row>
+            </Form.Item>
+          );
+        }}
+      </Form.Item>
+
+      {/* 使用期设置 */}
+      <Form.Item
+        noStyle
+        shouldUpdate={(prevValues, currentValues) =>
+          prevValues.useFrom !== currentValues.useFrom || prevValues.useUntil !== currentValues.useUntil
+        }
+      >
+        {({ getFieldValue }) => {
+          const useFrom = getFieldValue('useFrom');
+          const useUntil = getFieldValue('useUntil');
+          const saleUntil = getFieldValue('saleUntil');
+
+          return (
+            <>
+              <Form.Item
+                label={
+                  <span>
+                    使用期&nbsp;
+                    <Tooltip title="设置用户可以核销/使用的时间范围，只能在此时间段内核销">
+                      <QuestionCircleOutlined style={{ color: '#1890ff' }} />
+                    </Tooltip>
+                  </span>
+                }
+                required
+                rules={[
+                  {
+                    validator: () => {
+                      if (!useFrom || !useUntil) {
+                        return Promise.reject(new Error('请选择使用期'));
+                      }
+                      if (useUntil.isBefore(useFrom)) {
+                        return Promise.reject(new Error('使用结束时间必须晚于开始时间'));
+                      }
+                      // 检查使用期是否晚于销售期
+                      if (saleUntil && useFrom.isBefore(saleUntil)) {
+                        return Promise.reject(new Error('建议使用期开始时间晚于销售期结束时间，否则可能出现用户购买后无法立即使用的情况'));
+                      }
+                      return Promise.resolve();
+                    },
+                  },
+                ]}
+              >
+                <Row gutter={16}>
+                  <Col span={12}>
+                    <Form.Item
+                      name="useFrom"
+                      noStyle
+                      rules={[{ required: true, message: "请选择使用开始时间" }]}
+                    >
+                      <DatePicker
+                        placeholder="使用开始时间"
+                        style={{ width: '100%' }}
+                        showTime
+                        format="YYYY-MM-DD HH:mm:ss"
+                      />
+                    </Form.Item>
+                  </Col>
+                  <Col span={12}>
+                    <Form.Item
+                      name="useUntil"
+                      noStyle
+                      rules={[{ required: true, message: "请选择使用结束时间" }]}
+                    >
+                      <DatePicker
+                        placeholder="使用结束时间"
+                        style={{ width: '100%' }}
+                        showTime
+                        format="YYYY-MM-DD HH:mm:ss"
+                      />
+                    </Form.Item>
+                  </Col>
+                </Row>
+              </Form.Item>
+
+              {/* 时间关系提示 */}
+              {saleUntil && useFrom && useFrom.isAfter(saleUntil) && (
+                <Alert
+                  message={`用户购买后需等待 ${Math.ceil((useFrom.toDate().getTime() - saleUntil.toDate().getTime()) / (1000 * 60 * 60 * 24))} 天才能开始使用`}
+                  type="info"
+                  showIcon
+                  style={{ marginBottom: 16 }}
+                />
+              )}
+            </>
+          );
+        }}
+      </Form.Item>
 
       {/* 首页展示设置 */}
       <Row gutter={16}>
@@ -230,66 +397,6 @@ export const TemplateForm: React.FC<TemplateFormProps> = ({ form, isEdit }) => {
           </Form.Item>
         </Col>
       </Row>
-
-      <Form.Item
-        noStyle
-        shouldUpdate={(prevValues, currentValues) => prevValues.validFrom !== currentValues.validFrom || prevValues.validUntil !== currentValues.validUntil}
-      >
-        {({ getFieldValue }) => {
-          const validFrom = getFieldValue('validFrom');
-          const validUntil = getFieldValue('validUntil');
-          return (
-            <Form.Item
-              label="有效期"
-              required
-              rules={[
-                {
-                  validator: () => {
-                    if (!validFrom || !validUntil) {
-                      return Promise.reject(new Error('请选择有效期'));
-                    }
-                    if (validUntil.isBefore(validFrom)) {
-                      return Promise.reject(new Error('结束时间必须晚于开始时间'));
-                    }
-                    return Promise.resolve();
-                  },
-                },
-              ]}
-            >
-              <Row gutter={16}>
-                <Col span={12}>
-                  <Form.Item
-                    name="validFrom"
-                    noStyle
-                    rules={[{ required: true, message: "请选择开始时间" }]}
-                  >
-                    <DatePicker
-                      placeholder="开始时间"
-                      style={{ width: '100%' }}
-                      showTime
-                      format="YYYY-MM-DD HH:mm:ss"
-                    />
-                  </Form.Item>
-                </Col>
-                <Col span={12}>
-                  <Form.Item
-                    name="validUntil"
-                    noStyle
-                    rules={[{ required: true, message: "请选择结束时间" }]}
-                  >
-                    <DatePicker
-                      placeholder="结束时间"
-                      style={{ width: '100%' }}
-                      showTime
-                      format="YYYY-MM-DD HH:mm:ss"
-                    />
-                  </Form.Item>
-                </Col>
-              </Row>
-            </Form.Item>
-          );
-        }}
-      </Form.Item>
 
       {/* 商户类别选择 */}
       <Form.Item
