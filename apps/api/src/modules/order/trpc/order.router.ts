@@ -90,9 +90,23 @@ export const orderRouter = createCrudRouterWithCustom(
         const initialStatus = isFree ? 'PAID' : 'UNPAID';
 
         // 计算过期时间（免费券立即计算，付费券在支付成功后计算）
-        const expireAt = isFree
-          ? new Date(now.getTime() + template.validDays * 24 * 60 * 60 * 1000)
-          : undefined;
+        // expireAt = 有 validDays ? min(useUntil, paidAt + validDays) : useUntil
+        let expireAt: Date | undefined;
+
+        if (isFree) {
+          const now = new Date();
+
+          if (template.validDays && template.validDays > 0) {
+            // 相对有效期：领取后X天有效
+            const relativeExpireAt = new Date(now.getTime() + template.validDays * 24 * 60 * 60 * 1000);
+
+            // 取两者的最小值（确保不超过使用期截止时间）
+            expireAt = relativeExpireAt < template.useUntil ? relativeExpireAt : template.useUntil;
+          } else {
+            // 无相对有效期，直接使用使用期截止时间
+            expireAt = template.useUntil;
+          }
+        }
 
         // 6. 生成订单号
         const orderNo = generateOrderNo();

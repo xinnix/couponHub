@@ -63,12 +63,21 @@ export class RedemptionService {
       throw new BadRequestException(`订单状态异常: ${order.status}`);
     }
 
-    // 5. 检查订单是否过期（使用订单的 expireAt 字段）
+    // 5. 检查是否在使用期内
+    const now = new Date();
+    if (order.template.useFrom > now) {
+      throw new BadRequestException(`该券尚未开始使用，使用开始时间: ${order.template.useFrom.toLocaleString()}`);
+    }
+    if (order.template.useUntil < now) {
+      throw new BadRequestException('该券已超过使用截止时间，无法核销');
+    }
+
+    // 6. 检查订单是否过期（使用订单的 expireAt 字段）
     if (order.expireAt && new Date(order.expireAt) < new Date()) {
       throw new BadRequestException('该券已过期，无法核销');
     }
 
-    // 6. 验证核销权限
+    // 7. 验证核销权限
     const merchantScope = order.template.merchantScope as string[];
     if (!merchantScope.includes(handler.merchantId)) {
       throw new ForbiddenException('该券不适用于当前商户');

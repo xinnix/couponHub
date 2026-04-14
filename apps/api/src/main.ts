@@ -19,6 +19,9 @@ import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import { ValidationPipe } from "@nestjs/common";
 import express from "express";
 import { json } from "express";
+import { BullBoardSetup } from "./modules/scheduler/config/bull-board.setup";
+import { InjectQueue } from "@nestjs/bull";
+import { Queue } from "bull";
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -80,6 +83,18 @@ async function bootstrap() {
       },
     })
   );
+
+  // 🎯 配置 Bull Board 可视化面板
+  try {
+    // 获取 BullBoardSetup 服务（它已经自动配置好了队列）
+    const bullBoardSetup = app.get(BullBoardSetup);
+    const serverAdapter = bullBoardSetup.getServerAdapter();
+
+    app.use('/bull-board', serverAdapter.getRouter());
+    console.log(`📊 Bull Board 可视化面板: http://localhost:${port}/bull-board`);
+  } catch (error) {
+    console.warn('⚠️  Bull Board 配置失败（队列未初始化）:', error.message);
+  }
 
   // Set up Swagger/OpenAPI documentation
   const config = new DocumentBuilder()

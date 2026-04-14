@@ -24,6 +24,7 @@ import { JwtAuthGuard } from '../../../core/guards/jwt.guard';
 import { CurrentUser } from '../../auth/decorators/decorators';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { WechatPayService } from '../services/wechat-pay.service';
+import { OrderService } from '../../order/services/order.service';
 
 const CreatePaymentSchema = z.object({
   orderId: z.string().min(1, '订单ID不能为空'),
@@ -37,6 +38,7 @@ export class PaymentController {
   constructor(
     private readonly prisma: PrismaService,
     private readonly wechatPayService: WechatPayService,
+    private readonly orderService: OrderService,
   ) {}
 
   /**
@@ -163,10 +165,21 @@ export class PaymentController {
         throw new BadRequestException('Template not found');
       }
 
-      // 计算过期时间：paidAt + validDays 天
+      // 计算过期时间：min(useUntil, paidAt + validDays)
       const paidAt = payment.paidAt || new Date();
-      const expireAt = new Date(paidAt);
-      expireAt.setDate(expireAt.getDate() + template.validDays);
+      let expireAt: Date;
+
+      if (template.validDays && template.validDays > 0) {
+        // 相对有效期：购买后X天有效
+        const relativeExpireAt = new Date(paidAt);
+        relativeExpireAt.setDate(relativeExpireAt.getDate() + template.validDays);
+
+        // 取两者的最小值（确保不超过使用期截止时间）
+        expireAt = relativeExpireAt < template.useUntil ? relativeExpireAt : template.useUntil;
+      } else {
+        // 无相对有效期，直接使用使用期截止时间
+        expireAt = template.useUntil;
+      }
 
       await this.prisma.order.update({
         where: { id: payment.orderId },
@@ -179,7 +192,7 @@ export class PaymentController {
       });
 
       this.logger.log(
-        `支付回调处理成功: ${payment.orderNo} → ${payment.transactionId}, 过期时间: ${expireAt.toISOString()}`,
+        `支付回调处理成功: ${payment.orderNo} → ${payment.transactionId}, 使用期: ${template.useFrom.toISOString()} ~ ${template.useUntil.toISOString()}, 过期时间: ${expireAt.toISOString()}`,
       );
 
       // 微信要求返回此格式
@@ -243,15 +256,8 @@ export class PaymentController {
 
       // 根据退款状态更新订单
       if (refund.refundStatus === 'SUCCESS') {
-        // 退款成功，更新订单状态
-        await this.prisma.order.update({
-          where: { id: order.id },
-          data: {
-            status: 'REFUNDED',
-            refundId: refund.refundId,
-            refundedAt: refund.refundedAt || new Date(),
-          },
-        });
+        // ✅ 调用 OrderService.confirmRefund 恢复库存
+        await this.orderService.confirmRefund(order.id, refund.refundId);
 
         this.logger.log(
           `退款回调处理成功: ${refund.orderNo} → ${refund.refundId}`,

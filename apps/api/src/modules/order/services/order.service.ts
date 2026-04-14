@@ -3,6 +3,7 @@ import { PrismaService } from '../../../prisma/prisma.service';
 import { BaseService } from '../../../common/base.service';
 import { RedisService } from '../../../shared/services/redis.service';
 import { WechatPayService } from '../../payment/services/wechat-pay.service';
+import { StockLogService, StockChangeReason } from '../../coupon/services/stock-log.service';
 
 /**
  * 订单服务
@@ -20,6 +21,7 @@ export class OrderService extends BaseService<'Order'> {
     prisma: PrismaService,
     private readonly redisService: RedisService,
     private readonly wechatPayService: WechatPayService,
+    private readonly stockLogService: StockLogService,
   ) {
     super(prisma, 'Order');
   }
@@ -54,10 +56,13 @@ export class OrderService extends BaseService<'Order'> {
         throw new BadRequestException('券模板不存在');
       }
 
-      // 3. 检查有效期
+      // 3. 检查销售期（是否在售卖时间范围内）
       const now = new Date();
-      if (template.validFrom > now || template.validUntil < now) {
-        throw new BadRequestException('该券不在有效期内');
+      if (template.saleFrom > now) {
+        throw new BadRequestException('该券尚未开始销售');
+      }
+      if (template.saleUntil < now) {
+        throw new BadRequestException('该券已结束销售');
       }
 
       // 4. 检查库存
@@ -104,11 +109,30 @@ export class OrderService extends BaseService<'Order'> {
         },
       });
 
-      // 8. 预扣库存
-      await this.prisma.couponTemplate.update({
+      // 8. 预扣库存，如果库存为0则自动标记为售罄
+      const updatedTemplate = await this.prisma.couponTemplate.update({
         where: { id: templateId },
-        data: { stock: { decrement: 1 } },
+        data: {
+          stock: { decrement: 1 },
+          // 如果扣减后库存为0，自动标记为 DISABLED
+          ...(template.stock === 1 && { status: 'DISABLED' }),
+        },
       });
+
+      if (updatedTemplate.stock === 0) {
+        this.logger.log(`券模板已售罄: ${template.title} (ID: ${templateId})`);
+      }
+
+      // ✅ 9. 记录库存变更日志
+      await this.stockLogService.log(
+        templateId,
+        -1, // 扣减库存
+        updatedTemplate.stock,
+        StockChangeReason.ORDER_CREATE,
+        order.id,
+        undefined,
+        { orderNo, userId },
+      );
 
       this.logger.log(`订单创建成功: ${orderNo}, 用户: ${userId}`);
 
@@ -220,9 +244,14 @@ export class OrderService extends BaseService<'Order'> {
       throw new BadRequestException('已核销的订单无法退款');
     }
 
-    // 验证有效期
-    if (order.template.validUntil < new Date()) {
+    // 验证有效期（检查订单的 expireAt）
+    if (order.expireAt && new Date(order.expireAt) < new Date()) {
       throw new BadRequestException('订单已过期，请申请过期退款');
+    }
+
+    // 验证是否在使用期内（如果已过期但还在使用期内，仍然可以退款）
+    if (order.template.useUntil < new Date()) {
+      throw new BadRequestException('已超过使用期截止时间，无法退款');
     }
 
     // 更新订单状态为退款中
@@ -249,9 +278,24 @@ export class OrderService extends BaseService<'Order'> {
 
   /**
    * 退款成功确认
+   *
+   * 流程：
+   * 1. 更新订单状态为 REFUNDED
+   * 2. 恢复库存
+   * 3. 如果之前状态为 DISABLED 且库存恢复后 > 0，则恢复为 ACTIVE
    */
   async confirmRefund(orderId: string, refundId: string) {
-    const order = await this.prisma.order.update({
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+      include: { template: true },
+    });
+
+    if (!order) {
+      throw new BadRequestException('订单不存在');
+    }
+
+    // 1. 更新订单状态
+    const updatedOrder = await this.prisma.order.update({
       where: { id: orderId },
       data: {
         status: 'REFUNDED',
@@ -260,8 +304,54 @@ export class OrderService extends BaseService<'Order'> {
       },
     });
 
-    this.logger.log(`订单退款成功: ${order.orderNo}`);
-    return order;
+    // 2. 恢复库存并更新券模板状态
+    const currentTemplate = await this.prisma.couponTemplate.findUnique({
+      where: { id: order.templateId },
+    });
+
+    if (!currentTemplate) {
+      throw new BadRequestException('券模板不存在');
+    }
+
+    // 如果之前库存为0（状态为 DISABLED），退款后恢复为 ACTIVE
+    const shouldReactivate = currentTemplate.stock === 0 && currentTemplate.status === 'DISABLED';
+
+    const updatedTemplate = await this.prisma.couponTemplate.update({
+      where: { id: order.templateId },
+      data: {
+        stock: { increment: 1 },
+        // 如果之前是售罄状态，退款后恢复为上架
+        ...(shouldReactivate && { status: 'ACTIVE' }),
+      },
+    });
+
+    // ✅ 3. 记录库存变更日志
+    // 根据订单状态判断退款原因
+    const refundReason = order.status === 'EXPIRED'
+      ? StockChangeReason.EXPIRED_REFUND
+      : StockChangeReason.REFUND;
+
+    await this.stockLogService.log(
+      order.templateId,
+      1, // 恢复库存
+      updatedTemplate.stock,
+      refundReason,
+      order.id,
+      undefined,
+      { orderNo: order.orderNo, refundId, originalStatus: order.status },
+    );
+
+    this.logger.log(
+      `订单退款成功: ${order.orderNo}, 库存已恢复 (当前库存: ${updatedTemplate.stock})`,
+    );
+
+    if (shouldReactivate) {
+      this.logger.log(
+        `券模板已重新上架: ${order.template.title} (ID: ${order.templateId})`,
+      );
+    }
+
+    return updatedOrder;
   }
 
   /**
