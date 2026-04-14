@@ -19,7 +19,6 @@ out/
 
 # Prisma
 infra/database/generated/
-infra/database/prisma/migrations/
 
 # IDE
 .vscode/

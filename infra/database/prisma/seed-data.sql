@@ -9,13 +9,13 @@ VALUES
   ('cm6', '耐克', 'cat_retail', 'C区', '3F', '021-67890123', '运动服装品牌', 'ACTIVE', NOW(), NOW())
 ON CONFLICT DO NOTHING;
 
--- 插入券模板假数据
-INSERT INTO coupon_templates (id, title, "buyPrice", "faceValue", stock, "merchantScope", "validFrom", "validUntil", description, status, "createdAt", "updatedAt")
+-- 插入券模板假数据（字段名已更新：saleFrom/saleUntil, useFrom/useUntil）
+INSERT INTO coupon_templates (id, title, "buyPrice", "faceValue", stock, "merchantScope", "saleFrom", "saleUntil", "useFrom", "useUntil", description, status, "createdAt", "updatedAt")
 VALUES
-  ('ct1', '50元代100元火锅券', 50.00, 100.00, 1000, '["cm1"]', NOW(), NOW() + INTERVAL '1 month', '适用于海底捞火锅全场消费，每人每次限用2张', 'ACTIVE', NOW(), NOW()),
-  ('ct2', '星巴克30元饮品券', 25.00, 30.00, 500, '["cm2"]', NOW(), NOW() + INTERVAL '1 year', '适用于星巴克全场饮品，不限时段', 'ACTIVE', NOW(), NOW()),
-  ('ct3', '9.9元观影特惠券', 9.90, 50.00, 2000, '["cm4"]', NOW(), NOW() + INTERVAL '1 month', '万达影城2D/3D通用，节假日可用', 'ACTIVE', NOW(), NOW()),
-  ('ct4', '100元美食通用券', 80.00, 100.00, 300, '["cm1", "cm2"]', NOW(), NOW() + INTERVAL '1 month', '适用于所有餐饮类商户', 'ACTIVE', NOW(), NOW())
+  ('ct1', '50元代100元火锅券', 50.00, 100.00, 1000, '["cm1"]', NOW(), NOW() + INTERVAL '1 month', NOW(), NOW() + INTERVAL '2 months', '适用于海底捞火锅全场消费，每人每次限用2张', 'ACTIVE', NOW(), NOW()),
+  ('ct2', '星巴克30元饮品券', 25.00, 30.00, 500, '["cm2"]', NOW(), NOW() + INTERVAL '1 year', NOW(), NOW() + INTERVAL '1 year', '适用于星巴克全场饮品，不限时段', 'ACTIVE', NOW(), NOW()),
+  ('ct3', '9.9元观影特惠券', 9.90, 50.00, 2000, '["cm4"]', NOW(), NOW() + INTERVAL '1 month', NOW(), NOW() + INTERVAL '2 months', '万达影城2D/3D通用，节假日可用', 'ACTIVE', NOW(), NOW()),
+  ('ct4', '100元美食通用券', 80.00, 100.00, 300, '["cm1", "cm2"]', NOW(), NOW() + INTERVAL '1 month', NOW(), NOW() + INTERVAL '2 months', '适用于所有餐饮类商户', 'ACTIVE', NOW(), NOW())
 ON CONFLICT DO NOTHING;
 
 -- 获取用户ID
@@ -50,12 +50,18 @@ BEGIN
   END IF;
 END $$;
 
--- 插入新闻假数据
-INSERT INTO news (id, title, "bannerUrl", content, "linkedCouponId", "viewCount", status, "createdAt", "updatedAt")
+-- 插入新闻假数据（不再使用 linkedCouponId，改用关联表）
+INSERT INTO news (id, title, "bannerUrl", content, "viewCount", status, "createdAt", "updatedAt")
 VALUES
-  ('n1', '春季美食节盛大开幕', 'https://example.com/news1.jpg', '<p>春季美食节活动火热进行中！</p><p>参与商户：海底捞、星巴克、肯德基等</p><p>活动时间：2024年3月1日-3月31日</p>', 'ct4', 1523, 'PUBLISHED', NOW(), NOW()),
-  ('n2', '新商户入驻：耐克旗舰店', 'https://example.com/news2.jpg', '<p>欢迎耐克旗舰店盛大开业！</p><p>开业期间全场8折优惠</p><p>地址：商场3F</p>', NULL, 856, 'PUBLISHED', NOW(), NOW()),
-  ('n3', '五一劳动节促销活动预告', 'https://example.com/news3.jpg', '<p>五一劳动节即将到来，更多精彩活动敬请期待！</p>', NULL, 342, 'DRAFT', NOW(), NOW())
+  ('n1', '春季美食节盛大开幕', 'https://example.com/news1.jpg', '<p>春季美食节活动火热进行中！</p><p>参与商户：海底捞、星巴克、肯德基等</p><p>活动时间：2024年3月1日-3月31日</p>', 1523, 'PUBLISHED', NOW(), NOW()),
+  ('n2', '新商户入驻：耐克旗舰店', 'https://example.com/news2.jpg', '<p>欢迎耐克旗舰店盛大开业！</p><p>开业期间全场8折优惠</p><p>地址：商场3F</p>', 856, 'PUBLISHED', NOW(), NOW()),
+  ('n3', '五一劳动节促销活动预告', 'https://example.com/news3.jpg', '<p>五一劳动节即将到来，更多精彩活动敬请期待！</p>', 342, 'DRAFT', NOW(), NOW())
+ON CONFLICT DO NOTHING;
+
+-- 插入新闻-券关联数据（新的关联表）
+INSERT INTO news_coupon_relations (id, "newsId", "couponId", "createdAt")
+VALUES
+  ('ncr1', 'n1', 'ct4', NOW())  -- 春季美食节关联100元美食通用券
 ON CONFLICT DO NOTHING;
 
 -- 插入结算单假数据
