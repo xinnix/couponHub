@@ -24,47 +24,34 @@ echo "✅ DATABASE_URL configured"
 echo ""
 echo "🔍 Checking Prisma Client..."
 
-# 检查 Prisma Client 是否存在
-if [ ! -d "/app/node_modules/@opencode/database/generated" ]; then
-  echo "⚠️  Prisma Client not found, generating..."
+# 查找 Prisma CLI 的多种方式
+PRISMA_CLI=""
 
-  # 查找 Prisma CLI
-  PRISMA_CLI=""
-  if [ -x "/app/node_modules/.bin/prisma" ]; then
-    PRISMA_CLI="/app/node_modules/.bin/prisma"
-  elif [ -f "/app/node_modules/prisma-standalone/build/index.js" ]; then
-    PRISMA_CLI="node /app/node_modules/prisma-standalone/build/index.js"
-  else
-    PRISMA_CLI=$(find /app/node_modules -name "index.js" -path "*/prisma/build/*" 2>/dev/null | head -1)
-    if [ -n "$PRISMA_CLI" ]; then
-      PRISMA_CLI="node $PRISMA_CLI"
-    fi
+# 方法 1: node_modules/.bin/prisma（pnpm deploy 可能创建的）
+if [ -x "/app/node_modules/.bin/prisma" ]; then
+  PRISMA_CLI="/app/node_modules/.bin/prisma"
+  echo "✅ Method 1: Found at /app/node_modules/.bin/prisma"
+fi
+
+# 方法 2: prisma-standalone（Dockerfile 手动复制）
+if [ -z "$PRISMA_CLI" ] && [ -f "/app/node_modules/prisma-standalone/build/index.js" ]; then
+  PRISMA_CLI="node /app/node_modules/prisma-standalone/build/index.js"
+  echo "✅ Method 2: Found standalone Prisma CLI"
+fi
+
+# 方法 3: pnpm 的嵌套结构中查找（pnpm install 的结果）
+if [ -z "$PRISMA_CLI" ]; then
+  PRISMA_CLI=$(find /app/node_modules/.pnpm -name "index.js" -path "*/prisma/build/*" 2>/dev/null | head -1)
+  if [ -n "$PRISMA_CLI" ]; then
+    PRISMA_CLI="node $PRISMA_CLI"
+    echo "✅ Method 3: Found in pnpm structure: $PRISMA_CLI"
   fi
+fi
 
-  if [ -z "$PRISMA_CLI" ]; then
-    echo "❌ Prisma CLI not found"
-    echo "❌ Cannot generate Prisma Client"
-    exit 1
-  fi
-
-  # 生成 Prisma Client
-  cd /app/infra/database
-  echo "DATABASE_URL=$DATABASE_URL" > .env
-  $PRISMA_CLI generate --schema=prisma/schema.prisma || {
-    echo "❌ Prisma Client generation failed"
-    rm -f .env
-    exit 1
-  }
-  rm -f .env
-  cd /app
-
-  echo "✅ Prisma Client generated successfully"
-else
-  echo "✅ Prisma Client exists"
-
-  # 验证 Client 版本（可选）
-  CLIENT_VERSION=$(cat /app/node_modules/@opencode/database/generated/package.json 2>/dev/null | grep "version" | head -1 | sed 's/.*"version": *"([^"]*)".*/\1/' || echo "unknown")
-  echo "   Client version: $CLIENT_VERSION"
+# 方法 4: npx（最后的备选，但最慢）
+if [ -z "$PRISMA_CLI" ]; then
+  PRISMA_CLI="npx --yes prisma"
+  echo "⚠️  Method 4: Using npx (slow fallback)"
 fi
 
 # ===== 数据库连接预检查（5秒快速失败）=====

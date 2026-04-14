@@ -97,21 +97,31 @@ COPY --from=builder /app/infra/shared/dist ./node_modules/@opencode/shared/dist
 # 5. 拷贝完整的 Prisma Schema 以便在生产环境运行迁移
 COPY --from=builder /app/infra/database ./infra/database
 
-# 6. 确保 Prisma CLI 可用（关键修复）
-# pnpm deploy 可能不会创建 node_modules/.bin 软链接，需要手动拷贝 Prisma CLI
-# 从 builder 阶段拷贝完整的 prisma 包
+# 6. 确保 Prisma CLI 和 Engines 可用（关键修复）
+# Prisma CLI 依赖 @prisma/engines 包，必须一起复制
+# 方案：复制整个 @prisma 相关的 pnpm 结构
+
+# 复制 @prisma 相关的所有包（包含 engines、client 等）
+COPY --from=builder /app/node_modules/.pnpm/@prisma+* ./node_modules/.pnpm/
+
+# 复制 prisma CLI 包（单独处理，因为路径不同）
 COPY --from=builder /app/node_modules/.pnpm/prisma@*/node_modules/prisma ./node_modules/prisma-standalone
 
-# 创建软链接以便快速访问
-RUN ln -sf /app/node_modules/prisma-standalone/build/index.js /app/node_modules/.bin/prisma || mkdir -p /app/node_modules/.bin && ln -sf /app/node_modules/prisma-standalone/build/index.js /app/node_modules/.bin/prisma
+# 创建 @prisma 软链接结构（pnpm 的扁平化结构需要）
+RUN mkdir -p ./node_modules/@prisma && \
+    ln -sf /app/node_modules/.pnpm/@prisma+engines@*/node_modules/@prisma/engines ./node_modules/@prisma/engines || true
+
+# 创建 Prisma CLI 软链接
+RUN mkdir -p ./node_modules/.bin && \
+    ln -sf /app/node_modules/prisma-standalone/build/index.js ./node_modules/.bin/prisma
 
 # 7. 创建证书目录（用于微信支付证书）
 # 注意：证书文件不会包含在镜像中，需要通过 volume 挂载或 Docker secrets 提供
 RUN mkdir -p /app/certs
 
-# 8. 拷贝启动脚本（生产环境 + Prisma Client 自动验证）
-# 特性：强制迁移成功、Prisma Client 自动生成、失败诊断
-COPY apps/api/entrypoint-with-client-gen.sh ./entrypoint.sh
+# 8. 拷贝启动脚本（生产环境 + Prisma 全自动修复）
+# 特性：多级 CLI 查找、engines 缺失自动处理、Client 自动生成
+COPY apps/api/entrypoint-with-auto-fix.sh ./entrypoint.sh
 RUN chmod +x ./entrypoint.sh
 
 EXPOSE 3000
