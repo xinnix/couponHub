@@ -109,9 +109,9 @@ RUN ln -sf /app/node_modules/prisma-standalone/build/index.js /app/node_modules/
 # 注意：证书文件不会包含在镜像中，需要通过 volume 挂载或 Docker secrets 提供
 RUN mkdir -p /app/certs
 
-# 8. 拷贝启动脚本（终极优化版）
-# 特性：数据库预检查、多级CLI查找、跳过迁移支持、快速失败
-COPY apps/api/entrypoint-final.sh ./entrypoint.sh
+# 8. 拷贝启动脚本（生产环境严格版）
+# 特性：强制迁移成功、失败诊断、迁移状态检查、禁止服务启动失败后继续
+COPY apps/api/entrypoint-production-strict.sh ./entrypoint.sh
 RUN chmod +x ./entrypoint.sh
 
 EXPOSE 3000

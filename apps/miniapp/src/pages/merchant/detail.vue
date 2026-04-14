@@ -352,9 +352,7 @@ async function loadCoupons(merchantId: string) {
 
         <!-- 电话按钮 -->
         <view class="call-btn" @click="callMerchant">
-          <text class="call-icon">
-            📞
-          </text>
+          <text class="iconfont icon-phone-line call-icon-font" />
         </view>
       </view>
 
@@ -620,16 +618,16 @@ async function loadCoupons(merchantId: string) {
   bottom: 48rpx;
   width: 80rpx;
   height: 80rpx;
-  background: #fff5f1;
+  background: rgba(0, 174, 239, 0.1);
   border-radius: 40rpx;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-.call-icon {
+.call-icon-font {
   font-size: 40rpx;
-  color: #ff6b35;
+  color: #00AEEF;
 }
 
 /* 优惠券列表 */

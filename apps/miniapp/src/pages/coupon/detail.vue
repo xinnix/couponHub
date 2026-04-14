@@ -536,7 +536,7 @@ function goToMerchant(merchantId?: string) {
             <!-- 有效期 -->
             <view class="rule-item">
               <view class="rule-icon-box">
-                <text class="iconfont icon-youhuiquan rule-icon-font" />
+                <text class="iconfont icon-youxiaoqi rule-icon-font" />
               </view>
               <view class="rule-body">
                 <text class="rule-label">
@@ -554,7 +554,7 @@ function goToMerchant(merchantId?: string) {
             <!-- 使用规则 -->
             <view class="rule-item">
               <view class="rule-icon-box">
-                <text class="iconfont icon-youhuiquan rule-icon-font" />
+                <text class="iconfont icon-icon-shiyongguize rule-icon-font" />
               </view>
               <view class="rule-body">
                 <text class="rule-label">
@@ -569,7 +569,7 @@ function goToMerchant(merchantId?: string) {
             <!-- 叠加规则 -->
             <view class="rule-item">
               <view class="rule-icon-box">
-                <text class="iconfont icon-youhuiquan rule-icon-font" />
+                <text class="iconfont icon-shezhiguize rule-icon-font" />
               </view>
               <view class="rule-body">
                 <text class="rule-label">
@@ -584,7 +584,7 @@ function goToMerchant(merchantId?: string) {
             <!-- 退改规则 -->
             <view class="rule-item">
               <view class="rule-icon-box">
-                <text class="iconfont icon-youhuiquan rule-icon-font" />
+                <text class="iconfont icon-tuikuan rule-icon-font" />
               </view>
               <view class="rule-body">
                 <text class="rule-label">
