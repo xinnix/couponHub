@@ -97,15 +97,21 @@ COPY --from=builder /app/infra/shared/dist ./node_modules/@opencode/shared/dist
 # 5. 拷贝完整的 Prisma Schema 以便在生产环境运行迁移
 COPY --from=builder /app/infra/database ./infra/database
 
-# 6. 确保网络工具可用（Prisma 需要检查数据库连接）
-RUN apk add --no-cache netcat-openbsd curl
+# 6. 确保 Prisma CLI 可用（关键修复）
+# pnpm deploy 可能不会创建 node_modules/.bin 软链接，需要手动拷贝 Prisma CLI
+# 从 builder 阶段拷贝完整的 prisma 包
+COPY --from=builder /app/node_modules/.pnpm/prisma@*/node_modules/prisma ./node_modules/prisma-standalone
+
+# 创建软链接以便快速访问
+RUN ln -sf /app/node_modules/prisma-standalone/build/index.js /app/node_modules/.bin/prisma || mkdir -p /app/node_modules/.bin && ln -sf /app/node_modules/prisma-standalone/build/index.js /app/node_modules/.bin/prisma
 
 # 7. 创建证书目录（用于微信支付证书）
+# 注意：证书文件不会包含在镜像中，需要通过 volume 挂载或 Docker secrets 提供
 RUN mkdir -p /app/certs
 
-# 8. 拷贝启动脚本（使用 npx - 最可靠的方案）
-# npx 自动下载 Prisma CLI 和 engines，避免依赖问题
-COPY apps/api/entrypoint-npx-reliable.sh ./entrypoint.sh
+# 8. 拷贝启动脚本（终极优化版）
+# 特性：数据库预检查、多级CLI查找、跳过迁移支持、快速失败
+COPY apps/api/entrypoint-final.sh ./entrypoint.sh
 RUN chmod +x ./entrypoint.sh
 
 EXPOSE 3000
