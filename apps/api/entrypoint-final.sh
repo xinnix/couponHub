@@ -72,7 +72,7 @@ if [ -x "/app/node_modules/.bin/prisma" ]; then
   }
 fi
 
-# ===== 方案2: 直接查找 prisma CLI（中等速度，1-3s）=====
+# ===== 方案2: 直接查找 prisma CLI（保底方案）=====
 if [ "$MIGRATION_SUCCESS" = "false" ]; then
   PRISMA_CLI=$(find /app/node_modules -name "index.js" -path "*/prisma/build/*" 2>/dev/null | head -1)
 
@@ -85,17 +85,6 @@ if [ "$MIGRATION_SUCCESS" = "false" ]; then
       echo "⚠️  Method 2 failed or timeout (45s)"
     }
   fi
-fi
-
-# ===== 方案3: 使用 standalone prisma（保底方案）=====
-if [ "$MIGRATION_SUCCESS" = "false" ] && [ -f "/app/node_modules/prisma-standalone/build/index.js" ]; then
-  echo "✅ Method 3: Using standalone Prisma CLI"
-  timeout 45 node /app/node_modules/prisma-standalone/build/index.js migrate deploy --schema=prisma/schema.prisma 2>&1 && {
-    MIGRATION_SUCCESS=true
-    echo "✅ Migration completed via standalone CLI"
-  } || {
-    echo "⚠️  Method 3 failed or timeout (45s)"
-  }
 fi
 
 # ===== 方案4: npx（最慢，5-30s，最后备选）=====
