@@ -6,6 +6,41 @@
   "description": "",
   "glyphs": [
     {
+      "icon_id": "371228",
+      "name": "有效期",
+      "font_class": "youxiaoqi",
+      "unicode": "e654",
+      "unicode_decimal": 58964
+    },
+    {
+      "icon_id": "1727407",
+      "name": "47退款",
+      "font_class": "tuikuan",
+      "unicode": "e8b2",
+      "unicode_decimal": 59570
+    },
+    {
+      "icon_id": "5343705",
+      "name": "icon-使用规则",
+      "font_class": "icon-shiyongguize",
+      "unicode": "e676",
+      "unicode_decimal": 58998
+    },
+    {
+      "icon_id": "16062056",
+      "name": "设置规则",
+      "font_class": "shezhiguize",
+      "unicode": "e663",
+      "unicode_decimal": 58979
+    },
+    {
+      "icon_id": "42197995",
+      "name": "phone-line",
+      "font_class": "phone-line",
+      "unicode": "e77f",
+      "unicode_decimal": 59263
+    },
+    {
       "icon_id": "1330848",
       "name": "暂无持有中订单",
       "font_class": "zanwuchiyouzhongdingdan",

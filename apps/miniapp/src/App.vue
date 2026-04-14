@@ -1,6 +1,16 @@
 <script setup lang="ts">
+import { useLoading } from '@/stores/loading'
+import GlobalLoading from '@/components/GlobalLoading.vue'
+
+const { state: loadingState } = useLoading()
+
 onLaunch(() => { })
 </script>
+
+<template>
+  <!-- 全局 Loading 组件 -->
+  <GlobalLoading :visible="loadingState.isVisible" :text="loadingState.text" />
+</template>
 
 <style lang="scss">
 /* 引入字体图标 */

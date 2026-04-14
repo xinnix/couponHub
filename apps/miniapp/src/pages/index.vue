@@ -132,7 +132,7 @@ async function loadHomeData() {
   try {
     // 并行加载四个接口数据（新增弹窗新闻）
     const [merchantsRes, newsRes, couponsRes, popupRes] = await Promise.all([
-      merchantApi.getList({ limit: 20, status: 'ACTIVE' }),
+      merchantApi.getList({ limit: 6, status: 'ACTIVE' }),
       newsApi.getList({ limit: 10, status: 'PUBLISHED' }),
       couponApi.getList({ limit: 10, status: 'ACTIVE', featuredOnHome: true }),
       newsApi.getPopup(), // 新增：获取弹窗新闻
@@ -180,7 +180,8 @@ async function loadHomeData() {
           uni.setStorageSync('closedPopups', closedPopups)
           popupNews.value = news
           showPopup.value = true
-        } else {
+        }
+        else {
           // 24小时内，检查关闭次数
           if (record.count < 5) {
             // 关闭次数不足5次，继续显示弹窗
@@ -189,7 +190,8 @@ async function loadHomeData() {
           }
           // 关闭次数 >= 5，不显示弹窗
         }
-      } else {
+      }
+      else {
         // 从未关闭过，直接显示
         popupNews.value = news
         showPopup.value = true
@@ -242,6 +244,7 @@ async function loadHomeData() {
     if (couponsRes.success && couponsRes.data) {
       vouchers.value = couponsRes.data.map((c: any) => ({
         id: c.id,
+        title: c.title, // 优惠券名称
         price: Number(c.buyPrice),
         value: Number(c.faceValue),
         desc: c.description || `${c.title}\n限时抢购`,
@@ -279,10 +282,14 @@ onMounted(() => {
   statusBarHeight.value = systemInfo.statusBarHeight || 0
 
   // 检查核销员身份，如果是核销员则跳转到核销员首页
-  // 暂时注释掉自动跳转逻辑，改为在钱包页手动跳转
-  // checkHandlerIdentity()
 
   loadHomeData()
+})
+
+onLoad(() => {
+  // 页面加载时刷新用户信息
+
+  checkHandlerIdentity()
 })
 
 // 页面显示时刷新用户信息
@@ -313,17 +320,31 @@ async function refreshUserInfo() {
 }
 
 // 检查核销员身份
-// 暂时注释掉自动跳转逻辑
-// function checkHandlerIdentity() {
-//   const isHandler = uni.getStorageSync('isHandler')
-//   const token = uni.getStorageSync('token')
-//
-//   // 已登录且是核销员，跳转到核销员首页
-//   if (token && isHandler) {
-//     console.log('用户是核销员，跳转到核销员首页')
-//     uni.reLaunch({ url: '/pages/handler/index' })
-//   }
-// }
+async function checkHandlerIdentity() {
+  const token = uni.getStorageSync('token')
+
+  // 已登录，实时检查核销员身份
+  if (token) {
+    try {
+      const res = await authApi.checkHandlerStatus()
+      if (res.data?.isHandler && res.data?.handler) {
+        console.log('用户是核销员，跳转到核销员首页')
+        uni.setStorageSync('isHandler', true)
+        uni.setStorageSync('handlerInfo', res.data.handler)
+        uni.reLaunch({ url: '/pages/handler/index' })
+      }
+      else {
+        // 清除旧的核销员标记
+        uni.removeStorageSync('isHandler')
+        uni.removeStorageSync('handlerInfo')
+      }
+    }
+    catch (error) {
+      console.error('检查核销员身份失败:', error)
+      // 接口失败时不跳转，留在首页
+    }
+  }
+}
 
 // 页面下拉刷新
 onPullDownRefresh(() => {
@@ -396,12 +417,8 @@ function getDefaultImage(type: string, id: string) {
     </view>
 
     <!-- 弹窗新闻 -->
-    <NewsPopup
-      v-if="popupNews && showPopup"
-      :news="popupNews"
-      @close="handlePopupClose"
-      @goToDetail="handlePopupGoToDetail"
-    />
+    <NewsPopup v-if="popupNews && showPopup" :news="popupNews" @close="handlePopupClose"
+      @go-to-detail="handlePopupGoToDetail" />
 
     <!-- 加载状态 -->
     <view v-if="loading && merchants.length === 0" class="flex items-center justify-center py-20">
@@ -468,17 +485,17 @@ function getDefaultImage(type: string, id: string) {
               @click="grabVoucher(voucher)">
               <view class="absolute bottom-0 left-0 top-0 w-1 rounded-l bg-primary-container" />
               <view class="mb-1 pl-2">
-                <view class="mb-1 flex items-baseline gap-0.5">
-                  <text class="text-xl text-primary-container font-extrabold">
-                    {{ voucher.value }}
-                  </text>
-                  <text class="text-10px text-on-surface-variant font-bold">
-                    优惠券
+                <view class="mb-1">
+                  <text class="text-xs text-on-surface font-bold leading-tight line-clamp-2">
+                    {{ voucher.title }}
                   </text>
                 </view>
-                <view class="mb-1 flex items-center gap-0.5">
-                  <text class="text-xs text-on-surface font-bold">
-                    {{ voucher.price === 0 ? '免费领' : `¥${voucher.price}抢购` }}
+                <view class="mb-1 flex items-baseline gap-1">
+                  <text class="text-base text-primary-container font-extrabold">
+                    {{ voucher.price === 0 ? '免费领' : `¥${voucher.price}` }}
+                  </text>
+                  <text class="value-text text-xs">
+                    ¥{{ voucher.value }}
                   </text>
                 </view>
                 <view class="voucher-desc-text truncate text-9px font-medium">
@@ -794,6 +811,12 @@ function getDefaultImage(type: string, id: string) {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* 优惠券价值文字（划线价） */
+.value-text {
+  color: #1c1c1c;
+  text-decoration: line-through;
 }
 
 /* 分类图标背景 */

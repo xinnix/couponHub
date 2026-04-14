@@ -59,41 +59,70 @@ function formatCouponDiscount(item: any) {
   return ''
 }
 
-// 计算剩余天数（倒计时）
+// 计算距离下架的天数（倒计时）
 function calculateDaysLeft(item: any) {
-  if (!item.validUntil) {
-    return null // 长期有效
+  if (!item.saleUntil) {
+    return null // 无销售结束时间
   }
 
   const now = new Date()
-  const validUntil = new Date(item.validUntil)
-  const diffTime = validUntil.getTime() - now.getTime()
+  const saleUntil = new Date(item.saleUntil)
+  const diffTime = saleUntil.getTime() - now.getTime()
   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
 
   return diffDays
 }
 
-// 格式化倒计时文案
+// 格式化倒计时文案（显示距离下架时间）
 function formatCountdown(item: any) {
   const daysLeft = calculateDaysLeft(item)
 
   if (daysLeft === null) {
-    return '长期有效'
+    // 无销售结束时间，不显示倒计时
+    return ''
   }
 
   if (daysLeft <= 0) {
-    return '已过期'
+    return '已下架'
   }
 
   if (daysLeft === 1) {
-    return '仅剩1天'
+    return '明天下架'
+  }
+
+  if (daysLeft <= 3) {
+    return `${daysLeft}天后下架`
   }
 
   if (daysLeft <= 7) {
-    return `仅剩${daysLeft}天`
+    return `${daysLeft}天后下架`
   }
 
-  return `剩余${daysLeft}天`
+  // 如果超过30天，不显示具体倒计时
+  if (daysLeft > 30) {
+    return ''
+  }
+
+  return `${daysLeft}天后下架`
+}
+
+// 获取倒计时文案的样式类（根据紧迫程度）
+function getCountdownStyle(item: any) {
+  const daysLeft = calculateDaysLeft(item)
+
+  if (daysLeft === null || daysLeft > 7) {
+    return 'coupon-desc-text' // 默认灰色
+  }
+
+  if (daysLeft <= 0) {
+    return 'countdown-expired' // 已下架 - 红色
+  }
+
+  if (daysLeft <= 3) {
+    return 'countdown-urgent' // 非常紧迫 - 红色加粗
+  }
+
+  return 'countdown-warning' // 即将下架 - 橙色
 }
 
 // 格式化价格显示
@@ -256,7 +285,7 @@ onPullDownRefresh(() => {
               <text class="text-11px text-primary-container font-medium">
                 {{ formatCouponDiscount(coupon) }}
               </text>
-              <text class="coupon-desc-text text-10px font-medium">
+              <text :class="getCountdownStyle(coupon)" class="text-10px font-medium">
                 {{ formatCountdown(coupon) }}
               </text>
               <view class="mt-2 flex items-center justify-between">
@@ -396,6 +425,24 @@ onPullDownRefresh(() => {
 /* 优惠券描述文字 */
 .coupon-desc-text {
   color: rgba(110, 120, 129, 0.7);
+}
+
+/* 倒计时样式 - 已下架 */
+.countdown-expired {
+  color: #EF4444; /* 红色 */
+  font-weight: 600;
+}
+
+/* 倒计时样式 - 非常紧迫（<=3天） */
+.countdown-urgent {
+  color: #EF4444; /* 红色 */
+  font-weight: 700;
+}
+
+/* 倒计时样式 - 即将下架（4-7天） */
+.countdown-warning {
+  color: #F97316; /* 橙色 */
+  font-weight: 600;
 }
 
 /* 文字截断 */

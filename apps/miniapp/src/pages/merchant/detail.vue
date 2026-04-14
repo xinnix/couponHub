@@ -10,24 +10,40 @@ const isFavorite = ref(false)
 const currentImageIndex = ref(0)
 
 // 计算属性 - 显示数据
-const displayCoverImage = computed(() => {
+const displayGallery = computed(() => {
+  console.log('=== displayGallery computed ===')
+  console.log('merchant.value:', merchant.value)
+  console.log('merchant.value?.gallery:', merchant.value?.gallery)
+
   if (merchant.value && merchant.value.gallery) {
     try {
       const gallery = Array.isArray(merchant.value.gallery)
         ? merchant.value.gallery
         : JSON.parse(merchant.value.gallery)
-      if (gallery.length > 0) {
-        return gallery[0]
-      }
+      console.log('✅ 解析后的 gallery:', gallery)
+      console.log('gallery 类型:', typeof gallery)
+      console.log('gallery 是否为数组:', Array.isArray(gallery))
+      console.log('gallery 长度:', gallery?.length)
+      return gallery
     }
     catch (e) {
-      console.error('解析 gallery 失败:', e)
+      console.error('❌ 解析 gallery 失败:', e)
+      // fallback 到 logo
+      if (merchant.value.logo) {
+        console.log('使用 logo 作为 fallback:', merchant.value.logo)
+        return [merchant.value.logo]
+      }
+      return ['/static/merchant/list-bg.png']
     }
   }
+  // 如果没有 gallery，使用 logo 或默认图
+  console.log('⚠️ 没有 gallery，使用 fallback')
   if (merchant.value && merchant.value.logo) {
-    return merchant.value.logo
+    console.log('使用 logo:', merchant.value.logo)
+    return [merchant.value.logo]
   }
-  return '/static/merchant/list-bg.png'
+  console.log('使用默认图')
+  return ['/static/merchant/list-bg.png']
 })
 
 const displayName = computed(() => {
@@ -268,11 +284,26 @@ async function loadCoupons(merchantId: string) {
 
     <!-- 主内容 -->
     <scroll-view v-else class="main-content" scroll-y>
-      <!-- 全宽封面图片 -->
+      <!-- 全宽轮播图 -->
       <view class="hero-section">
-        <image class="hero-image" :src="displayCoverImage" mode="aspectFill" />
-        <view class="image-counter">
-          <text>1/1</text>
+        <swiper
+          v-if="displayGallery.length > 0"
+          class="hero-swiper"
+          :indicator-dots="displayGallery.length > 1"
+          :autoplay="displayGallery.length > 1"
+          :interval="3000"
+          :duration="500"
+          :circular="true"
+          indicator-color="rgba(255, 255, 255, 0.5)"
+          indicator-active-color="#ffffff"
+          @change="(e: any) => currentImageIndex = e.detail.current"
+        >
+          <swiper-item v-for="(image, index) in displayGallery" :key="index">
+            <image class="hero-image" :src="image" mode="aspectFill" />
+          </swiper-item>
+        </swiper>
+        <view v-if="displayGallery.length > 1" class="image-counter">
+          <text>{{ currentImageIndex + 1 }}/{{ displayGallery.length }}</text>
         </view>
       </view>
 
@@ -472,12 +503,17 @@ async function loadCoupons(merchantId: string) {
   bottom: 96rpx;
 }
 
-/* 全宽封面图片 */
+/* 全宽轮播图 */
 .hero-section {
   position: relative;
   width: 100%;
   height: 550rpx;
   overflow: hidden;
+}
+
+.hero-swiper {
+  width: 100%;
+  height: 100%;
 }
 
 .hero-image {
@@ -505,10 +541,11 @@ async function loadCoupons(merchantId: string) {
   z-index: 10;
   margin: -96rpx 32rpx 32rpx 32rpx;
   padding: 48rpx;
-  background: #ffffff;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(20px);
   border-radius: 32rpx;
   box-shadow: 0 8rpx 40rpx rgba(0, 0, 0, 0.05);
-  border: 2rpx solid #f0f5ff;
+  border: 2rpx solid rgba(240, 245, 255, 0.5);
 }
 
 .merchant-name {

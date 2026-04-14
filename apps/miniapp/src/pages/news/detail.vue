@@ -1,11 +1,10 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
+import { onLoad } from '@dcloudio/uni-app'
 import { newsApi } from '@/api/business'
 
-// 获取路由参数
-const props = defineProps<{
-  id: string
-}>()
+// 新闻 ID（改为 ref，支持 scene 参数）
+const newsId = ref<string>('')
 
 definePage({
   style: {
@@ -31,7 +30,7 @@ function processContent(content: string): string {
 
 // 加载新闻详情
 async function loadNewsDetail() {
-  if (!props.id) {
+  if (!newsId.value) {
     uni.showToast({
       title: '新闻 ID 不能为空',
       icon: 'none',
@@ -41,7 +40,7 @@ async function loadNewsDetail() {
 
   loading.value = true
   try {
-    const res = await newsApi.getDetail(props.id)
+    const res = await newsApi.getDetail(newsId.value)
     if (res.success && res.data) {
       newsDetail.value = {
         ...res.data,
@@ -90,13 +89,37 @@ function goBack() {
   uni.navigateBack()
 }
 
-// 页面加载
+// 页面加载（支持 scene 参数）
+onLoad((options: any) => {
+  let id = ''
+
+  // 从普通参数获取
+  if (options && options.id) {
+    id = options.id
+  }
+
+  // 从 scene 参数获取（扫码进入）
+  if (options && options.scene) {
+    const scene = decodeURIComponent(options.scene)
+    id = scene
+  }
+
+  if (id) {
+    newsId.value = id
+    loadNewsDetail()
+  } else {
+    loading.value = false
+    uni.showToast({ title: '参数错误', icon: 'none' })
+  }
+})
+
+// 页面初始化
 onMounted(() => {
   // 获取系统信息，设置状态栏高度
   const systemInfo = uni.getSystemInfoSync()
   statusBarHeight.value = systemInfo.statusBarHeight || 0
 
-  loadNewsDetail()
+  // 不在这里调用 loadNewsDetail，由 onLoad 触发
 })
 
 // 分享功能
@@ -106,7 +129,7 @@ function onShareAppMessage() {
 
   return {
     title: newsDetail.value.title,
-    path: `/pages/news/detail?id=${props.id}`,
+    path: `/pages/news/detail?id=${newsId.value}`,
     imageUrl: newsDetail.value.bannerUrl || undefined,
   }
 }

@@ -514,11 +514,11 @@ function goToMerchant(merchantId?: string) {
             </view>
           </view>
 
-          <!-- 购买截止 -->
+          <!-- 使用期 -->
           <view class="deadline-row">
             <text class="iconfont icon-youhuiquan deadline-icon-font" />
             <text class="deadline-text">
-              购买截止：{{ displayEndTime }}
+              可在 {{ formatDate(coupon?.useFrom) }} 至 {{ formatDate(coupon?.useUntil) }} 之间使用
             </text>
           </view>
         </view>
@@ -543,7 +543,10 @@ function goToMerchant(merchantId?: string) {
                   有效期
                 </text>
                 <text class="rule-desc">
-                  自购买之日起{{ coupon?.validDays || 30 }}天内有效
+                  {{ coupon?.validDays
+                    ? `购买后${coupon.validDays}天内有效（不超过使用截止时间）`
+                    : `在规定使用期内有效`
+                  }}
                 </text>
               </view>
             </view>

@@ -1,142 +1,77 @@
-<template>
-  <view class="handler-page">
-    <!-- 加载状态 -->
-    <view v-if="loading" class="loading-container">
-      <text class="loading-text">加载中...</text>
-    </view>
-
-    <!-- 主内容 -->
-    <view v-else>
-      <!-- 欢迎信息 -->
-      <view class="welcome-section">
-        <text class="welcome-text">欢迎回来，</text>
-        <text class="welcome-name">{{ merchantName }}店员，你好</text>
-      </view>
-
-      <!-- 数据统计卡片 -->
-      <view class="stats-grid">
-        <view class="stat-card">
-          <view class="stat-header">
-            <text class="icon-font icon-check">✓</text>
-            <text class="stat-label">今日已核销</text>
-          </view>
-          <view class="stat-value-group">
-            <text class="stat-number">{{ stats.todayRedemptions }}</text>
-            <text class="stat-unit">张</text>
-          </view>
-        </view>
-
-        <view class="stat-card">
-          <view class="stat-header">
-            <text class="icon-font icon-wallet">¥</text>
-            <text class="stat-label">本月预估结算</text>
-          </view>
-          <view class="stat-value-group">
-            <text class="stat-number">{{ stats.monthEstimate }}</text>
-            <text class="stat-unit">元</text>
-          </view>
-        </view>
-      </view>
-
-      <!-- 扫码核销按钮 -->
-      <button class="scan-button" @click="goScan" hover-class="scan-button-active">
-        <text class="scan-text">扫码核销</text>
-      </button>
-
-      <!-- 最近核销流水 -->
-      <view class="records-section">
-        <view class="records-header">
-          <text class="records-title">最近核销流水</text>
-          <text class="records-link" @click="goRecords">查看全部</text>
-        </view>
-
-        <view class="records-list">
-          <view v-for="record in recentRecords" :key="record.id" class="record-item">
-            <view class="record-info">
-              <text class="record-name">{{ record.couponName }}</text>
-              <view class="record-meta-row">
-                <text class="record-meta">尾号 {{ record.tailNo }} · {{ record.time }}</text>
-                <text class="record-handler">{{ record.handlerName }}</text>
-              </view>
-            </view>
-            <text class="record-amount">{{ record.amount }}</text>
-          </view>
-        </view>
-      </view>
-    </view>
-  </view>
-</template>
-
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
-import { onShow } from '@dcloudio/uni-app';
-import { authApi } from '@/api/auth';
-import { redemptionApi } from '@/api/business';
+import { onShow } from '@dcloudio/uni-app'
+import { onMounted, ref } from 'vue'
+import { authApi } from '@/api/auth'
+import { redemptionApi } from '@/api/business'
 
 interface HandlerInfo {
-  id: string;
-  name: string;
-  phone: string;
-  merchantId: string;
-  merchantName: string;
-  merchantCategory: string;
-  merchantArea: string;
+  id: string
+  name: string
+  phone: string
+  merchantId: string
+  merchantName: string
+  merchantCategory: string
+  merchantArea: string
 }
 
 interface RedemptionRecord {
-  id: string;
-  couponName: string;
-  tailNo: string;
-  time: string;
-  amount: string;
-  handlerName: string;
+  id: string
+  couponName: string
+  tailNo: string
+  time: string
+  amount: string
+  handlerName: string
 }
 
-const handlerInfo = ref<HandlerInfo | null>(null);
-const merchantName = ref('');
+const handlerInfo = ref<HandlerInfo | null>(null)
+const merchantName = ref('')
 const stats = ref({
   todayRedemptions: 0,
   monthEstimate: 0,
-});
+})
 
-const recentRecords = ref<RedemptionRecord[]>([]);
-const loading = ref(false);
+const recentRecords = ref<RedemptionRecord[]>([])
+const loading = ref(false)
 
 onMounted(async () => {
-  await loadHandlerData();
-});
+  await loadHandlerData()
+})
 
 // 页面显示时刷新数据
 onShow(async () => {
   // 如果已经加载过数据，刷新统计数据
   if (handlerInfo.value) {
-    await loadHandlerData();
+    await loadHandlerData()
   }
-});
+})
 
 async function loadHandlerData() {
-  loading.value = true;
+  loading.value = true
   try {
     // 1. 检查核销员身份
-    const handlerStatusRes = await authApi.checkHandlerStatus();
+    const handlerStatusRes = await authApi.checkHandlerStatus()
 
     if (!handlerStatusRes.data?.isHandler || !handlerStatusRes.data?.handler) {
-      uni.showToast({ title: '您不是核销员', icon: 'none' });
-      uni.reLaunch({ url: '/pages/index' });
-      return;
+      // 清除核销员身份标记，防止无限循环跳转
+      uni.removeStorageSync('handlerInfo')
+      uni.removeStorageSync('isHandler')
+
+      uni.showToast({ title: '您不是核销员或已被禁用', icon: 'none' })
+      uni.reLaunch({ url: '/pages/index' })
+      return
     }
 
-    handlerInfo.value = handlerStatusRes.data.handler;
-    merchantName.value = handlerInfo.value.merchantName;
+    handlerInfo.value = handlerStatusRes.data.handler
+    merchantName.value = handlerInfo.value.merchantName
 
     // 保存核销员信息到本地
-    uni.setStorageSync('handlerInfo', handlerInfo.value);
-    uni.setStorageSync('isHandler', true);
+    uni.setStorageSync('handlerInfo', handlerInfo.value)
+    uni.setStorageSync('isHandler', true)
 
     // 2. 获取核销记录（按商户筛选）
-    const today = new Date();
-    const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-    const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    const today = new Date()
+    const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+    const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1)
 
     const [todayRecords, monthRecords] = await Promise.all([
       redemptionApi.getRecords({
@@ -149,15 +84,15 @@ async function loadHandlerData() {
         startDate: startOfMonth.toISOString(),
         pageSize: 100,
       }),
-    ]);
+    ])
 
     // 3. 计算统计数据
-    console.log('今日核销记录返回:', todayRecords);
-    console.log('今日核销记录数据:', todayRecords.data);
+    console.log('今日核销记录返回:', todayRecords)
+    console.log('今日核销记录数据:', todayRecords.data)
 
     if (todayRecords.data && Array.isArray(todayRecords.data)) {
-      stats.value.todayRedemptions = todayRecords.data.length;
-      console.log('今日核销数量:', stats.value.todayRedemptions);
+      stats.value.todayRedemptions = todayRecords.data.length
+      console.log('今日核销数量:', stats.value.todayRedemptions)
     }
 
     if (monthRecords.data && Array.isArray(monthRecords.data)) {
@@ -165,47 +100,47 @@ async function loadHandlerData() {
         // 使用 settlementAmount，为空时 fallback 到 faceValue
         const amount = order.template?.settlementAmount
           ? Number(order.template.settlementAmount)
-          : Number(order.faceValue || 0);
-        return sum + amount;
-      }, 0);
-      console.log('本月预估结算:', stats.value.monthEstimate);
+          : Number(order.faceValue || 0)
+        return sum + amount
+      }, 0)
+      console.log('本月预估结算:', stats.value.monthEstimate)
     }
 
     // 4. 获取最近核销流水
     const recentRes = await redemptionApi.getRecords({
       merchantId: handlerInfo.value.merchantId,
       pageSize: 5,
-    });
+    })
 
-    console.log('最近核销记录返回:', recentRes);
-    console.log('最近核销记录数据:', recentRes.data);
+    console.log('最近核销记录返回:', recentRes)
+    console.log('最近核销记录数据:', recentRes.data)
 
     if (recentRes.data && Array.isArray(recentRes.data)) {
       recentRecords.value = recentRes.data.map((order: any) => {
-        console.log('处理核销记录 - 完整对象:', JSON.stringify(order, null, 2));
-        console.log('核销记录 handler:', order.handler);
-        console.log('核销记录 template:', order.template);
-        console.log('核销记录 merchant:', order.merchant);
+        console.log('处理核销记录 - 完整对象:', JSON.stringify(order, null, 2))
+        console.log('核销记录 handler:', order.handler)
+        console.log('核销记录 template:', order.template)
+        console.log('核销记录 merchant:', order.merchant)
 
         // 获取尾号（订单号后4位）
-        const tailNo = order.orderNo.slice(-4);
+        const tailNo = order.orderNo.slice(-4)
 
         // 格式化时间
-        const redeemedAt = new Date(order.redeemedAt);
-        const hours = redeemedAt.getHours().toString().padStart(2, '0');
-        const minutes = redeemedAt.getMinutes().toString().padStart(2, '0');
-        const time = `${hours}:${minutes}`;
+        const redeemedAt = new Date(order.redeemedAt)
+        const hours = redeemedAt.getHours().toString().padStart(2, '0')
+        const minutes = redeemedAt.getMinutes().toString().padStart(2, '0')
+        const time = `${hours}:${minutes}`
 
         // 格式化金额：显示商户结算金额
         // settlementAmount：商户实际结算金额（补贴场景）
         // faceValue：fallback，当 settlementAmount 为空时使用
         const settlementAmount = order.template?.settlementAmount
           ? Number(order.template.settlementAmount)
-          : Number(order.faceValue);
-        const amount = `+ ¥${settlementAmount.toFixed(2)}`;
+          : Number(order.faceValue)
+        const amount = `+ ¥${settlementAmount.toFixed(2)}`
 
         // 获取核销员姓名
-        const handlerName = order.handler?.name || '未知核销员';
+        const handlerName = order.handler?.name || '未知核销员'
 
         return {
           id: order.id,
@@ -214,27 +149,142 @@ async function loadHandlerData() {
           time,
           amount,
           handlerName,
-        };
-      });
+        }
+      })
 
-      console.log('处理后的核销记录:', recentRecords.value);
+      console.log('处理后的核销记录:', recentRecords.value)
     }
-  } catch (error) {
-    console.error('加载核销员数据失败:', error);
-    uni.showToast({ title: '加载失败，请稍后重试', icon: 'none' });
-  } finally {
-    loading.value = false;
+  }
+  catch (error) {
+    console.error('加载核销员数据失败:', error)
+    uni.showToast({ title: '加载失败，请稍后重试', icon: 'none' })
+  }
+  finally {
+    loading.value = false
   }
 }
 
-const goScan = () => {
-  uni.navigateTo({ url: '/pages/scan/index' });
-};
+function goScan() {
+  uni.navigateTo({ url: '/pages/scan/index' })
+}
 
-const goRecords = () => {
-  uni.navigateTo({ url: '/pages/handler/records' });
-};
+function goRecords() {
+  uni.navigateTo({ url: '/pages/handler/records' })
+}
+
+function goHome() {
+  uni.navigateTo({ url: '/pages/index' })
+}
 </script>
+
+<template>
+  <view class="handler-page">
+    <!-- 加载状态 -->
+    <view v-if="loading" class="loading-container">
+      <text class="loading-text">
+        加载中...
+      </text>
+    </view>
+
+    <!-- 主内容 -->
+    <view v-else>
+      <!-- 欢迎信息 -->
+      <view class="welcome-section">
+        <view class="welcome-header">
+          <view class="welcome-text-group">
+            <text class="welcome-text">
+              欢迎回来，
+            </text>
+            <text class="welcome-name">
+              {{ merchantName }}店员，你好
+            </text>
+          </view>
+        </view>
+      </view>
+
+      <!-- 数据统计卡片 -->
+      <view class="stats-grid">
+        <view class="stat-card">
+          <view class="stat-header">
+            <text class="icon-font icon-check">
+              ✓
+            </text>
+            <text class="stat-label">
+              今日已核销
+            </text>
+          </view>
+          <view class="stat-value-group">
+            <text class="stat-number">
+              {{ stats.todayRedemptions }}
+            </text>
+            <text class="stat-unit">
+              张
+            </text>
+          </view>
+        </view>
+
+        <view class="stat-card">
+          <view class="stat-header">
+            <text class="icon-font icon-wallet">
+              ¥
+            </text>
+            <text class="stat-label">
+              本月预估结算
+            </text>
+          </view>
+          <view class="stat-value-group">
+            <text class="stat-number">
+              {{ stats.monthEstimate }}
+            </text>
+            <text class="stat-unit">
+              元
+            </text>
+          </view>
+        </view>
+      </view>
+
+      <!-- 扫码核销按钮 -->
+      <button class="scan-button" hover-class="scan-button-active" @click="goScan">
+        <text class="scan-text">
+          扫码核销
+        </text>
+      </button>
+
+      <!-- 最近核销流水 -->
+      <view class="records-section">
+        <view class="records-header">
+          <text class="records-title">
+            最近核销流水
+          </text>
+          <text class="records-link" @click="goRecords">
+            查看全部
+          </text>
+        </view>
+
+        <view class="records-list">
+          <view v-for="record in recentRecords" :key="record.id" class="record-item">
+            <view class="record-info">
+              <text class="record-name">
+                {{ record.couponName }}
+              </text>
+              <view class="record-meta-row">
+                <text class="record-meta">
+                  尾号 {{ record.tailNo }} · {{ record.time }}
+                </text>
+                <text class="record-handler">
+                  {{ record.handlerName }}
+                </text>
+              </view>
+            </view>
+            <text class="record-amount">
+              {{ record.amount }}
+            </text>
+          </view>
+        </view>
+      </view>
+    </view>
+  </view>
+</template>
 
 <style scoped>
 /* 页面容器 */
@@ -263,6 +313,17 @@ const goRecords = () => {
   margin-bottom: 48rpx;
 }
 
+.welcome-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 24rpx;
+}
+
+.welcome-text-group {
+  flex: 1;
+}
+
 .welcome-text {
   display: block;
   font-size: 28rpx;
@@ -277,6 +338,26 @@ const goRecords = () => {
   font-size: 48rpx;
   font-weight: 800;
   color: #171c20;
+}
+
+/* 返回首页按钮 */
+.home-button {
+  padding: 12rpx 24rpx;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 12rpx;
+  border: 2rpx solid rgba(189, 200, 209, 0.3);
+  box-shadow: 0 2rpx 8rpx rgba(23, 28, 32, 0.04);
+  transition: transform 0.2s;
+}
+
+.home-button-active {
+  transform: scale(0.95);
+}
+
+.home-button-text {
+  font-size: 22rpx;
+  font-weight: 700;
+  color: #00658d;
 }
 
 /* 统计卡片 */

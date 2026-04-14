@@ -5,6 +5,7 @@
 
 import type { ApiConfig } from '@/config/api'
 import { API_CONFIG } from '@/config/api'
+import { showLoading, hideLoading } from '@/stores/loading'
 
 interface RequestConfig {
   url: string
@@ -12,6 +13,10 @@ interface RequestConfig {
   data?: UniApp.RequestOptions['data']
   header?: Record<string, string>
   timeout?: number
+  /** 是否显示 loading，默认 true */
+  showLoading?: boolean
+  /** loading 文案 */
+  loadingText?: string
 }
 
 interface Response<T = unknown> {
@@ -38,7 +43,12 @@ class HttpClient {
    * 通用请求方法
    */
   private request<T = unknown>(config: RequestConfig): Promise<Response<T>> {
-    const { url, method = 'GET', data, header = {}, timeout } = config
+    const { url, method = 'GET', data, header = {}, timeout, showLoading: shouldShowLoading = true, loadingText = '加载中...' } = config
+
+    // ✅ 显示 loading（如果启用）
+    if (shouldShowLoading) {
+      showLoading(loadingText)
+    }
 
     return new Promise((resolve, reject) => {
       uni.request({
@@ -59,7 +69,12 @@ class HttpClient {
             uni.removeStorageSync('refreshToken');
             uni.removeStorageSync('userInfo');
 
-            // 2. 不弹窗，让页面自己处理未登录状态
+            // 2. 隐藏 loading
+            if (shouldShowLoading) {
+              hideLoading()
+            }
+
+            // 3. 不弹窗，让页面自己处理未登录状态
             reject(res.data);
             return;
           }
@@ -67,17 +82,33 @@ class HttpClient {
           if (res.statusCode >= 200 && res.statusCode < 300) {
             const response = res.data as Response<T>
             if (response.success !== false) {
+              // ✅ 隐藏 loading
+              if (shouldShowLoading) {
+                hideLoading()
+              }
               resolve(response)
             } else {
+              // ✅ 隐藏 loading
+              if (shouldShowLoading) {
+                hideLoading()
+              }
               // ❌ 移除自动 showToast，让页面自己处理
               reject(response)
             }
           } else {
+            // ✅ 隐藏 loading
+            if (shouldShowLoading) {
+              hideLoading()
+            }
             // ❌ 移除自动 showToast，让页面自己处理业务错误
             reject(res.data)
           }
         },
         fail: (err) => {
+          // ✅ 隐藏 loading
+          if (shouldShowLoading) {
+            hideLoading()
+          }
           uni.showToast({
             title: '网络请求失败',
             icon: 'none',
@@ -91,29 +122,29 @@ class HttpClient {
   /**
    * GET 请求
    */
-  get<T = unknown>(url: string, data?: UniApp.RequestOptions['data']): Promise<Response<T>> {
-    return this.request<T>({ url, method: 'GET', data })
+  get<T = unknown>(url: string, data?: UniApp.RequestOptions['data'], config?: Partial<RequestConfig>): Promise<Response<T>> {
+    return this.request<T>({ url, method: 'GET', data, ...config })
   }
 
   /**
    * POST 请求
    */
-  post<T = unknown>(url: string, data?: UniApp.RequestOptions['data']): Promise<Response<T>> {
-    return this.request<T>({ url, method: 'POST', data })
+  post<T = unknown>(url: string, data?: UniApp.RequestOptions['data'], config?: Partial<RequestConfig>): Promise<Response<T>> {
+    return this.request<T>({ url, method: 'POST', data, ...config })
   }
 
   /**
    * PUT 请求
    */
-  put<T = unknown>(url: string, data?: UniApp.RequestOptions['data']): Promise<Response<T>> {
-    return this.request<T>({ url, method: 'PUT', data })
+  put<T = unknown>(url: string, data?: UniApp.RequestOptions['data'], config?: Partial<RequestConfig>): Promise<Response<T>> {
+    return this.request<T>({ url, method: 'PUT', data, ...config })
   }
 
   /**
    * DELETE 请求
    */
-  delete<T = unknown>(url: string, data?: UniApp.RequestOptions['data']): Promise<Response<T>> {
-    return this.request<T>({ url, method: 'DELETE', data })
+  delete<T = unknown>(url: string, data?: UniApp.RequestOptions['data'], config?: Partial<RequestConfig>): Promise<Response<T>> {
+    return this.request<T>({ url, method: 'DELETE', data, ...config })
   }
 }
 

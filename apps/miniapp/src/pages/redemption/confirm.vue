@@ -5,11 +5,13 @@ import { redemptionApi } from '@/api/business'
 interface CouponInfo {
   orderId: string
   code: string
+  orderNo: string
   faceValue: number
   title: string
   merchantName: string
   couponType: string
   expireDate: string
+  status: string
 }
 
 const couponInfo = ref<CouponInfo | null>(null)
@@ -19,12 +21,13 @@ const confirming = ref(false)
 const faceValue = computed(() => couponInfo.value?.faceValue || 0)
 const couponTitle = computed(() => couponInfo.value?.title || '优惠券')
 const merchantName = computed(() => couponInfo.value?.merchantName || '商户')
-const couponType = computed(() => couponInfo.value?.couponType || '全场通用')
-const expireDate = computed(() => couponInfo.value?.expireDate || '2024.12.31')
+const expireDate = computed(() => couponInfo.value?.expireDate || '长期有效')
+// 券码只显示后4位，其余用掩码
 const displayCode = computed(() => {
   const code = couponInfo.value?.code || ''
-  // 格式化为 4位空格分隔
-  return code.replace(/(.{4})/g, '$1 ').trim()
+  if (code.length <= 4) return code
+  const last4 = code.slice(-4)
+  return `****-****-${last4}`
 })
 
 onMounted(() => {
@@ -135,21 +138,21 @@ function handleBack() {
 
         <!-- 右侧详情区域 -->
         <view class="coupon-details">
-          <view class="merchant-name">
+          <!-- 商户标签 -->
+          <view class="merchant-tag">
             {{ merchantName }}
           </view>
+          <!-- 优惠券标题 -->
           <text class="coupon-title">
             {{ couponTitle }}
           </text>
-          <view class="coupon-tags">
-            <text class="coupon-tag">
-              {{ couponType }}
+          <!-- 有效期 -->
+          <view class="expire-info">
+            <text class="expire-label">
+              有效期至
             </text>
-            <text class="tag-separator">
-              •
-            </text>
-            <text class="coupon-expire">
-              有效期至 {{ expireDate }}
+            <text class="expire-date">
+              {{ expireDate }}
             </text>
           </view>
         </view>
@@ -159,28 +162,14 @@ function handleBack() {
         <view class="punch-hole punch-hole-right" />
       </view>
 
-      <!-- 验证信息 -->
-      <view class="validation-section">
-        <view class="validation-item">
-          <text class="validation-label">
-            券码
-          </text>
-          <text class="validation-value code-text">
-            {{ displayCode }}
-          </text>
-        </view>
-        <view class="validation-divider" />
-        <view class="validation-item">
-          <text class="validation-label">
-            状态
-          </text>
-          <view class="status-badge">
-            <view class="status-dot" />
-            <text class="status-text">
-              待核销
-            </text>
-          </view>
-        </view>
+      <!-- 券码区域（弱化展示） -->
+      <view class="code-section">
+        <text class="code-label">
+          券码
+        </text>
+        <text class="code-value">
+          {{ displayCode }}
+        </text>
       </view>
 
       <!-- 提示文字 -->
@@ -328,49 +317,41 @@ function handleBack() {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 16rpx;
+  gap: 24rpx;
 }
 
-.merchant-name {
+.merchant-tag {
   font-size: 20rpx;
-  font-weight: 800;
-  color: #00658d;
-  text-transform: uppercase;
-  letter-spacing: 8rpx;
+  font-weight: 700;
+  color: rgba(0, 101, 141, 0.7);
+  background: rgba(0, 174, 239, 0.1);
+  padding: 8rpx 16rpx;
+  border-radius: 8rpx;
+  display: inline-block;
 }
 
 .coupon-title {
   font-size: 48rpx;
   font-weight: 700;
   color: #171c20;
-  line-height: 1.2;
+  line-height: 1.3;
 }
 
-.coupon-tags {
+.expire-info {
   display: flex;
-  align-items: center;
-  gap: 16rpx;
-  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 12rpx;
 }
 
-.coupon-tag {
-  background: #e4e9ee;
-  padding: 8rpx 24rpx;
-  border-radius: 48rpx;
-  font-size: 20rpx;
-  font-weight: 700;
-  color: #3e4850;
-  text-transform: uppercase;
-  letter-spacing: 2rpx;
+.expire-label {
+  font-size: 22rpx;
+  font-weight: 500;
+  color: rgba(62, 72, 80, 0.6);
 }
 
-.tag-separator {
-  color: rgba(62, 72, 80, 0.4);
-  font-size: 20rpx;
-}
-
-.coupon-expire {
+.expire-date {
   font-size: 24rpx;
+  font-weight: 700;
   color: #3e4850;
 }
 
@@ -393,74 +374,29 @@ function handleBack() {
   right: -20rpx;
 }
 
-/* 验证信息 */
-.validation-section {
-  background: #eff4fa;
-  border-radius: 24rpx;
-  padding: 48rpx;
-  margin-top: 80rpx;
-}
-
-.validation-item {
+/* 券码区域 */
+.code-section {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  background: rgba(239, 244, 250, 0.5);
+  padding: 32rpx 48rpx;
+  border-radius: 16rpx;
+  margin-top: 48rpx;
 }
 
-.validation-label {
-  font-size: 28rpx;
+.code-label {
+  font-size: 24rpx;
   font-weight: 500;
-  color: #3e4850;
+  color: rgba(62, 72, 80, 0.6);
 }
 
-.validation-value {
-  font-size: 36rpx;
+.code-value {
+  font-size: 28rpx;
   font-weight: 700;
-  color: #171c20;
-}
-
-.code-text {
+  color: rgba(23, 28, 32, 0.6);
   font-family: 'Courier New', monospace;
   letter-spacing: 4rpx;
-}
-
-.validation-divider {
-  height: 2rpx;
-  width: 100%;
-  background: #e4e9ee;
-  margin: 40rpx 0;
-}
-
-.status-badge {
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
-}
-
-.status-dot {
-  width: 16rpx;
-  height: 16rpx;
-  border-radius: 50%;
-  background: #8d4f00;
-  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-}
-
-@keyframes pulse {
-
-  0%,
-  100% {
-    opacity: 1;
-  }
-
-  50% {
-    opacity: 0.5;
-  }
-}
-
-.status-text {
-  font-size: 28rpx;
-  font-weight: 700;
-  color: #8d4f00;
 }
 
 /* 提示文字 */
@@ -472,7 +408,7 @@ function handleBack() {
   color: rgba(62, 72, 80, 0.6);
   line-height: 1.6;
   padding: 0 64rpx;
-  margin-top: 80rpx;
+  margin-top: 64rpx;
 }
 
 /* 底部操作按钮 */
