@@ -82,20 +82,22 @@ COPY --from=deployer /out/node_modules ./node_modules
 # 2. 从 builder 阶段拷贝编译后的产物（pnpm deploy 不会包含编译文件）
 COPY --from=builder /app/apps/api/dist ./dist
 
-# 3. 手动补充 @opencode/database 包的缺失文件
+# 3. 拷贝完整的 Prisma Schema 以便在生产环境运行迁移（必须在 node_modules 拷贝前）
+# 包含 migrations 目录，用于 prisma migrate deploy
+COPY --from=builder /app/infra/database ./infra/database
+
+# 4. 手动补充 @opencode/database 包的缺失文件到 node_modules
 # pnpm deploy 不会复制 workspace 包的源文件和编译产物
+# 注意：这些拷贝不会影响上面的 /app/infra/database 目录
 COPY --from=builder /app/infra/database/index.cjs ./node_modules/@opencode/database/index.cjs
 COPY --from=builder /app/infra/database/index.d.ts ./node_modules/@opencode/database/index.d.ts
 COPY --from=builder /app/infra/database/prisma ./node_modules/@opencode/database/prisma
 COPY --from=builder /app/infra/database/prisma.config.ts ./node_modules/@opencode/database/prisma.config.ts
 COPY --from=builder /app/infra/database/generated ./node_modules/@opencode/database/generated
 
-# 4. 手动补充 @opencode/shared 包的编译产物
+# 5. 手动补充 @opencode/shared 包的编译产物
 # API 运行时需要 shared 的编译产物
 COPY --from=builder /app/infra/shared/dist ./node_modules/@opencode/shared/dist
-
-# 5. 拷贝完整的 Prisma Schema 以便在生产环境运行迁移
-COPY --from=builder /app/infra/database ./infra/database
 
 # 6. 确保 Prisma CLI 可用（简化版）
 # pnpm deploy 已经包含了完整的 prisma 和 @prisma/engines
