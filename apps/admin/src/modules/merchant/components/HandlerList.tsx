@@ -33,6 +33,8 @@ export const HandlerList = ({ merchantId }: HandlerListProps) => {
   const { data: handlers = [], isLoading } = useQuery({
     queryKey: ["handler", "getByMerchant", merchantId],
     queryFn: () => (trpcClient as any).handler.getByMerchant.query({ merchantId }),
+    refetchOnMount: true,
+    staleTime: 0,
   });
 
   const toggleActive = useMutation({

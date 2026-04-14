@@ -1,10 +1,16 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { BaseService } from '../../../common/base.service';
+import { WechatService } from '../../wechat/wechat.service';
+import { FileStorageService, UploadedFile } from '../../../shared/services/file-storage.service';
 
 @Injectable()
 export class NewsService extends BaseService<'News'> {
-  constructor(prisma: PrismaService) {
+  constructor(
+    prisma: PrismaService,
+    private wechatService: WechatService,
+    private fileStorage: FileStorageService,
+  ) {
     super(prisma, 'News');
   }
 
@@ -207,5 +213,51 @@ export class NewsService extends BaseService<'News'> {
         couponId,
       })),
     });
+  }
+
+  /**
+   * 生成小程序码
+   */
+  async generateQrcode(newsId: string): Promise<{ url: string }> {
+    // 1. 检查新闻是否存在
+    const news = await this.getOneOrThrow(newsId);
+
+    // 2. 生成小程序码图片（scene = newsId）
+    const imageBuffer = await this.wechatService.generateMiniProgramCode(newsId);
+
+    // 3. 上传到文件存储
+    const file: UploadedFile = {
+      fieldname: 'qrcode',
+      originalname: `qrcode-news-${newsId}.png`,
+      encoding: '7bit',
+      mimetype: 'image/png',
+      size: imageBuffer.length,
+      buffer: imageBuffer,
+    };
+
+    const uploadResult = await this.fileStorage.upload(file, 'qrcodes');
+
+    // 4. 更新新闻记录
+    await this.update(newsId, {
+      qrcodeUrl: uploadResult.url,
+      qrcodeGeneratedAt: new Date(),
+    });
+
+    return { url: uploadResult.url };
+  }
+
+  /**
+   * 获取或生成小程序码
+   */
+  async getOrGenerateQrcode(newsId: string): Promise<{ url: string }> {
+    const news = await this.getOneOrThrow(newsId);
+
+    // 如果已有小程序码，直接返回
+    if (news.qrcodeUrl) {
+      return { url: news.qrcodeUrl };
+    }
+
+    // 否则生成新的
+    return this.generateQrcode(newsId);
   }
 }

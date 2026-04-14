@@ -179,7 +179,7 @@ export class WechatService {
     // 构建请求参数
     const requestBody = {
       scene: templateId, // 券模板 ID 作为 scene 参数（最多 32 个可见字符）
-      page: 'pages/coupon/detail', // 扫码后跳转的页面
+      page: '/pages/coupon/detail', // 扫码后跳转的页面（必须以 / 开头）
       width: 430, // 小程序码宽度
       auto_color: false,
       line_color: { r: 0, g: 0, b: 0 },

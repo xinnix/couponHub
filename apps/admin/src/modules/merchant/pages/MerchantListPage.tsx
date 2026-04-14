@@ -17,9 +17,8 @@ import {
   Select,
   App,
 } from "antd";
-import { PlusOutlined, SearchOutlined, CheckCircleOutlined, StopOutlined, UserSwitchOutlined } from "@ant-design/icons";
+import { PlusOutlined, SearchOutlined, CheckCircleOutlined, StopOutlined, EyeOutlined } from "@ant-design/icons";
 import { MerchantForm } from "../components/MerchantForm";
-import { HandlerList } from "../components/HandlerList";
 import { useNavigate } from "react-router-dom";
 
 interface MerchantCategory {
@@ -61,8 +60,6 @@ export const MerchantListPage = () => {
   const [statusFilter, setStatusFilter] = useState<string | undefined>(undefined);
   const [categoryFilter, setCategoryFilter] = useState<string | undefined>(undefined);
   const [areaFilter, setAreaFilter] = useState<string | undefined>(undefined);
-  const [handlerModalVisible, setHandlerModalVisible] = useState(false);
-  const [handlerMerchant, setHandlerMerchant] = useState<Merchant | null>(null);
   const [form] = Form.useForm();
   const { message } = App.useApp();
 
@@ -234,7 +231,14 @@ export const MerchantListPage = () => {
           {record.logo && (
             <img src={record.logo} alt={name} style={{ width: 40, height: 40, borderRadius: 4, objectFit: 'cover' }} />
           )}
-          <span style={{ fontWeight: 500 }}>{name}</span>
+          <Button
+            type="link"
+            size="small"
+            style={{ fontWeight: 500, padding: 0 }}
+            onClick={() => navigate(`/merchants/${record.id}`)}
+          >
+            {name}
+          </Button>
         </Space>
       ),
     },
@@ -312,19 +316,16 @@ export const MerchantListPage = () => {
       fixed: 'right' as const,
       render: (_: any, record: Merchant) => (
         <Space size="small">
-          <Button size="small" type="link" onClick={() => handleEdit(record)}>
-            编辑
-          </Button>
           <Button
             size="small"
             type="link"
-            icon={<UserSwitchOutlined />}
-            onClick={() => {
-              setHandlerMerchant(record);
-              setHandlerModalVisible(true);
-            }}
+            icon={<EyeOutlined />}
+            onClick={() => navigate(`/merchants/${record.id}`)}
           >
-            核销员
+            详情
+          </Button>
+          <Button size="small" type="link" onClick={() => handleEdit(record)}>
+            编辑
           </Button>
           <Popconfirm
             title="确认删除？"
@@ -431,7 +432,7 @@ export const MerchantListPage = () => {
             rowKey="id"
             dataSource={(result as any)?.data || []}
             loading={query.isLoading}
-            scroll={{ x: 1400 }}
+            scroll={{ x: 1350 }}
             pagination={{
               current: 1,
               pageSize: 10,
@@ -451,20 +452,6 @@ export const MerchantListPage = () => {
             width={700}
           >
             <MerchantForm form={form} isEdit={!!editingRecord} />
-          </Modal>
-
-          <Modal
-            title={`核销员管理 - ${handlerMerchant?.name || ''}`}
-            open={handlerModalVisible}
-            onCancel={() => {
-              setHandlerModalVisible(false);
-              setHandlerMerchant(null);
-              query.refetch();
-            }}
-            footer={null}
-            width={800}
-          >
-            {handlerMerchant && <HandlerList merchantId={handlerMerchant.id} />}
           </Modal>
         </Card>
       </List>

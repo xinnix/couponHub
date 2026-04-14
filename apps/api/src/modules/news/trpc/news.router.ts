@@ -67,7 +67,7 @@ export const newsRouter = router({
   getOne: publicProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ ctx, input }) => {
-      const newsService = new NewsService(ctx.prisma);
+      const newsService = ctx.app.get(NewsService);
       return newsService.getNewsWithCoupons(input.id);
     }),
 
@@ -75,7 +75,7 @@ export const newsRouter = router({
   getOneForAdmin: protectedProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ ctx, input }) => {
-      const newsService = new NewsService(ctx.prisma);
+      const newsService = ctx.app.get(NewsService);
       return newsService.getNewsWithCouponsForAdmin(input.id);
     }),
 
@@ -83,7 +83,7 @@ export const newsRouter = router({
   create: protectedProcedure
     .input(CreateNewsSchema)
     .mutation(async ({ ctx, input }) => {
-      const newsService = new NewsService(ctx.prisma);
+      const newsService = ctx.app.get(NewsService);
       return newsService.createWithCoupons(input, (ctx as any).user?.id);
     }),
 
@@ -94,7 +94,7 @@ export const newsRouter = router({
       data: UpdateNewsSchema,
     }))
     .mutation(async ({ ctx, input }) => {
-      const newsService = new NewsService(ctx.prisma);
+      const newsService = ctx.app.get(NewsService);
       return newsService.updateWithCoupons(input.id, input.data, (ctx as any).user?.id);
     }),
 
@@ -116,5 +116,21 @@ export const newsRouter = router({
       return model.deleteMany({
         where: { id: { in: input.ids } },
       });
+    }),
+
+  // 生成小程序码
+  generateQrcode: protectedProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const newsService = ctx.app.get(NewsService);
+      return newsService.generateQrcode(input.id);
+    }),
+
+  // 获取或生成小程序码
+  getOrGenerateQrcode: protectedProcedure
+    .input(z.object({ id: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const newsService = ctx.app.get(NewsService);
+      return newsService.getOrGenerateQrcode(input.id);
     }),
 });

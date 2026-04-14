@@ -30,12 +30,20 @@ export class MerchantController {
     if (status) where.status = status;
     if (category) where.category = category;
 
-    return this.merchantService.list({
+    const result = await this.merchantService.list({
       skip: (Number(page) - 1) * Number(limit),
       take: Number(limit),
       where,
       orderBy: { createdAt: 'desc' },
     });
+
+    return {
+      success: true,
+      data: result.data,
+      total: result.total,
+      page: result.page,
+      pageSize: result.pageSize,
+    };
   }
 
   @Get('categories')
@@ -51,7 +59,11 @@ export class MerchantController {
   @ApiOperation({ summary: '获取商户详情' })
   @ApiResponse({ status: 200, description: '获取成功' })
   async findOne(@Param('id') id: string) {
-    return this.merchantService.getOne(id);
+    const merchant = await this.merchantService.getOne(id);
+    return {
+      success: true,
+      data: merchant,
+    };
   }
 
   @Post()

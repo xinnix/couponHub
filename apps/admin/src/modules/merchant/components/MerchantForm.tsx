@@ -2,6 +2,7 @@
 import { useList } from "@refinedev/core";
 import { Form, Input, Select } from "antd";
 import { OSSUpload } from "@/shared/components/OSSUpload";
+import { OSSUploadMultiple } from "@/shared/components/OSSUploadMultiple";
 
 const { TextArea } = Input;
 
@@ -35,6 +36,19 @@ export const MerchantForm: React.FC<MerchantFormProps> = ({ form, isEdit }) => {
           type="merchant_logo"
           maxFileSize={5 * 1024 * 1024}
           accept="image/jpeg,image/png,image/webp"
+        />
+      </Form.Item>
+
+      <Form.Item
+        name="gallery"
+        label="商户轮播图"
+        tooltip="第一张图片将作为商户详情页的封面图，建议上传高清大图（宽高比 16:9，建议分辨率 1920x1080）"
+      >
+        <OSSUploadMultiple
+          type="merchant_gallery"
+          maxFileSize={10 * 1024 * 1024}
+          accept="image/jpeg,image/png,image/webp"
+          maxCount={5}
         />
       </Form.Item>
 

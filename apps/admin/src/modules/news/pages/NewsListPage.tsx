@@ -1,6 +1,7 @@
 // apps/admin/src/modules/news/pages/NewsListPage.tsx
 import { useState } from "react";
 import { useList, useCreate, useUpdate, useDelete, useDeleteMany } from "@refinedev/core";
+import { useMutation } from "@tanstack/react-query";
 import { List } from "@refinedev/antd";
 import {
   Table,
@@ -17,10 +18,13 @@ import {
   Input,
   Select,
   Statistic,
+  Image,
+  Tooltip,
 } from "antd";
 import {
   PlusOutlined,
   SearchOutlined,
+  QrcodeOutlined,
   EyeOutlined,
   FileTextOutlined,
   EyeFilled,
@@ -29,6 +33,7 @@ import {
 } from "@ant-design/icons";
 import { NewsForm } from "../components/NewsForm";
 import { useNavigate } from "react-router-dom";
+import { getTrpcClient } from "../../../shared/trpc/trpcClient";
 import dayjs from "dayjs";
 
 interface News {
@@ -40,6 +45,9 @@ interface News {
   status: 'DRAFT' | 'PUBLISHED';
   isHero: boolean;
   isPopup: boolean;
+  // 新增字段
+  qrcodeUrl?: string;
+  qrcodeGeneratedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
   coupons?: Array<{
@@ -63,10 +71,28 @@ export const NewsListPage = () => {
   const [statusFilter, setStatusFilter] = useState<string | undefined>(undefined);
   const [form] = Form.useForm();
 
+  // 新增：小程序码相关 state
+  const [qrcodeModalVisible, setQrcodeModalVisible] = useState(false);
+  const [currentQrcode, setCurrentQrcode] = useState<{
+    id: string;
+    url?: string;
+    title: string;
+    qrcodeGeneratedAt?: Date;
+  } | null>(null);
+  const [generatingQrcode, setGeneratingQrcode] = useState(false);
+
   const { mutate: create } = useCreate();
   const { mutate: update } = useUpdate();
   const { mutate: deleteOne } = useDelete();
   const { mutate: deleteMany } = useDeleteMany();
+
+  // 新增：直接使用 tRPC mutation 调用生成小程序码
+  const generateQrcodeMutation = useMutation({
+    mutationFn: async (newsId: string) => {
+      const trpcClient = await getTrpcClient();
+      return trpcClient.news.generateQrcode.mutate({ id: newsId });
+    },
+  });
 
   // 处理删除单条新闻
   const handleDelete = (id: string) => {
@@ -225,6 +251,41 @@ export const NewsListPage = () => {
     );
   };
 
+  // 新增：显示小程序码 Modal
+  const handleShowQrcode = (record: News) => {
+    setCurrentQrcode({
+      id: record.id,
+      url: record.qrcodeUrl,
+      title: record.title,
+      qrcodeGeneratedAt: record.qrcodeGeneratedAt,
+    });
+    setQrcodeModalVisible(true);
+  };
+
+  // 新增：生成小程序码
+  const handleGenerateQrcode = async () => {
+    if (!currentQrcode) return;
+
+    setGeneratingQrcode(true);
+    generateQrcodeMutation.mutate(currentQrcode.id, {
+      onSuccess: (data) => {
+        setCurrentQrcode({
+          ...currentQrcode,
+          url: data.url,
+          qrcodeGeneratedAt: new Date(),
+        });
+        message.success('小程序码生成成功');
+        query.refetch();
+      },
+      onError: (error: any) => {
+        message.error('生成失败: ' + error.message);
+      },
+      onSettled: () => {
+        setGeneratingQrcode(false);
+      },
+    });
+  };
+
   const columns = [
     {
       title: "标题",
@@ -316,7 +377,7 @@ export const NewsListPage = () => {
     },
     {
       title: "操作",
-      width: 200,
+      width: 280,  // 增加宽度
       fixed: 'right' as const,
       render: (_: any, record: News) => (
         <Space size="small">
@@ -330,6 +391,15 @@ export const NewsListPage = () => {
           </Button>
           <Button size="small" type="link" onClick={() => handleEdit(record)}>
             编辑
+          </Button>
+          {/* 新增：小程序码按钮 */}
+          <Button
+            size="small"
+            type="link"
+            icon={<QrcodeOutlined />}
+            onClick={() => handleShowQrcode(record)}
+          >
+            小程序码
           </Button>
           <Popconfirm
             title="确认删除？"
@@ -476,6 +546,70 @@ export const NewsListPage = () => {
             width={900}
           >
             <NewsForm form={form} isEdit={!!editingRecord} />
+          </Modal>
+
+          {/* 新增：小程序码 Modal */}
+          <Modal
+            title="小程序码管理"
+            open={qrcodeModalVisible}
+            onCancel={() => setQrcodeModalVisible(false)}
+            footer={[
+              <Button key="close" onClick={() => setQrcodeModalVisible(false)}>
+                关闭
+              </Button>,
+              !currentQrcode?.url && (
+                <Button
+                  key="generate"
+                  type="primary"
+                  loading={generatingQrcode}
+                  onClick={handleGenerateQrcode}
+                >
+                  生成小程序码
+                </Button>
+              ),
+              currentQrcode?.url && (
+                <Button key="regenerate" loading={generatingQrcode} onClick={handleGenerateQrcode}>
+                  重新生成
+                </Button>
+              ),
+              currentQrcode?.url && (
+                <Button
+                  key="download"
+                  type="primary"
+                  onClick={() => {
+                    const link = document.createElement('a');
+                    link.href = currentQrcode.url!;
+                    link.download = `qrcode-news-${currentQrcode.id}.png`;
+                    link.click();
+                  }}
+                >
+                  下载
+                </Button>
+              ),
+            ]}
+            width={500}
+          >
+            <div style={{ textAlign: 'center' }}>
+              <h3 style={{ marginBottom: 16 }}>{currentQrcode?.title}</h3>
+
+              {currentQrcode?.url ? (
+                <div>
+                  <Image src={currentQrcode.url} width={280} height={280} alt="小程序码" />
+                  <p style={{ marginTop: 12, color: '#666' }}>扫码直接进入新闻详情页面</p>
+                  {currentQrcode.qrcodeGeneratedAt && (
+                    <p style={{ fontSize: 12, color: '#999' }}>
+                      生成时间: {new Date(currentQrcode.qrcodeGeneratedAt).toLocaleString()}
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <div style={{ padding: '80px 0', color: '#999' }}>
+                  <QrcodeOutlined style={{ fontSize: 48, marginBottom: 16 }} />
+                  <p>暂无小程序码</p>
+                  <p>点击"生成小程序码"按钮创建</p>
+                </div>
+              )}
+            </div>
           </Modal>
         </Card>
       </List>
