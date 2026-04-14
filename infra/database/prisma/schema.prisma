@@ -27,6 +27,7 @@ model Admin {
   // 关联
   refreshTokens AdminRefreshToken[]
   roles         AdminRole[]
+  stockLogs     StockLog[] // 库存调整日志
 
   @@index([email])
   @@index([username])
@@ -336,6 +337,10 @@ model News {
   isHero    Boolean @default(false) // 是否头图文章（小程序顶部展示）
   isPopup   Boolean @default(false) // 是否为首页弹窗新闻
 
+  // 小程序码相关
+  qrcodeUrl        String?   // 小程序码图片 URL
+  qrcodeGeneratedAt DateTime? // 生成时间
+
   // 创建者和更新者 (Admin)
   createdById String?
   updatedById String?
@@ -395,9 +400,18 @@ model CouponTemplate {
   categoryId    String?  // 商户类别ID（可选）
   merchantScope Json     // 适用商户 ID 数组
 
-  validFrom     DateTime
-  validUntil    DateTime
-  validDays     Int      @default(30) // 购买后X天内有效，默认30天
+  // 销售期（控制购买时间）
+  saleFrom      DateTime              @default(now()) // 销售开始时间
+  saleUntil     DateTime              @default(now()) // 销售结束时间
+
+  // 使用期（控制核销时间）
+  useFrom       DateTime              @default(now()) // 使用开始时间
+  useUntil      DateTime              @default(now()) // 使用结束时间
+
+  // 相对有效期（可选）
+  validDays     Int?     @default(30) // 购买后X天内有效（如果不设置则使用 useUntil）
+                                      // expireAt = 有validDays ? min(useUntil, paidAt+validDays) : useUntil
+
   description   String?
   usageRules    String? // 使用规则说明（文本描述）
 
@@ -415,19 +429,47 @@ model CouponTemplate {
   category MerchantCategory? @relation(fields: [categoryId], references: [id])
   orders   Order[]
   news     NewsCouponRelation[] // 反向关联：哪些新闻引用了此优惠券
+  stockLogs StockLog[] // 库存变更日志
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([categoryId])
   @@index([status])
-  @@index([validFrom, validUntil])
+  @@index([saleFrom, saleUntil])    // 销售期索引
+  @@index([useFrom, useUntil])      // 使用期索引
   @@index([createdById])
   @@index([isFree])              // 新增索引：便于查询免费券
   @@index([status, isFree])      // 新增复合索引：优化小程序端查询
   @@index([featuredOnHome])      // 新增索引：便于查询首页超值优惠
   @@index([status, featuredOnHome]) // 新增复合索引：优化首页超值优惠查询
   @@map("coupon_templates")
+}
+
+// ============================================
+// 库存变更日志 (StockLog)
+// ============================================
+model StockLog {
+  id           String   @id @default(cuid())
+  templateId   String   // 券模板 ID
+  changeAmount Int      // 库存变化量（正数=增加，负数=减少）
+  currentStock Int      // 变更后的库存数量
+  reason       String   // 变更原因：ORDER_CREATE, ORDER_CANCEL, REFUND, EXPIRED_REFUND, MANUAL_ADJUST
+  orderId      String?  // 关联订单 ID（可选）
+  adminId      String?  // 操作员 ID（手动调整时记录）
+  metadata     Json?    // 扩展信息（JSON格式，如订单号、退款单号等）
+  createdAt    DateTime @default(now())
+
+  // 关联关系
+  template CouponTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  order    Order?         @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  admin    Admin?         @relation(fields: [adminId], references: [id], onDelete: SetNull)
+
+  @@index([templateId])
+  @@index([createdAt])
+  @@index([reason])
+  @@index([templateId, createdAt]) // 复合索引：优化查询某个模板的日志
+  @@map("stock_logs")
 }
 
 // ============================================
@@ -439,7 +481,7 @@ model Order {
 
   userId     String
   templateId String
-  status     String @default("UNPAID") // UNPAID, PAID, REDEEMED, REFUNDING, REFUNDED, EXPIRED
+  status     String @default("UNPAID") // UNPAID, PAID, REDEEMED, REFUNDING, REFUNDED, EXPIRED, CANCELLED
 
   // 支付信息
   payId    String?   @unique // 微信支付订单号
@@ -469,6 +511,7 @@ model Order {
   template CouponTemplate @relation(fields: [templateId], references: [id])
   merchant Merchant?      @relation(fields: [redeemMerchantId], references: [id])
   handler  Handler?       @relation(fields: [handlerId], references: [id], onDelete: SetNull)
+  stockLogs StockLog[]    // 库存变更日志（关联）
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -478,6 +521,7 @@ model Order {
   @@index([templateId])
   @@index([userId, templateId])   // 新增复合索引：优化领取统计查询
   @@index([status, expireAt])     // 新增复合索引：优化订单过期查询
+  @@index([status, createdAt])    // 新增复合索引：优化超时订单查询
   @@index([payId])
   @@index([orderNo])
   @@index([redeemMerchantId])
@@ -514,4 +558,25 @@ model Settlement {
   @@index([status])
   @@index([merchantId])
   @@map("settlements")
+}
+
+// ============================================
+// 退款失败日志 (RefundFailureLog)
+// ============================================
+model RefundFailureLog {
+  id           String   @id @default(cuid())
+  orderId      String
+  orderNo      String
+  refundNo     String?
+  errorMessage String
+  retryCount   Int      @default(0)
+  status       String   @default("PENDING") // PENDING | RETRYING | SUCCESS | FAILED
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([orderId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("refund_failure_logs")
 }

@@ -11,6 +11,7 @@ import { merchantRouter } from "../modules/merchant/trpc/merchant.router";
 import { merchantCategoryRouter } from "../modules/merchantCategory/trpc/merchantCategory.router";
 import { newsRouter } from "../modules/news/trpc/news.router";
 import { templateRouter } from "../modules/coupon/trpc/template.router";
+import { stockLogRouter } from "../modules/coupon/trpc/stock-log.router";
 import { orderRouter } from "../modules/order/trpc/order.router";
 import { settlementRouter } from "../modules/settlement/trpc/settlement.router";
 import { paymentRouter } from "../modules/payment/trpc/payment.router";
@@ -30,6 +31,7 @@ export const appRouter = router({
   merchantCategory: merchantCategoryRouter,
   news: newsRouter,
   couponTemplate: templateRouter,
+  stockLog: stockLogRouter,
   order: orderRouter,
   settlement: settlementRouter,
   payment: paymentRouter,
