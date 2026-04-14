@@ -1,0 +1,200 @@
+name: Build, Check, and Deploy
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch: # 允许手动触发
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME_API: ${{ github.repository }}-api
+  IMAGE_NAME_ADMIN: ${{ github.repository }}-admin
+  VITE_API_URL: /trpc
+
+jobs:
+  # ===== Job 1: 数据库迁移检查 =====
+  check-migrations:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 📦 Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 10.12.4
+
+      - name: 🔧 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: 📥 Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: 🔨 Generate Prisma Client
+        run: |
+          cd infra/database
+          npx prisma generate --schema=prisma/schema.prisma
+
+      - name: 🔍 Check migration status
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL_PROD }}
+        run: |
+          cd infra/database
+          npx prisma migrate status --schema=prisma/schema.prisma || true
+
+          # 检查是否有未应用的迁移
+          if npx prisma migrate status --schema=prisma/schema.prisma 2>&1 | grep -q "have not yet been applied"; then
+            echo "::warning::⚠️ Some migrations are not applied to production database"
+            echo ""
+            echo "This might require manual intervention if tables already exist."
+            echo "Check migration status before deploying."
+          else
+            echo "✅ All migrations are applied"
+          fi
+
+      - name: 📊 Create migration status report
+        if: always()
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL_PROD }}
+        run: |
+          echo "## 📊 Database Migration Status" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo '```bash' >> $GITHUB_STEP_SUMMARY
+          cd infra/database
+          npx prisma migrate status --schema=prisma/schema.prisma 2>&1 >> $GITHUB_STEP_SUMMARY || echo "Status check failed" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+  # ===== Job 2: 构建镜像 =====
+  build-and-push:
+    runs-on: ubuntu-latest
+    needs: check-migrations  # 等待迁移检查完成
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🏷️ Set up Docker metadata for API
+        id: meta-api
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_API }}
+          tags: |
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: 🏷️ Set up Docker metadata for Admin
+        id: meta-admin
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_ADMIN }}
+          tags: |
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: 🔨 Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: 🔐 Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 🔨 Build and push API image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile.api
+          push: true
+          tags: ${{ steps.meta-api.outputs.tags }}
+          labels: ${{ steps.meta-api.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: 🔨 Build and push Admin image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile.admin
+          push: true
+          tags: ${{ steps.meta-admin.outputs.tags }}
+          labels: ${{ steps.meta-admin.outputs.labels }}
+          target: production
+          build-args: |
+            VITE_API_URL=${{ env.VITE_API_URL }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: 📝 Create deployment summary
+        run: |
+          echo "## 🚀 Build Complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📦 Built Images" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**API:** \`${{ steps.meta-api.outputs.tags }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Admin:** \`${{ steps.meta-admin.outputs.tags }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🔄 Next Steps" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "1. Pull latest images on production server:" >> $GITHUB_STEP_SUMMARY
+          echo '```bash' >> $GITHUB_STEP_SUMMARY
+          echo "docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_API }}:latest" >> $GITHUB_STEP_SUMMARY
+          echo "docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_ADMIN }}:latest" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "2. Deploy with docker-compose:" >> $GITHUB_STEP_SUMMARY
+          echo '```bash' >> $GITHUB_STEP_SUMMARY
+          echo "docker-compose -f docker-compose.prod.yml up -d" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+  # ===== Job 3: 自动部署（可选） =====
+  # 如果配置了 SSH 部署密钥，可以自动触发服务器端部署
+  deploy-production:
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    environment: production
+
+    steps:
+      - name: 🚀 Trigger production deployment
+        if: ${{ secrets.PRODUCTION_DEPLOY_HOOK }}
+        run: |
+          # 方案A: 使用 webhook 触发服务器端部署
+          curl -X POST "${{ secrets.PRODUCTION_DEPLOY_HOOK }}" \
+            -H "Content-Type: application/json" \
+            -d '{"image_tag": "latest", "ref": "${{ github.sha }}"}' \
+            || echo "Deployment webhook not configured"
+
+          # 方案B: SSH 远程执行（需要配置 SSH 密钥）
+          # ssh ${{ secrets.PRODUCTION_SSH_USER }}@${{ secrets.PRODUCTION_SSH_HOST }} \
+          #   "cd /path/to/project && docker-compose -f docker-compose.prod.yml pull && docker-compose -f docker-compose.prod.yml up -d"
+
+      - name: 📝 Deployment notification
+        if: always()
+        run: |
+          echo "## 🎉 Deployment Pipeline Complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Images built and pushed to GHCR" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Migration status checked" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Server deployment triggered via webhook (if configured)" >> $GITHUB_STEP_SUMMARY
