@@ -78,30 +78,43 @@ export class NewsService extends BaseService<'News'> {
   /**
    * 获取新闻详情（包含关联的优惠券）- 小程序端使用
    * 过滤条件：status='ACTIVE' 且 saleFrom<=now<=saleUntil
+   *
+   * 注意：每次查看都会增加浏览量（viewCount）
    */
   async getNewsWithCoupons(id: string) {
-    const news = await this.model.findUnique({
-      where: { id },
-      include: {
-        coupons: {
-          include: {
-            coupon: {
-              select: {
-                id: true,
-                title: true,
-                buyPrice: true,
-                faceValue: true,
-                description: true,
-                status: true,
-                saleFrom: true,
-                saleUntil: true,
-                stock: true,
+    // 使用事务：先增加浏览量，再获取详情
+    const news = await this.prisma.$transaction(async (tx) => {
+      // 1. 增加浏览量（原子操作）
+      await tx.$executeRaw`
+        UPDATE news
+        SET view_count = view_count + 1
+        WHERE id = ${id}
+      `;
+
+      // 2. 获取新闻详情
+      return tx.news.findUnique({
+        where: { id },
+        include: {
+          coupons: {
+            include: {
+              coupon: {
+                select: {
+                  id: true,
+                  title: true,
+                  buyPrice: true,
+                  faceValue: true,
+                  description: true,
+                  status: true,
+                  saleFrom: true,
+                  saleUntil: true,
+                  stock: true,
+                },
               },
             },
+            orderBy: { createdAt: 'asc' },
           },
-          orderBy: { createdAt: 'asc' },
         },
-      },
+      });
     });
 
     if (!news) return null;
