@@ -84,12 +84,11 @@ export class NewsService extends BaseService<'News'> {
   async getNewsWithCoupons(id: string) {
     // 使用事务：先增加浏览量，再获取详情
     const news = await this.prisma.$transaction(async (tx) => {
-      // 1. 增加浏览量（原子操作）
-      await tx.$executeRaw`
-        UPDATE news
-        SET view_count = view_count + 1
-        WHERE id = ${id}
-      `;
+      // 1. 增加浏览量
+      await tx.news.update({
+        where: { id },
+        data: { viewCount: { increment: 1 } },
+      });
 
       // 2. 获取新闻详情
       return tx.news.findUnique({
