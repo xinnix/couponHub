@@ -223,7 +223,10 @@ export class NewsService extends BaseService<'News'> {
     const news = await this.getOneOrThrow(newsId);
 
     // 2. 生成小程序码图片（scene = newsId）
-    const imageBuffer = await this.wechatService.generateMiniProgramCode(newsId);
+    const imageBuffer = await this.wechatService.generateMiniProgramCode(
+      newsId,
+      'pages/news/detail',
+    );
 
     // 3. 上传到文件存储
     const file: UploadedFile = {

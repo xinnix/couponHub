@@ -75,7 +75,10 @@ export class TemplateService extends BaseService<'CouponTemplate'> {
     const template = await this.getOneOrThrow(templateId);
 
     // 2. 生成小程序码图片
-    const imageBuffer = await this.wechatService.generateMiniProgramCode(templateId);
+    const imageBuffer = await this.wechatService.generateMiniProgramCode(
+      templateId,
+      'pages/coupon/detail',
+    );
 
     // 3. 上传到文件存储
     const file: UploadedFile = {
@@ -132,9 +135,10 @@ export class TemplateService extends BaseService<'CouponTemplate'> {
     });
 
     // 手动过滤：检查 merchantScope 数组是否包含 merchantId
+    // 空数组表示全商户可用
     return templates.filter((template) => {
       const scope = template.merchantScope as string[];
-      return Array.isArray(scope) && scope.includes(merchantId);
+      return Array.isArray(scope) && (scope.length === 0 || scope.includes(merchantId));
     });
   }
 
@@ -171,9 +175,15 @@ export class TemplateService extends BaseService<'CouponTemplate'> {
         ...template,
         merchant: merchants.length > 0 ? merchants[0] : null,
         merchants: merchants, // 所有适用商户列表
+        isAllMerchants: false, // 标记：非全商户可用
       };
     }
 
-    return template;
+    // 空数组表示全商户可用
+    return {
+      ...template,
+      merchants: [], // 空数组，小程序端会显示"全商户可用"
+      isAllMerchants: true, // 标记：全商户可用
+    };
   }
 }

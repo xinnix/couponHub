@@ -652,6 +652,20 @@ function goToMerchant(merchantId?: string) {
         </view>
 
         <!-- 适用商户 -->
+        <!-- 全商户可用时显示提示 -->
+        <view v-if="!coupon?.merchants || coupon.merchants.length === 0" class="merchant-section">
+          <view class="merchant-header">
+            <view class="merchant-bar" />
+            <text class="merchant-title">
+              适用商户
+            </text>
+          </view>
+          <view class="all-merchants-simple">
+            <text class="simple-text">全商户可用</text>
+          </view>
+        </view>
+
+        <!-- 有具体商户时显示商户列表 -->
         <view v-if="coupon?.merchants && coupon.merchants.length > 0" class="merchant-section">
           <view class="merchant-header">
             <view class="merchant-bar" />
@@ -1006,6 +1020,17 @@ function goToMerchant(merchantId?: string) {
   font-weight: 700;
   color: #171c20;
   letter-spacing: -0.5rpx;
+}
+
+/* 全商户可用提示（简洁版） */
+.all-merchants-simple {
+  padding: 24rpx 0;
+}
+
+.simple-text {
+  font-size: 32rpx;
+  color: #6e7881;
+  font-weight: 500;
 }
 
 /* 商户网格布局（横向排列，自动换行） */

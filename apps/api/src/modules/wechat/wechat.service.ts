@@ -170,16 +170,17 @@ export class WechatService {
    * 生成小程序码（无数量限制版本）
    * 文档: https://developers.weixin.qq.com/miniprogram/dev/OpenApiDoc/qrcode-link/qr-code/getUnlimitedQRCode.html
    *
-   * @param templateId 券模板 ID（作为 scene 参数）
+   * @param sceneId 场景值 ID（最多 32 个可见字符）
+   * @param page 扫码后跳转的页面路径（必须与 app.json 中的路径一致，不带 / 前缀）
    * @returns 小程序码图片 Buffer
    */
-  async generateMiniProgramCode(templateId: string): Promise<Buffer> {
+  async generateMiniProgramCode(sceneId: string, page: string = 'pages/coupon/detail'): Promise<Buffer> {
     const accessToken = await this.getAccessToken();
 
     // 构建请求参数
     const requestBody = {
-      scene: templateId, // 券模板 ID 作为 scene 参数（最多 32 个可见字符）
-      page: '/pages/coupon/detail', // 扫码后跳转的页面（必须以 / 开头）
+      scene: sceneId, // 场景值 ID（最多 32 个可见字符）
+      page, // 扫码后跳转的页面（必须与 app.json 中的路径一致）
       width: 430, // 小程序码宽度
       auto_color: false,
       line_color: { r: 0, g: 0, b: 0 },

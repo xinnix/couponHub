@@ -86,7 +86,12 @@ export const TemplateDetailPage = () => {
   }
 
   // 匹配适用商户
-  const applicableMerchants = (merchants?.data || []).filter(m => template.merchantScope.includes(m.id));
+  const applicableMerchants = template.merchantScope.length === 0
+    ? [] // 空数组表示全商户可用，不显示具体商户列表
+    : (merchants?.data || []).filter(m => template.merchantScope.includes(m.id));
+
+  // 判断是否全商户可用
+  const isAllMerchants = template.merchantScope.length === 0;
 
   const getStatusTag = () => {
     const now = new Date();
@@ -307,37 +312,49 @@ export const TemplateDetailPage = () => {
     },
     {
       key: 'merchants',
-      label: `适用商户 (${applicableMerchants.length})`,
+      label: isAllMerchants
+        ? '适用商户（全商户可用）'
+        : `适用商户 (${applicableMerchants.length})`,
       children: (
         <div style={{ padding: '24px 0' }}>
-          <Table
-            dataSource={applicableMerchants}
-            rowKey="id"
-            columns={[
-              {
-                title: '商户名称',
-                dataIndex: 'name',
-                key: 'name',
-              },
-              {
-                title: '分类',
-                dataIndex: 'category',
-                key: 'category',
-                render: (category: string) => <Tag color="blue">{category}</Tag>,
-              },
-              {
-                title: '状态',
-                dataIndex: 'status',
-                key: 'status',
-                render: (status: string) => (
-                  <Tag color={status === 'ACTIVE' ? 'success' : 'error'}>
-                    {status === 'ACTIVE' ? '激活' : '停用'}
-                  </Tag>
-                ),
-              },
-            ]}
-            pagination={false}
-          />
+          {isAllMerchants ? (
+            <Alert
+              message="全商户可用"
+              description="该优惠券适用于所有商户，任何商户的核销员都可以核销此券"
+              type="success"
+              showIcon
+              style={{ marginBottom: 24 }}
+            />
+          ) : (
+            <Table
+              dataSource={applicableMerchants}
+              rowKey="id"
+              columns={[
+                {
+                  title: '商户名称',
+                  dataIndex: 'name',
+                  key: 'name',
+                },
+                {
+                  title: '分类',
+                  dataIndex: 'category',
+                  key: 'category',
+                  render: (category: string) => <Tag color="blue">{category}</Tag>,
+                },
+                {
+                  title: '状态',
+                  dataIndex: 'status',
+                  key: 'status',
+                  render: (status: string) => (
+                    <Tag color={status === 'ACTIVE' ? 'success' : 'error'}>
+                      {status === 'ACTIVE' ? '激活' : '停用'}
+                    </Tag>
+                  ),
+                },
+              ]}
+              pagination={false}
+            />
+          )}
         </div>
       ),
     },

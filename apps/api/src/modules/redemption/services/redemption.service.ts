@@ -79,7 +79,8 @@ export class RedemptionService {
 
     // 7. 验证核销权限
     const merchantScope = order.template.merchantScope as string[];
-    if (!merchantScope.includes(handler.merchantId)) {
+    // 空数组表示全商户可用
+    if (merchantScope.length > 0 && !merchantScope.includes(handler.merchantId)) {
       throw new ForbiddenException('该券不适用于当前商户');
     }
 
