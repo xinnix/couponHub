@@ -413,7 +413,8 @@ model CouponTemplate {
                                       // expireAt = 有validDays ? min(useUntil, paidAt+validDays) : useUntil
 
   description   String?
-  usageRules    String? // 使用规则说明（文本描述）
+  usageRules    Json? // 使用规则（JSON 结构化存储）
+                     // 结构示例：{ stacking: { type, customText }, refund: { type, customText }, usage: { type, customText } }
 
   status String @default("ACTIVE") // ACTIVE, EXPIRED, DISABLED
 

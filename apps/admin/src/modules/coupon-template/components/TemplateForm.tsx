@@ -3,6 +3,7 @@ import { useList } from "@refinedev/core";
 import { Form, Input, InputNumber, Select, DatePicker, Row, Col, Tooltip, Checkbox, Alert } from "antd";
 import { QuestionCircleOutlined, InfoCircleOutlined } from '@ant-design/icons';
 import { MerchantScopeSelector } from './MerchantScopeSelector';
+import { CouponRulesForm } from './CouponRulesForm';
 import { useEffect } from 'react';
 
 const { TextArea } = Input;
@@ -456,14 +457,7 @@ export const TemplateForm: React.FC<TemplateFormProps> = ({ form, isEdit }) => {
         <TextArea rows={4} placeholder="请输入券描述" maxLength={500} showCount />
       </Form.Item>
 
-      <Form.Item name="usageRules" label="使用规则">
-        <TextArea
-          rows={6}
-          placeholder="请输入使用规则说明，例如：满100元可用、周末不可用、每人限用1次等"
-          maxLength={1000}
-          showCount
-        />
-      </Form.Item>
+      <CouponRulesForm name="usageRules" />
     </Form>
   );
 };

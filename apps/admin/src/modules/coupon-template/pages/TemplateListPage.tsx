@@ -325,12 +325,24 @@ export const TemplateListPage = () => {
       ),
     },
     {
-      title: "有效天数",
-      dataIndex: "validDays",
-      width: 100,
-      render: (days: number) => (
-        <Tag color="purple">{days}天</Tag>
-      ),
+      title: "有效期",
+      width: 200,
+      render: (_: any, record: CouponTemplate) => {
+        // 如果设置了有效天数，展示相对有效期
+        if (record.validDays) {
+          return (
+            <Tooltip title={`购买后${record.validDays}天内有效，不超过${dayjs(record.useUntil).format('YYYY-MM-DD')}`}>
+              <Tag color="purple">购买后{record.validDays}天有效</Tag>
+            </Tooltip>
+          );
+        }
+        // 如果没有有效天数，展示固定使用期
+        return (
+          <span style={{ fontSize: 12 }}>
+            {dayjs(record.useFrom).format('YYYY-MM-DD')} ~ {dayjs(record.useUntil).format('YYYY-MM-DD')}
+          </span>
+        );
+      },
     },
     {
       title: "已售",

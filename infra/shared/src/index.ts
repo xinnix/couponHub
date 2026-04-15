@@ -518,6 +518,64 @@ export type UpdateNewsInput = z.infer<typeof UpdateNewsSchema>;
 export type NewsListQueryInput = z.infer<typeof NewsListQuerySchema>;
 
 // ============================================
+// Coupon Rules Constants & Schemas
+// ============================================
+
+export const COUPON_RULE_TYPES = {
+  STACKING: {
+    NO_STACK: 'no_stack',           // 不与其他优惠叠加
+    LIMITED_STACK: 'limited_stack', // 限制叠加
+    FREE_STACK: 'free_stack',       // 可自由叠加
+    CUSTOM: 'custom',               // 自定义规则
+  },
+  REFUND: {
+    FLEXIBLE: 'flexible',      // 未核销前随时退款
+    LIMITED: 'limited',        // 限制退款
+    NO_REFUND: 'no_refund',    // 不可退款
+    CUSTOM: 'custom',          // 自定义规则
+  },
+  USAGE: {
+    MIN_AMOUNT: 'min_amount',   // 最低消费金额
+    TIME_LIMIT: 'time_limit',   // 时间限制
+    CATEGORY: 'category',       // 商品类别限制
+    CUSTOM: 'custom',           // 自定义规则
+  },
+} as const;
+
+export const COUPON_RULE_TEMPLATES = {
+  STACKING: {
+    no_stack: '不与其他优惠活动同时使用，每单限用一张',
+    limited_stack: '可与部分优惠叠加使用',
+    free_stack: '可与其他优惠活动自由叠加',
+  },
+  REFUND: {
+    flexible: '未核销前支持随时退款',
+    limited: '购买后限制时间内可退款',
+    no_refund: '购买后不支持退款',
+  },
+  USAGE: {
+    min_amount: '满XX元可用',
+    time_limit: '仅限工作日使用',
+    category: '仅限指定商品类别使用',
+  },
+} as const;
+
+// 规则结构 Schema
+export const CouponRuleSchema = z.object({
+  type: z.string(),
+  customText: z.string().optional().nullable(),
+});
+
+export const CouponRulesSchema = z.object({
+  stacking: CouponRuleSchema.optional(),
+  refund: CouponRuleSchema.optional(),
+  usage: CouponRuleSchema.optional(),
+});
+
+export type CouponRule = z.infer<typeof CouponRuleSchema>;
+export type CouponRules = z.infer<typeof CouponRulesSchema>;
+
+// ============================================
 // Coupon Template Schemas
 // ============================================
 
@@ -539,7 +597,7 @@ export const CouponTemplateSchema = z.object({
   useUntil: z.date(), // 使用结束时间
   validDays: z.number().int().positive().optional().nullable(), // 相对有效天数
   description: z.string().optional().nullable(),
-  usageRules: z.string().optional().nullable(), // 使用规则说明
+  usageRules: CouponRulesSchema.optional().nullable(), // 使用规则（JSON 结构）
   status: z.enum(["ACTIVE", "EXPIRED", "DISABLED"]),
   createdAt: z.date(),
   updatedAt: z.date(),
@@ -562,7 +620,7 @@ const BaseCouponTemplateSchema = z.object({
   useFrom: z.coerce.date(), // 使用开始时间
   useUntil: z.coerce.date(), // 使用结束时间
   description: z.string().optional().nullable(),
-  usageRules: z.string().optional().nullable(), // 使用规则说明（可选，可为空）
+  usageRules: CouponRulesSchema.optional().nullable(), // 使用规则（JSON 结构，可选）
   status: z.enum(["ACTIVE", "EXPIRED", "DISABLED"]).optional(),
 });
 

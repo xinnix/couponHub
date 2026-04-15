@@ -151,6 +151,61 @@ const displayValidDays = computed(() => {
   return 30 // 默认30天
 })
 
+// 规则解析（向后兼容）
+const parsedRules = computed(() => {
+  if (!coupon.value?.usageRules) {
+    // 向后兼容：无数据时使用默认值
+    return {
+      stacking: '不与其他优惠活动同时使用，每单限用一张',
+      refund: '未核销前支持随时退款',
+      usage: null,
+    };
+  }
+
+  const rules = coupon.value.usageRules as any;
+
+  // 检查是否是旧格式（纯字符串）- 向后兼容
+  if (typeof rules === 'string') {
+    return {
+      stacking: '不与其他优惠活动同时使用，每单限用一张',
+      refund: '未核销前支持随时退款',
+      usage: rules, // 原文本作为使用规则
+    };
+  }
+
+  // 新格式（JSON 对象）
+  // 定义模板映射
+  const templates = {
+    STACKING: {
+      no_stack: '不与其他优惠活动同时使用，每单限用一张',
+      limited_stack: '可与部分优惠叠加使用',
+      free_stack: '可与其他优惠活动自由叠加',
+    },
+    REFUND: {
+      flexible: '未核销前支持随时退款',
+      limited: '购买后限制时间内可退款',
+      no_refund: '购买后不支持退款',
+    },
+    USAGE: {
+      min_amount: '满XX元可用',
+      time_limit: '仅限工作日使用',
+      category: '仅限指定商品类别使用',
+    },
+  };
+
+  return {
+    stacking: rules.stacking?.customText ||
+              templates.STACKING[rules.stacking?.type] ||
+              '不与其他优惠活动同时使用，每单限用一张',
+    refund: rules.refund?.customText ||
+            templates.REFUND[rules.refund?.type] ||
+            '未核销前支持随时退款',
+    usage: rules.usage?.customText ||
+           templates.USAGE[rules.usage?.type] ||
+           null,
+  };
+})
+
 // 格式化价格函数
 function formatPrice(price: number): string {
   return price.toFixed(2)
@@ -561,12 +616,10 @@ function goToMerchant(merchantId?: string) {
                   使用规则
                 </text>
                 <text class="rule-desc">
-                  仅限 {{ displayMerchantName }} 门店使用
+                  {{ parsedRules.usage || `仅限 ${displayMerchantName} 门店使用` }}
                 </text>
               </view>
             </view>
-
-            <!-- 叠加规则 -->
             <view class="rule-item">
               <view class="rule-icon-box">
                 <text class="iconfont icon-shezhiguize rule-icon-font" />
@@ -576,7 +629,7 @@ function goToMerchant(merchantId?: string) {
                   叠加规则
                 </text>
                 <text class="rule-desc">
-                  不与其他优惠活动同时使用，每单限用一张
+                  {{ parsedRules.stacking }}
                 </text>
               </view>
             </view>
@@ -591,7 +644,7 @@ function goToMerchant(merchantId?: string) {
                   退改规则
                 </text>
                 <text class="rule-desc">
-                  未核销前支持随时退款
+                  {{ parsedRules.refund }}
                 </text>
               </view>
             </view>
