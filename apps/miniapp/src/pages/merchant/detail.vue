@@ -164,9 +164,9 @@ function formatCouponUnit(item: any) {
 }
 
 function formatCouponValidity(item: any) {
-  if (item.validFrom && item.validUntil) {
-    const from = new Date(item.validFrom).toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' })
-    const until = new Date(item.validUntil).toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' })
+  if (item.useFrom && item.useUntil) {
+    const from = new Date(item.useFrom).toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' })
+    const until = new Date(item.useUntil).toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' })
     return `${from}-${until}可用`
   }
   return '长期有效'

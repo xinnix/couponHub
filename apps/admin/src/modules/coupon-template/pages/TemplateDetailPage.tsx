@@ -313,8 +313,8 @@ export const TemplateDetailPage = () => {
     {
       key: 'merchants',
       label: isAllMerchants
-        ? '适用商户（全商户可用）'
-        : `适用商户 (${applicableMerchants.length})`,
+        ? '适用商户（所有商户可用）'
+        : `适用商户 (${applicableMerchants.length} 家)`,
       children: (
         <div style={{ padding: '24px 0' }}>
           {isAllMerchants ? (

@@ -54,10 +54,10 @@ export const orderRouter = createCrudRouterWithCustom(
           throw new BadRequestException('券模板不存在');
         }
 
-        // 2. 检查有效期
+        // 2. 检查销售期
         const now = new Date();
-        if (template.validFrom > now || template.validUntil < now) {
-          throw new BadRequestException('该券不在有效期内');
+        if (template.saleFrom > now || template.saleUntil < now) {
+          throw new BadRequestException('该券不在销售期内');
         }
 
         // 3. 检查库存

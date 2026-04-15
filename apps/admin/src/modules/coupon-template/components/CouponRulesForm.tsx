@@ -12,9 +12,13 @@ export const CouponRulesForm: React.FC<CouponRulesFormProps> = ({ name }) => {
   return (
     <>
       {/* 叠加规则 */}
-      <Form.Item label="叠加规则">
+      <Form.Item label="叠加规则" required>
         <Space direction="vertical" style={{ width: "100%" }}>
-          <Form.Item name={[name, "stacking", "type"]} noStyle>
+          <Form.Item
+            name={[name, "stacking", "type"]}
+            noStyle
+            rules={[{ required: true, message: "请选择叠加规则类型" }]}
+          >
             <Select
               placeholder="选择叠加规则类型"
               options={[
@@ -55,9 +59,13 @@ export const CouponRulesForm: React.FC<CouponRulesFormProps> = ({ name }) => {
       </Form.Item>
 
       {/* 退改规则 */}
-      <Form.Item label="退改规则">
+      <Form.Item label="退改规则" required>
         <Space direction="vertical" style={{ width: "100%" }}>
-          <Form.Item name={[name, "refund", "type"]} noStyle>
+          <Form.Item
+            name={[name, "refund", "type"]}
+            noStyle
+            rules={[{ required: true, message: "请选择退改规则类型" }]}
+          >
             <Select
               placeholder="选择退改规则类型"
               options={[

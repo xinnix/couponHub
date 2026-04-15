@@ -77,7 +77,7 @@ export class NewsService extends BaseService<'News'> {
 
   /**
    * 获取新闻详情（包含关联的优惠券）- 小程序端使用
-   * 过滤条件：status='ACTIVE' 且 validFrom<=now
+   * 过滤条件：status='ACTIVE' 且 saleFrom<=now<=saleUntil
    */
   async getNewsWithCoupons(id: string) {
     const news = await this.model.findUnique({
@@ -93,7 +93,8 @@ export class NewsService extends BaseService<'News'> {
                 faceValue: true,
                 description: true,
                 status: true,
-                validFrom: true,
+                saleFrom: true,
+                saleUntil: true,
                 stock: true,
               },
             },
@@ -137,15 +138,16 @@ export class NewsService extends BaseService<'News'> {
   /**
    * 状态过滤逻辑（小程序端）：
    * - status = 'ACTIVE'
-   * - validFrom <= now（购买已开始）
+   * - saleFrom <= now <= saleUntil（销售期进行中）
    */
   private filterCouponsByStatus(relations: any[]) {
     const now = new Date();
 
     return relations.filter((r) => {
       const isActive = r.coupon.status === 'ACTIVE';
-      const hasStarted = new Date(r.coupon.validFrom) <= now;
-      return isActive && hasStarted;
+      const saleStarted = new Date(r.coupon.saleFrom) <= now;
+      const saleNotEnded = new Date(r.coupon.saleUntil) >= now;
+      return isActive && saleStarted && saleNotEnded;
     });
   }
 

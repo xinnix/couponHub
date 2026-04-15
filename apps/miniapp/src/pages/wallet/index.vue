@@ -56,9 +56,9 @@ function getExpiry(item: any): string {
     const d = new Date(item.expireAt)
     return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`
   }
-  // 兼容旧数据：使用模板的有效期
-  if (item.template && item.template.validUntil) {
-    const d = new Date(item.template.validUntil)
+  // 兼容旧数据：使用模板的使用期截止时间
+  if (item.template && item.template.useUntil) {
+    const d = new Date(item.template.useUntil)
     return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`
   }
   return ''

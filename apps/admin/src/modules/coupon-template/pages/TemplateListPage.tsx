@@ -312,7 +312,9 @@ export const TemplateListPage = () => {
       dataIndex: "merchantScope",
       width: 150,
       render: (scope: string[]) => (
-        <Tag color="blue">{scope.length} 家商户</Tag>
+        <Tag color={scope.length === 0 ? 'green' : 'blue'}>
+          {scope.length === 0 ? '所有商户可用' : `${scope.length} 家商户`}
+        </Tag>
       ),
     },
     {

@@ -39,20 +39,6 @@ const displayStock = computed(() => {
   return 0
 })
 
-const displayValidFrom = computed(() => {
-  if (coupon.value && coupon.value.validFrom) {
-    return coupon.value.validFrom
-  }
-  return ''
-})
-
-const displayValidUntil = computed(() => {
-  if (coupon.value && coupon.value.validUntil) {
-    return coupon.value.validUntil
-  }
-  return ''
-})
-
 const displayDescription = computed(() => {
   if (coupon.value && coupon.value.description) {
     return coupon.value.description

@@ -60,7 +60,7 @@ export const NewsForm: React.FC<NewsFormProps> = ({ form, isEdit }) => {
           optionLabelProp="label"
         >
           {templates.map((t: any) => {
-            const isUpcoming = new Date(t.validFrom) > new Date();
+            const isUpcoming = new Date(t.saleFrom) > new Date();
             return (
               <Select.Option
                 key={t.id}
