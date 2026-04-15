@@ -6,7 +6,7 @@ import { CouponTemplateExpirationService } from '../services/coupon-template-exp
 /**
  * 券模板过期定时任务
  *
- * 执行频率：每5分钟
+ * 执行频率：每天凌晨 2 点
  */
 @Injectable()
 export class CouponTemplateExpirationTask {
@@ -17,7 +17,7 @@ export class CouponTemplateExpirationTask {
     private readonly expirationService: CouponTemplateExpirationService,
   ) {}
 
-  @Cron('0 */5 * * * *') // 每5分钟执行一次
+  @Cron('0 0 2 * * *') // 每天凌晨 2 点执行
   async handleCron() {
     // 检查定时任务是否启用
     const schedulerEnabled =

@@ -79,15 +79,15 @@ export const newsRouter = router({
       return newsService.getNewsWithCouponsForAdmin(input.id);
     }),
 
-  // 创建新闻（支持优惠券关联）
+  // 创建新闻(支持优惠券关联)
   create: protectedProcedure
-    .input(CreateNewsSchema)
+    .input(z.object({ data: CreateNewsSchema }))
     .mutation(async ({ ctx, input }) => {
       const newsService = ctx.app.get(NewsService);
-      return newsService.createWithCoupons(input, (ctx as any).user?.id);
+      return newsService.createWithCoupons(input.data, (ctx as any).user?.id);
     }),
 
-  // 更新新闻（支持优惠券关联）
+  // 更新新闻(支持优惠券关联)
   update: protectedProcedure
     .input(z.object({
       id: z.string(),

@@ -6,7 +6,7 @@ import { OrderExpirationService } from '../services/order-expiration.service';
 /**
  * 订单过期自动退款定时任务
  *
- * 执行频率：每10分钟
+ * 执行频率：每天凌晨 2 点
  */
 @Injectable()
 export class OrderExpirationTask {
@@ -17,7 +17,7 @@ export class OrderExpirationTask {
     private readonly expirationService: OrderExpirationService,
   ) {}
 
-  @Cron('0 */10 * * * *') // 每10分钟执行一次
+  @Cron('0 0 2 * * *') // 每天凌晨 2 点执行
   async handleCron() {
     // 检查定时任务是否启用
     const schedulerEnabled =

@@ -7,6 +7,8 @@ type _LocationUrl =
   "/pages/index" |
   "/pages/hi" |
   "/pages/login" |
+  "/pages/agreement/privacy-policy" |
+  "/pages/agreement/user-agreement" |
   "/pages/coupon/detail" |
   "/pages/coupon/list" |
   "/pages/handler/index" |

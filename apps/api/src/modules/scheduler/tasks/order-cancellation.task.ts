@@ -6,7 +6,7 @@ import { OrderCancellationService } from '../services/order-cancellation.service
 /**
  * 未支付订单超时取消定时任务
  *
- * 执行频率：每5分钟
+ * 执行频率：每15分钟
  */
 @Injectable()
 export class OrderCancellationTask {
@@ -17,7 +17,7 @@ export class OrderCancellationTask {
     private readonly cancellationService: OrderCancellationService,
   ) {}
 
-  @Cron('0 */5 * * * *') // 每5分钟执行一次
+  @Cron('0 */15 * * * *') // 每15分钟执行一次
   async handleCron() {
     // 检查定时任务是否启用
     const schedulerEnabled =

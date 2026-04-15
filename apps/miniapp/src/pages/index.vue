@@ -393,7 +393,7 @@ function getDefaultImage(type: string, id: string) {
 </script>
 
 <template>
-  <view class="relative min-h-screen bg-surface text-on-surface font-body antialiased">
+  <view class="page-root">
     <!-- 背景品牌图案 -->
     <view class="brand-pattern pointer-events-none fixed left-0 top-0 z--1 h-full w-full" :style="{
       backgroundImage: 'url(../static/bg.png)',
@@ -478,7 +478,7 @@ function getDefaultImage(type: string, id: string) {
             更多优惠 →
           </text>
         </view>
-        <scroll-view class="no-scrollbar overflow-x-auto px-4" scroll-x enable-flex>
+        <scroll-view class="voucher-scroll no-scrollbar px-4" scroll-x enable-flex>
           <view class="flex gap-3 pb-2">
             <view v-for="voucher in vouchers" :key="voucher.id"
               class="voucher-card relative flex flex-none flex-col overflow-hidden rounded-lg p-2 shadow-ambient active-scale-95"
@@ -526,12 +526,14 @@ function getDefaultImage(type: string, id: string) {
             查看全部 →
           </text>
         </view>
-        <scroll-view class="mb-4 flex no-scrollbar overflow-x-auto py-1" scroll-x enable-flex>
-          <view v-for="area in areas" :key="area" class="area-tag"
-            :class="[currentArea === area ? 'area-tag-active' : 'area-tag-inactive']" @click="switchArea(area)">
-            <text class="text-xs font-bold">
-              {{ area }}
-            </text>
+        <scroll-view class="area-scroll mb-4 no-scrollbar py-1" scroll-x enable-flex>
+          <view class="flex gap-2">
+            <view v-for="area in areas" :key="area" class="area-tag"
+              :class="[currentArea === area ? 'area-tag-active' : 'area-tag-inactive']" @click="switchArea(area)">
+              <text class="text-xs font-bold">
+                {{ area }}
+              </text>
+            </view>
           </view>
         </scroll-view>
         <!-- Categories Grid -->
@@ -604,6 +606,19 @@ function getDefaultImage(type: string, id: string) {
 </template>
 
 <style lang="scss" scoped>
+/* 页面根元素 - 强制约束宽度 */
+.page-root {
+  position: relative;
+  min-height: 100vh;
+  background-color: #F5FAFF;
+  color: #1c1c1c;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden; /* 强制防止横向溢出 */
+  width: 100vw;
+  max-width: 100vw;
+}
+
 /* 品牌图案背景 */
 .brand-pattern {
   position: fixed;
@@ -620,6 +635,9 @@ function getDefaultImage(type: string, id: string) {
   position: relative;
   z-index: 10;
   padding-bottom: calc(160rpx + env(safe-area-inset-bottom));
+  overflow-x: hidden; /* 防止横向溢出 */
+  width: 100%;
+  max-width: 100vw;
 }
 
 /* 顶部栏背景 */
@@ -734,15 +752,6 @@ function getDefaultImage(type: string, id: string) {
   cursor: pointer;
   user-select: none;
   min-width: 72rpx;
-  margin: 0 8rpx;
-}
-
-.area-tag:first-child {
-  margin-left: 0;
-}
-
-.area-tag:last-child {
-  margin-right: 0;
 }
 
 .area-tag text {
@@ -792,6 +801,13 @@ function getDefaultImage(type: string, id: string) {
 /* 优惠券卡片背景 */
 .voucher-card-bg {
   background: rgba(255, 255, 255, 0.9);
+}
+
+/* 优惠券横向滚动容器 */
+.voucher-scroll {
+  width: 100%;
+  max-width: 100vw; /* 强制约束最大宽度 */
+  overflow-x: hidden; /* 父容器不溢出，由 scroll-view 内部滚动 */
 }
 
 /* 优惠券卡片 */
@@ -853,6 +869,25 @@ function getDefaultImage(type: string, id: string) {
 /* 新闻日期文字 */
 .news-date-text {
   color: rgba(110, 120, 129, 0.6);
+}
+
+/* 区域标签横向滚动容器 */
+.area-scroll {
+  width: 100%;
+  max-width: 100vw; /* 强制约束最大宽度 */
+  overflow-x: hidden;
+}
+
+/* 隐藏滚动条 */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 
 /* 区域徽章样式 */

@@ -24,10 +24,10 @@ export const handlerRouter = router({
 
   // 创建核销员
   create: permissionProcedure('handler', 'create')
-    .input(CreateHandlerSchema)
+    .input(z.object({ data: CreateHandlerSchema }))
     .mutation(async ({ ctx, input }) => {
       const service = new HandlerService(ctx.prisma);
-      return service.createHandler(input);
+      return service.createHandler(input.data);
     }),
 
   // 更新核销员

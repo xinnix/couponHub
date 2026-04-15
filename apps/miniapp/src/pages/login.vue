@@ -102,6 +102,16 @@ async function navigateAfterLogin() {
     uni.reLaunch({ url: '/pages/index' })
   }
 }
+
+// 跳转到用户协议页面
+function navigateToUserAgreement() {
+  uni.navigateTo({ url: '/pages/agreement/user-agreement' })
+}
+
+// 跳转到隐私政策页面
+function navigateToPrivacyPolicy() {
+  uni.navigateTo({ url: '/pages/agreement/privacy-policy' })
+}
 </script>
 
 <template>
@@ -138,15 +148,15 @@ async function navigateAfterLogin() {
           </view>
         </view>
 
-        <view class="agreement" @tap="agreed = !agreed">
+        <view class="agreement" @tap.stop="agreed = !agreed">
           <view class="checkbox" :class="{ checked: agreed }">
             <text v-if="agreed" class="check-icon">✓</text>
           </view>
           <view class="agreement-text">
             <text class="tip">我已阅读并同意</text>
-            <text class="link">《用户协议》</text>
+            <text class="link" @tap.stop="navigateToUserAgreement">《用户协议》</text>
             <text class="tip">和</text>
-            <text class="link">《隐私政策》</text>
+            <text class="link" @tap.stop="navigateToPrivacyPolicy">《隐私政策》</text>
           </view>
         </view>
       </template>

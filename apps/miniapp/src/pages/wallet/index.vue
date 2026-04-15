@@ -68,7 +68,7 @@ function getExpiry(item: any): string {
 function getSubtitle(item: any): string {
   if (item.template && item.template.description) {
     const desc = item.template.description
-    return desc.length > 8 ? `${desc.slice(0, 8)}...` : desc
+    return desc.length > 16 ? `${desc.slice(0, 16)}...` : desc
   }
   return '全场通用'
 }
@@ -358,9 +358,6 @@ async function handlePay(item: any) {
                   {{ getFaceValue(item) }}
                 </text>
               </view>
-              <text class="coupon-sub">
-                {{ getSubtitle(item) }}
-              </text>
             </view>
 
             <!-- 虚线分隔 -->
@@ -378,6 +375,9 @@ async function handlePay(item: any) {
                   </text>
                 </view>
               </view>
+              <text class="coupon-sub">
+                {{ getSubtitle(item) }}
+              </text>
               <text class="coupon-expiry">
                 有效期至 {{ getExpiry(item) }}
               </text>
@@ -750,15 +750,6 @@ async function handlePay(item: any) {
   letter-spacing: -2rpx;
 }
 
-.coupon-sub {
-  font-size: 18rpx;
-  font-weight: 700;
-  color: rgba(0, 174, 239, 0.7);
-  letter-spacing: 2rpx;
-  text-transform: uppercase;
-  margin-top: 8rpx;
-}
-
 /* 虚线分隔 */
 .coupon-divider {
   width: 2rpx;
@@ -841,6 +832,13 @@ async function handlePay(item: any) {
 
 .status-expired .status-text {
   color: #6e7881;
+}
+
+.coupon-sub {
+  font-size: 24rpx;
+  font-weight: 600;
+  color: rgba(110, 120, 129, 0.8);
+  margin-top: 8rpx;
 }
 
 .coupon-expiry {
