@@ -202,7 +202,18 @@ const sysInfo = uni.getSystemInfoSync()
 statusBarHeight.value = sysInfo.statusBarHeight || 0
 
 function goBack() {
-  uni.navigateBack({ delta: 1 })
+	// 获取当前页面栈
+	const pages = getCurrentPages()
+
+	// 如果页面栈只有当前页面（从分享卡片进入），跳转到首页
+	if (pages.length <= 1) {
+		uni.reLaunch({
+			url: '/pages/home/index',
+		})
+	} else {
+		// 正常返回上一页
+		uni.navigateBack({ delta: 1 })
+	}
 }
 
 onLoad(async (options: any) => {

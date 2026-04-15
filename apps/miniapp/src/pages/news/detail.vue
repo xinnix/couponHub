@@ -84,9 +84,20 @@ function formatDate(dateStr: string) {
   })
 }
 
-// 返回上一页
+// 返回上一页或首页
 function goBack() {
-  uni.navigateBack()
+  // 获取当前页面栈
+  const pages = getCurrentPages()
+
+  // 如果页面栈只有当前页面（从分享卡片进入），跳转到首页
+  if (pages.length <= 1) {
+    uni.reLaunch({
+      url: '/pages/home/index',
+    })
+  } else {
+    // 正常返回上一页
+    uni.navigateBack()
+  }
 }
 
 // 页面加载（支持 scene 参数）
