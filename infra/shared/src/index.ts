@@ -645,8 +645,26 @@ export const CreateCouponTemplateSchema = BaseCouponTemplateSchema.refine(
   }
 );
 
-// 更新券模板 Schema（使用基础 schema 的 partial）
-export const UpdateCouponTemplateSchema = BaseCouponTemplateSchema.partial().refine(
+// 更新券模板 Schema（部分字段可选，NOT NULL 字段需特殊处理）
+export const UpdateCouponTemplateSchema = z.object({
+  title: z.string().min(1, "券标题不能为空").max(100, "标题最多100字").optional(),
+  buyPrice: z.number().nonnegative("购买价格不能为负").min(0, "购买价格不能为负").optional(),
+  faceValue: z.number().positive("面值必须大于0").optional(),
+  settlementAmount: z.number().nonnegative("结算金额不能为负").optional().nullable(),
+  stock: z.number().int().nonnegative("库存不能为负").min(0, "库存不能为负").optional(),
+  claimLimit: z.number().int().positive("每人限领数量必须为正整数").optional().nullable(),
+  validDays: z.number().int().positive("有效天数必须为正整数").optional().nullable(),
+  featuredOnHome: z.boolean().optional(),
+  categoryId: z.string().optional().nullable(), // 商户类别ID（可选）
+  merchantScope: z.array(z.string()).optional(), // 商户ID数组（NOT NULL，但不能设为 null，只能更新为新数组）
+  saleFrom: z.coerce.date().optional(), // 销售开始时间
+  saleUntil: z.coerce.date().optional(), // 销售结束时间
+  useFrom: z.coerce.date().optional(), // 使用开始时间
+  useUntil: z.coerce.date().optional(), // 使用结束时间
+  description: z.string().optional().nullable(),
+  usageRules: CouponRulesSchema.optional().nullable(), // 使用规则（JSON 结构，可选）
+  status: z.enum(["ACTIVE", "EXPIRED", "DISABLED"]).optional(),
+}).refine(
   (data) => {
     // 只有当两个日期都存在时才验证
     if (data.saleFrom && data.saleUntil) {
