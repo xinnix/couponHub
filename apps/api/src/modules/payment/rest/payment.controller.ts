@@ -112,6 +112,10 @@ export class PaymentController {
    *
    * 微信服务器在用户支付成功后主动调用此接口。
    * 无需 JWT 认证，通过签名验证确保请求来自微信。
+   *
+   * 应答规范（官方文档）：
+   * - 验签通过：返回 HTTP 200/204，无需返回应答报文
+   * - 验签不通过：返回 HTTP 5XX/4XX + {"code":"FAIL","message":"失败"}
    */
   @Post('wechat/callback')
   @ApiOperation({ summary: '微信支付回调通知（微信服务器调用）' })
@@ -124,12 +128,12 @@ export class PaymentController {
 
     if (!rawBody) {
       this.logger.error('回调缺少 rawBody');
-      // 微信要求返回 200 状态码和特定 JSON 格式
-      return res.status(200).json({ code: 'SUCCESS', message: 'OK' });
+      // 验签失败，返回 500
+      return res.status(500).json({ code: 'FAIL', message: '缺少请求体' });
     }
 
     try {
-      // 解密回调数据
+      // 解密回调数据（验签）
       const payment = await this.wechatPayService.handleCallback(
         rawBody,
         {
@@ -140,23 +144,24 @@ export class PaymentController {
         },
       );
 
-      // 更新订单状态
+      // 验签成功，先应答 200（微信要求立即应答，避免超时）
+      res.status(200).send();
+
+      // 异步处理业务逻辑（订单更新）
       const order = await this.prisma.order.findUnique({
         where: { id: payment.orderId },
       });
 
       if (!order) {
         this.logger.error(`回调对应的订单不存在: ${payment.orderId}`);
-        // 返回 200 避免微信重试（记录异常日志，后续人工处理）
-        return res.status(200).json({ code: 'SUCCESS', message: 'OK' });
+        return; // 已应答，记录日志后续人工处理
       }
 
       if (order.status !== 'UNPAID') {
         this.logger.warn(
           `订单状态已变更，跳过更新: ${payment.orderNo}, 当前状态: ${order.status}`,
         );
-        // 返回 200 避免微信重试
-        return res.status(200).json({ code: 'SUCCESS', message: 'OK' });
+        return; // 幂等性保护
       }
 
       // 获取券模板信息以计算过期时间
@@ -166,8 +171,7 @@ export class PaymentController {
 
       if (!template) {
         this.logger.error(`订单关联的券模板不存在: ${order.templateId}`);
-        // 返回 200 避免微信重试（记录异常日志，后续人工处理）
-        return res.status(200).json({ code: 'SUCCESS', message: 'OK' });
+        return; // 已应答，记录日志后续人工处理
       }
 
       // 计算过期时间：min(useUntil, paidAt + validDays)
@@ -175,14 +179,10 @@ export class PaymentController {
       let expireAt: Date;
 
       if (template.validDays && template.validDays > 0) {
-        // 相对有效期：购买后X天有效
         const relativeExpireAt = new Date(paidAt);
         relativeExpireAt.setDate(relativeExpireAt.getDate() + template.validDays);
-
-        // 取两者的最小值（确保不超过使用期截止时间）
         expireAt = relativeExpireAt < template.useUntil ? relativeExpireAt : template.useUntil;
       } else {
-        // 无相对有效期，直接使用使用期截止时间
         expireAt = template.useUntil;
       }
 
@@ -192,21 +192,19 @@ export class PaymentController {
           status: 'PAID',
           payId: payment.transactionId,
           paidAt: paidAt,
-          expireAt: expireAt, // 设置订单过期时间
+          expireAt: expireAt,
         },
       });
 
       this.logger.log(
-        `支付回调处理成功: ${payment.orderNo} → ${payment.transactionId}, 使用期: ${template.useFrom.toISOString()} ~ ${template.useUntil.toISOString()}, 过期时间: ${expireAt.toISOString()}`,
+        `支付回调处理成功: ${payment.orderNo} → ${payment.transactionId}, 过期时间: ${expireAt.toISOString()}`,
       );
-
-      // 微信要求返回 200 状态码和特定 JSON 格式
-      return res.status(200).json({ code: 'SUCCESS', message: 'OK' });
     } catch (error: any) {
       this.logger.error('支付回调处理失败', error);
-      // 返回 200 避免微信无限重试（异常记录日志，由补偿机制处理）
-      // 微信重试策略长达12小时，建议业务层自行补偿
-      return res.status(200).json({ code: 'SUCCESS', message: 'OK' });
+      // 验签失败或处理异常，返回 500 + 失败信息
+      if (!res.headersSent) {
+        res.status(500).json({ code: 'FAIL', message: '处理失败' });
+      }
     }
   }
 
@@ -215,6 +213,10 @@ export class PaymentController {
    *
    * 微信服务器在退款状态变更后主动调用此接口。
    * 无需 JWT 认证，通过签名验证确保请求来自微信。
+   *
+   * 应答规范（官方文档）：
+   * - 验签通过：返回 HTTP 200/204，无需返回应答报文
+   * - 验签不通过：返回 HTTP 5XX/4XX + {"code":"FAIL","message":"失败"}
    */
   @Post('wechat/refund-callback')
   @ApiOperation({ summary: '微信退款回调通知（微信服务器调用）' })
@@ -227,12 +229,12 @@ export class PaymentController {
 
     if (!rawBody) {
       this.logger.error('退款回调缺少 rawBody');
-      // 微信要求返回 200 状态码和特定 JSON 格式
-      return res.status(200).json({ code: 'SUCCESS', message: 'OK' });
+      // 验签失败，返回 500
+      return res.status(500).json({ code: 'FAIL', message: '缺少请求体' });
     }
 
     try {
-      // 解密回调数据
+      // 解密回调数据（验签）
       const refund = await this.wechatPayService.handleRefundCallback(
         rawBody,
         {
@@ -243,36 +245,31 @@ export class PaymentController {
         },
       );
 
-      // 根据订单号查询订单
+      // 验签成功，先应答 200（微信要求立即应答，避免超时）
+      res.status(200).send();
+
+      // 异步处理业务逻辑（订单状态更新）
       const order = await this.prisma.order.findUnique({
         where: { orderNo: refund.orderNo },
       });
 
       if (!order) {
         this.logger.error(`退款回调对应的订单不存在: ${refund.orderNo}`);
-        // 返回 200 避免微信重试（记录异常日志，后续人工处理）
-        return res.status(200).json({ code: 'SUCCESS', message: 'OK' });
+        return; // 已应答，记录日志后续人工处理
       }
 
-      // 检查订单状态是否为 REFUNDING
       if (order.status !== 'REFUNDING') {
         this.logger.warn(
           `订单状态非退款中，跳过更新: ${refund.orderNo}, 当前状态: ${order.status}`,
         );
-        // 返回 200 避免微信重试
-        return res.status(200).json({ code: 'SUCCESS', message: 'OK' });
+        return; // 幂等性保护
       }
 
       // 根据退款状态更新订单
       if (refund.refundStatus === 'SUCCESS') {
-        // ✅ 调用 OrderService.confirmRefund 恢复库存
         await this.orderService.confirmRefund(order.id, refund.refundId);
-
-        this.logger.log(
-          `退款回调处理成功: ${refund.orderNo} → ${refund.refundId}`,
-        );
+        this.logger.log(`退款回调处理成功: ${refund.orderNo} → ${refund.refundId}`);
       } else if (refund.refundStatus === 'CLOSED' || refund.refundStatus === 'ABNORMAL') {
-        // 退款关闭或异常，恢复订单状态为 PAID
         await this.prisma.order.update({
           where: { id: order.id },
           data: {
@@ -280,19 +277,14 @@ export class PaymentController {
             refundReason: `退款失败: ${refund.refundStatus}`,
           },
         });
-
-        this.logger.warn(
-          `退款异常: ${refund.orderNo}, 状态: ${refund.refundStatus}`,
-        );
+        this.logger.warn(`退款异常: ${refund.orderNo}, 状态: ${refund.refundStatus}`);
       }
-
-      // 微信要求返回 200 状态码和特定 JSON 格式
-      return res.status(200).json({ code: 'SUCCESS', message: 'OK' });
     } catch (error: any) {
       this.logger.error('退款回调处理失败', error);
-      // 返回 200 避免微信无限重试（异常记录日志，由补偿机制处理）
-      // 微信重试策略长达12小时，建议业务层自行补偿
-      return res.status(200).json({ code: 'SUCCESS', message: 'OK' });
+      // 验签失败或处理异常，返回 500 + 失败信息
+      if (!res.headersSent) {
+        res.status(500).json({ code: 'FAIL', message: '处理失败' });
+      }
     }
   }
 
