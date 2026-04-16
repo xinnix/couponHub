@@ -125,6 +125,9 @@ function AppContent() {
                   name: "role",
                   list: "/roles",
                 },
+                {
+                  name: "handler",
+                },
               ]}
             >
               <Routes>

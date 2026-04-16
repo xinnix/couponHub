@@ -1,6 +1,6 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useCreate, useUpdate } from "@refinedev/core";
+import { useQueryClient } from "@tanstack/react-query";
 import { Form, Input, Switch, Button, Space, App } from "antd";
-import { trpcClient } from "../../../shared/dataProvider";
 
 interface Handler {
   id: string;
@@ -21,30 +21,8 @@ export const HandlerForm = ({ merchantId, handler, onSuccess }: HandlerFormProps
   const queryClient = useQueryClient();
   const [form] = Form.useForm();
 
-  const createMutation = useMutation({
-    mutationFn: (data: any) => (trpcClient as any).handler.create.mutate(data),
-    onSuccess: () => {
-      message.success("创建成功");
-      queryClient.invalidateQueries({ queryKey: ["handler"] });
-      onSuccess();
-    },
-    onError: (error: any) => {
-      message.error(error.message || "创建失败");
-    },
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: any }) =>
-      (trpcClient as any).handler.update.mutate({ id, data }),
-    onSuccess: () => {
-      message.success("更新成功");
-      queryClient.invalidateQueries({ queryKey: ["handler"] });
-      onSuccess();
-    },
-    onError: (error: any) => {
-      message.error(error.message || "更新失败");
-    },
-  });
+  const { mutate: createHandler, isLoading: isCreating } = useCreate();
+  const { mutate: updateHandler, isLoading: isUpdating } = useUpdate();
 
   const onFinish = (values: any) => {
     const data = {
@@ -53,9 +31,33 @@ export const HandlerForm = ({ merchantId, handler, onSuccess }: HandlerFormProps
     };
 
     if (handler) {
-      updateMutation.mutate({ id: handler.id, data });
+      updateHandler(
+        { resource: "handler", id: handler.id, values: data },
+        {
+          onSuccess: () => {
+            message.success("更新成功");
+            queryClient.invalidateQueries({ queryKey: ["handler"] });
+            onSuccess();
+          },
+          onError: (error: any) => {
+            message.error(error.message || "更新失败");
+          },
+        }
+      );
     } else {
-      createMutation.mutate(data);
+      createHandler(
+        { resource: "handler", values: data },
+        {
+          onSuccess: () => {
+            message.success("创建成功");
+            queryClient.invalidateQueries({ queryKey: ["handler"] });
+            onSuccess();
+          },
+          onError: (error: any) => {
+            message.error(error.message || "创建失败");
+          },
+        }
+      );
     }
   };
 
@@ -108,7 +110,7 @@ export const HandlerForm = ({ merchantId, handler, onSuccess }: HandlerFormProps
           <Button
             type="primary"
             htmlType="submit"
-            loading={createMutation.isLoading || updateMutation.isLoading}
+            loading={isCreating || isUpdating}
           >
             {handler ? "更新" : "创建"}
           </Button>
