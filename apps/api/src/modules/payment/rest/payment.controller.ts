@@ -8,6 +8,7 @@ import {
   Param,
   Post,
   Req,
+  Res,
   UseGuards,
   Logger,
   RawBodyRequest,
@@ -18,7 +19,7 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
-import { Request } from 'express';
+import { Request, Response } from 'express';
 import { z } from 'zod';
 import { JwtAuthGuard } from '../../../core/guards/jwt.guard';
 import { CurrentUser } from '../../auth/decorators/decorators';
@@ -116,13 +117,15 @@ export class PaymentController {
   @ApiOperation({ summary: '微信支付回调通知（微信服务器调用）' })
   async wechatCallback(
     @Req() req: Request,
+    @Res() res: Response,
     @Headers() headers: Record<string, string>,
   ) {
     const rawBody = (req as any).rawBody;
 
     if (!rawBody) {
       this.logger.error('回调缺少 rawBody');
-      throw new BadRequestException('Invalid request');
+      // 微信要求返回 200 状态码和特定 JSON 格式
+      return res.status(200).json({ code: 'SUCCESS', message: 'OK' });
     }
 
     try {
@@ -144,15 +147,16 @@ export class PaymentController {
 
       if (!order) {
         this.logger.error(`回调对应的订单不存在: ${payment.orderId}`);
-        throw new BadRequestException('Order not found');
+        // 返回 200 避免微信重试（记录异常日志，后续人工处理）
+        return res.status(200).json({ code: 'SUCCESS', message: 'OK' });
       }
 
       if (order.status !== 'UNPAID') {
         this.logger.warn(
           `订单状态已变更，跳过更新: ${payment.orderNo}, 当前状态: ${order.status}`,
         );
-        // 返回成功避免微信重试
-        return { code: 'SUCCESS', message: 'OK' };
+        // 返回 200 避免微信重试
+        return res.status(200).json({ code: 'SUCCESS', message: 'OK' });
       }
 
       // 获取券模板信息以计算过期时间
@@ -162,7 +166,8 @@ export class PaymentController {
 
       if (!template) {
         this.logger.error(`订单关联的券模板不存在: ${order.templateId}`);
-        throw new BadRequestException('Template not found');
+        // 返回 200 避免微信重试（记录异常日志，后续人工处理）
+        return res.status(200).json({ code: 'SUCCESS', message: 'OK' });
       }
 
       // 计算过期时间：min(useUntil, paidAt + validDays)
@@ -195,12 +200,13 @@ export class PaymentController {
         `支付回调处理成功: ${payment.orderNo} → ${payment.transactionId}, 使用期: ${template.useFrom.toISOString()} ~ ${template.useUntil.toISOString()}, 过期时间: ${expireAt.toISOString()}`,
       );
 
-      // 微信要求返回此格式
-      return { code: 'SUCCESS', message: 'OK' };
+      // 微信要求返回 200 状态码和特定 JSON 格式
+      return res.status(200).json({ code: 'SUCCESS', message: 'OK' });
     } catch (error: any) {
       this.logger.error('支付回调处理失败', error);
-      // 返回失败让微信重试
-      return { code: 'FAIL', message: error.message || 'Internal error' };
+      // 返回 200 避免微信无限重试（异常记录日志，由补偿机制处理）
+      // 微信重试策略长达12小时，建议业务层自行补偿
+      return res.status(200).json({ code: 'SUCCESS', message: 'OK' });
     }
   }
 
@@ -214,13 +220,15 @@ export class PaymentController {
   @ApiOperation({ summary: '微信退款回调通知（微信服务器调用）' })
   async refundCallback(
     @Req() req: Request,
+    @Res() res: Response,
     @Headers() headers: Record<string, string>,
   ) {
     const rawBody = (req as any).rawBody;
 
     if (!rawBody) {
       this.logger.error('退款回调缺少 rawBody');
-      throw new BadRequestException('Invalid request');
+      // 微信要求返回 200 状态码和特定 JSON 格式
+      return res.status(200).json({ code: 'SUCCESS', message: 'OK' });
     }
 
     try {
@@ -242,7 +250,8 @@ export class PaymentController {
 
       if (!order) {
         this.logger.error(`退款回调对应的订单不存在: ${refund.orderNo}`);
-        throw new BadRequestException('Order not found');
+        // 返回 200 避免微信重试（记录异常日志，后续人工处理）
+        return res.status(200).json({ code: 'SUCCESS', message: 'OK' });
       }
 
       // 检查订单状态是否为 REFUNDING
@@ -250,8 +259,8 @@ export class PaymentController {
         this.logger.warn(
           `订单状态非退款中，跳过更新: ${refund.orderNo}, 当前状态: ${order.status}`,
         );
-        // 返回成功避免微信重试
-        return { code: 'SUCCESS', message: 'OK' };
+        // 返回 200 避免微信重试
+        return res.status(200).json({ code: 'SUCCESS', message: 'OK' });
       }
 
       // 根据退款状态更新订单
@@ -277,12 +286,13 @@ export class PaymentController {
         );
       }
 
-      // 微信要求返回此格式
-      return { code: 'SUCCESS', message: 'OK' };
+      // 微信要求返回 200 状态码和特定 JSON 格式
+      return res.status(200).json({ code: 'SUCCESS', message: 'OK' });
     } catch (error: any) {
       this.logger.error('退款回调处理失败', error);
-      // 返回失败让微信重试
-      return { code: 'FAIL', message: error.message || 'Internal error' };
+      // 返回 200 避免微信无限重试（异常记录日志，由补偿机制处理）
+      // 微信重试策略长达12小时，建议业务层自行补偿
+      return res.status(200).json({ code: 'SUCCESS', message: 'OK' });
     }
   }
 

@@ -239,20 +239,13 @@ export class OrderService extends BaseService<'Order'> {
       throw new BadRequestException('只有已支付的订单可以退款');
     }
 
-    // 验证是否已核销
+    // 验证是否已核销（核销是退款的关键判断条件）
     if (order.redeemedAt) {
       throw new BadRequestException('已核销的订单无法退款');
     }
 
-    // 验证有效期（检查订单的 expireAt）
-    if (order.expireAt && new Date(order.expireAt) < new Date()) {
-      throw new BadRequestException('订单已过期，请申请过期退款');
-    }
-
-    // 验证是否在使用期内（如果已过期但还在使用期内，仍然可以退款）
-    if (order.template.useUntil < new Date()) {
-      throw new BadRequestException('已超过使用期截止时间，无法退款');
-    }
+    // 注意：过期不应该阻止退款
+    // 只要订单未被核销使用，用户就有权申请退款返还资金
 
     // 更新订单状态为退款中
     await this.prisma.order.update({

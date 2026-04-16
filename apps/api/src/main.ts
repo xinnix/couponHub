@@ -32,11 +32,12 @@ async function bootstrap() {
     origin: corsOrigin === "*" ? "*" : corsOrigin.split(","),
   });
 
-  // 捕获 raw body 用于微信支付回调验签
+  // 捕获 raw body 用于微信支付/退款回调验签
   app.use(
     json({
       verify: (req: any, _res, buf) => {
-        if (req.url?.includes("/payments/wechat/callback")) {
+        if (req.url?.includes("/payments/wechat/callback") ||
+            req.url?.includes("/payments/wechat/refund-callback")) {
           req.rawBody = buf.toString();
         }
       },
