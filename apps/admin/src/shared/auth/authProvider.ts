@@ -5,13 +5,13 @@ import { getTrpcClient } from "../trpc/trpcClient";
 const trpcClient = getTrpcClient();
 
 export const authProvider: AuthProvider = {
-  login: async ({ email, password }) => {
+  login: async ({ username, password }) => {
     try {
-      console.log("authProvider: 尝试登录", email);
+      console.log("authProvider: 尝试登录", username);
 
       // Use tRPC mutation - returns data directly
       const result = await (trpcClient as any).auth.adminLogin.mutate({
-        email,
+        username,
         password,
       });
 
@@ -114,11 +114,17 @@ export const authProvider: AuthProvider = {
     }
 
     const user = JSON.parse(userStr);
+    console.log('authProvider getIdentity - user data:', user);
+    console.log('authProvider getIdentity - permissions:', user.permissions);
+    console.log('authProvider getIdentity - roles:', user.roles);
+
     return Promise.resolve({
       id: user.id,
       username: user.username,
       email: user.email,
       avatar: user.avatar,
+      permissions: user.permissions || [],
+      roles: user.roles || [],
     });
   },
 };

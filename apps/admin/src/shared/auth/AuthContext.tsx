@@ -5,7 +5,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   user: any;
-  login: (email: string, password: string) => Promise<void>;
+  login: (username: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -41,8 +41,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     checkAuth();
   }, []); // Run once on mount
 
-  const login = useCallback(async (email: string, password: string) => {
-    const result = await authProvider.login({ email, password });
+  const login = useCallback(async (username: string, password: string) => {
+    const result = await authProvider.login({ username, password });
 
     // Check if login failed
     if (!result.success) {
