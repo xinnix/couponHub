@@ -1,11 +1,29 @@
-import { Form, Input, Switch } from "antd";
+import { Form, Input, Switch, Select, Space, Tag } from "antd";
+import { useEffect } from "react";
+
+interface Role {
+  id: string;
+  name: string;
+  slug: string;
+  level: number;
+  description?: string;
+}
 
 interface AdminFormProps {
   form: any;
   isEdit: boolean;
+  roles?: Role[];
+  currentRoles?: string[]; // 当前管理员的角色 ID 列表（编辑时使用）
 }
 
-export const AdminForm: React.FC<AdminFormProps> = ({ form, isEdit }) => {
+export const AdminForm: React.FC<AdminFormProps> = ({ form, isEdit, roles = [], currentRoles = [] }) => {
+  // 编辑模式下，初始化角色字段
+  useEffect(() => {
+    if (isEdit && currentRoles.length > 0) {
+      form.setFieldValue("roleIds", currentRoles);
+    }
+  }, [isEdit, currentRoles, form]);
+
   return (
     <Form form={form} layout="vertical">
       <Form.Item
@@ -46,6 +64,26 @@ export const AdminForm: React.FC<AdminFormProps> = ({ form, isEdit }) => {
 
       <Form.Item name="lastName" label="姓">
         <Input placeholder="请输入姓" />
+      </Form.Item>
+
+      <Form.Item name="roleIds" label="角色">
+        <Select
+          mode="multiple"
+          placeholder="请选择角色"
+          optionFilterProp="label"
+          style={{ width: "100%" }}
+          options={roles.map((role) => ({
+            value: role.id,
+            label: (
+              <Space>
+                <Tag color={role.level <= 5 ? "red" : role.level <= 10 ? "blue" : "default"}>
+                  {role.name}
+                </Tag>
+                <span style={{ fontSize: 12, color: "#999" }}>{role.slug}</span>
+              </Space>
+            ),
+          }))}
+        />
       </Form.Item>
 
       <Form.Item name="isActive" label="启用状态" valuePropName="checked" initialValue={true}>

@@ -95,6 +95,20 @@ export const AdminListPage = () => {
     ],
   });
 
+  // 获取所有角色列表
+  const { result: rolesResult } = useList({
+    resource: "role",
+    pagination: { pageSize: 100 },
+  });
+
+  const allRoles = ((rolesResult as any)?.data || []).map((r: any) => ({
+    id: r.id,
+    name: r.name,
+    slug: r.slug,
+    level: r.level,
+    description: r.description,
+  }));
+
   const handleCreate = () => {
     setEditingRecord(null);
     form.resetFields();
@@ -103,7 +117,10 @@ export const AdminListPage = () => {
 
   const handleEdit = (record: AdminRecord) => {
     setEditingRecord(record);
-    form.setFieldsValue(record);
+    form.setFieldsValue({
+      ...record,
+      roleIds: record.roles.map((r) => r.id),
+    });
     setIsModalVisible(true);
   };
 
@@ -141,15 +158,46 @@ export const AdminListPage = () => {
   const handleSubmit = async () => {
     try {
       const values = await form.validateFields();
+      const { roleIds, ...adminData } = values;
 
       if (editingRecord) {
+        // 更新管理员基本信息
         update(
-          { resource: "admin", id: editingRecord.id, values },
+          { resource: "admin", id: editingRecord.id, values: adminData },
           {
-            onSuccess: () => {
-              message.success("更新成功");
-              setIsModalVisible(false);
-              query.refetch();
+            onSuccess: async () => {
+              // 处理角色变更
+              const currentRoleIds = editingRecord.roles.map((r) => r.id);
+              const newRoleIds = roleIds || [];
+
+              // 找出需要添加的角色
+              const rolesToAdd = newRoleIds.filter((id: string) => !currentRoleIds.includes(id));
+              // 找出需要移除的角色
+              const rolesToRemove = currentRoleIds.filter((id) => !newRoleIds.includes(id));
+
+              try {
+                // 批量添加角色
+                for (const roleId of rolesToAdd) {
+                  await (trpcClient as any).admin.assignRole.mutate({
+                    adminId: editingRecord.id,
+                    roleId,
+                  });
+                }
+
+                // 批量移除角色
+                for (const roleId of rolesToRemove) {
+                  await (trpcClient as any).admin.removeRole.mutate({
+                    adminId: editingRecord.id,
+                    roleId,
+                  });
+                }
+
+                message.success("更新成功");
+                setIsModalVisible(false);
+                query.refetch();
+              } catch (error: any) {
+                message.error(error.message || "角色分配失败");
+              }
             },
             onError: (error: any) => {
               message.error(error.message || "更新失败");
@@ -157,13 +205,49 @@ export const AdminListPage = () => {
           }
         );
       } else {
+        // 创建管理员
         create(
-          { resource: "admin", values },
+          { resource: "admin", values: adminData },
           {
-            onSuccess: () => {
-              message.success("创建成功");
-              setIsModalVisible(false);
-              query.refetch();
+            onSuccess: async (response: any) => {
+              // 处理角色分配
+              const newAdminId = response.id;
+              const selectedRoleIds = roleIds || [];
+
+              if (selectedRoleIds.length > 0) {
+                try {
+                  // 移除默认的 viewer 角色（如果存在）
+                  const viewerRole = allRoles.find((r) => r.slug === "viewer");
+                  if (viewerRole && !selectedRoleIds.includes(viewerRole.id)) {
+                    try {
+                      await (trpcClient as any).admin.removeRole.mutate({
+                        adminId: newAdminId,
+                        roleId: viewerRole.id,
+                      });
+                    } catch (e) {
+                      // 忽略移除失败的情况（可能没有 viewer 角色）
+                    }
+                  }
+
+                  // 分配用户选择的角色
+                  for (const roleId of selectedRoleIds) {
+                    await (trpcClient as any).admin.assignRole.mutate({
+                      adminId: newAdminId,
+                      roleId,
+                    });
+                  }
+
+                  message.success("创建成功");
+                  setIsModalVisible(false);
+                  query.refetch();
+                } catch (error: any) {
+                  message.error(error.message || "角色分配失败");
+                }
+              } else {
+                message.success("创建成功");
+                setIsModalVisible(false);
+                query.refetch();
+              }
             },
             onError: (error: any) => {
               message.error(error.message || "创建失败");
@@ -373,7 +457,12 @@ export const AdminListPage = () => {
             cancelText="取消"
             width={600}
           >
-            <AdminForm form={form} isEdit={!!editingRecord} />
+            <AdminForm
+              form={form}
+              isEdit={!!editingRecord}
+              roles={allRoles}
+              currentRoles={editingRecord?.roles.map((r) => r.id) || []}
+            />
           </Modal>
 
           <Modal

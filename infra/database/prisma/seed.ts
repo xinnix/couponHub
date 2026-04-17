@@ -1,7 +1,17 @@
 import * as bcrypt from 'bcryptjs';
 import { PrismaClient } from '@opencode/database';
+import { PrismaPg } from '@prisma/adapter-pg';
+import { Pool } from 'pg';
 
-const prisma = new PrismaClient();
+const connectionString = process.env.DATABASE_URL;
+if (!connectionString) {
+  throw new Error('DATABASE_URL environment variable is not set');
+}
+
+const pool = new Pool({ connectionString });
+const adapter = new PrismaPg(pool);
+
+const prisma = new PrismaClient({ adapter });
 
 async function main() {
   console.log('🌱 Starting seed...');
@@ -98,6 +108,212 @@ async function main() {
       where: { resource_action: { resource: 'role', action: 'delete' } },
       update: {},
       create: { resource: 'role', action: 'delete', description: '删除角色' },
+    }),
+
+    // Menu permissions (菜单可见性权限)
+    prisma.permission.upsert({
+      where: { resource_action: { resource: 'menu', action: 'dashboard' } },
+      update: {},
+      create: { resource: 'menu', action: 'dashboard', description: '仪表盘菜单' },
+    }),
+    prisma.permission.upsert({
+      where: { resource_action: { resource: 'menu', action: 'merchants' } },
+      update: {},
+      create: { resource: 'menu', action: 'merchants', description: '商户管理菜单' },
+    }),
+    prisma.permission.upsert({
+      where: { resource_action: { resource: 'menu', action: 'merchant-categories' } },
+      update: {},
+      create: { resource: 'menu', action: 'merchant-categories', description: '商户分类菜单' },
+    }),
+    prisma.permission.upsert({
+      where: { resource_action: { resource: 'menu', action: 'coupon-templates' } },
+      update: {},
+      create: { resource: 'menu', action: 'coupon-templates', description: '券模板管理菜单' },
+    }),
+    prisma.permission.upsert({
+      where: { resource_action: { resource: 'menu', action: 'orders' } },
+      update: {},
+      create: { resource: 'menu', action: 'orders', description: '订单管理菜单' },
+    }),
+    prisma.permission.upsert({
+      where: { resource_action: { resource: 'menu', action: 'settlements' } },
+      update: {},
+      create: { resource: 'menu', action: 'settlements', description: '结算管理菜单' },
+    }),
+    prisma.permission.upsert({
+      where: { resource_action: { resource: 'menu', action: 'redemptions' } },
+      update: {},
+      create: { resource: 'menu', action: 'redemptions', description: '核销记录菜单' },
+    }),
+    prisma.permission.upsert({
+      where: { resource_action: { resource: 'menu', action: 'users' } },
+      update: {},
+      create: { resource: 'menu', action: 'users', description: '用户管理菜单' },
+    }),
+    prisma.permission.upsert({
+      where: { resource_action: { resource: 'menu', action: 'news' } },
+      update: {},
+      create: { resource: 'menu', action: 'news', description: '新闻管理菜单' },
+    }),
+    prisma.permission.upsert({
+      where: { resource_action: { resource: 'menu', action: 'admins' } },
+      update: {},
+      create: { resource: 'menu', action: 'admins', description: '管理员管理菜单' },
+    }),
+    prisma.permission.upsert({
+      where: { resource_action: { resource: 'menu', action: 'roles' } },
+      update: {},
+      create: { resource: 'menu', action: 'roles', description: '角色管理菜单' },
+    }),
+
+    // Merchant permissions (商户管理)
+    prisma.permission.upsert({
+      where: { resource_action: { resource: 'merchant', action: 'create' } },
+      update: {},
+      create: { resource: 'merchant', action: 'create', description: '创建商户' },
+    }),
+    prisma.permission.upsert({
+      where: { resource_action: { resource: 'merchant', action: 'read' } },
+      update: {},
+      create: { resource: 'merchant', action: 'read', description: '查看商户' },
+    }),
+    prisma.permission.upsert({
+      where: { resource_action: { resource: 'merchant', action: 'update' } },
+      update: {},
+      create: { resource: 'merchant', action: 'update', description: '更新商户' },
+    }),
+    prisma.permission.upsert({
+      where: { resource_action: { resource: 'merchant', action: 'delete' } },
+      update: {},
+      create: { resource: 'merchant', action: 'delete', description: '删除商户' },
+    }),
+
+    // MerchantCategory permissions (商户分类管理)
+    prisma.permission.upsert({
+      where: { resource_action: { resource: 'merchantCategory', action: 'create' } },
+      update: {},
+      create: { resource: 'merchantCategory', action: 'create', description: '创建商户分类' },
+    }),
+    prisma.permission.upsert({
+      where: { resource_action: { resource: 'merchantCategory', action: 'read' } },
+      update: {},
+      create: { resource: 'merchantCategory', action: 'read', description: '查看商户分类' },
+    }),
+    prisma.permission.upsert({
+      where: { resource_action: { resource: 'merchantCategory', action: 'update' } },
+      update: {},
+      create: { resource: 'merchantCategory', action: 'update', description: '更新商户分类' },
+    }),
+    prisma.permission.upsert({
+      where: { resource_action: { resource: 'merchantCategory', action: 'delete' } },
+      update: {},
+      create: { resource: 'merchantCategory', action: 'delete', description: '删除商户分类' },
+    }),
+
+    // News permissions (新闻管理)
+    prisma.permission.upsert({
+      where: { resource_action: { resource: 'news', action: 'create' } },
+      update: {},
+      create: { resource: 'news', action: 'create', description: '创建新闻' },
+    }),
+    prisma.permission.upsert({
+      where: { resource_action: { resource: 'news', action: 'read' } },
+      update: {},
+      create: { resource: 'news', action: 'read', description: '查看新闻' },
+    }),
+    prisma.permission.upsert({
+      where: { resource_action: { resource: 'news', action: 'update' } },
+      update: {},
+      create: { resource: 'news', action: 'update', description: '更新新闻' },
+    }),
+    prisma.permission.upsert({
+      where: { resource_action: { resource: 'news', action: 'delete' } },
+      update: {},
+      create: { resource: 'news', action: 'delete', description: '删除新闻' },
+    }),
+
+    // CouponTemplate permissions (券模板管理)
+    prisma.permission.upsert({
+      where: { resource_action: { resource: 'couponTemplate', action: 'create' } },
+      update: {},
+      create: { resource: 'couponTemplate', action: 'create', description: '创建券模板' },
+    }),
+    prisma.permission.upsert({
+      where: { resource_action: { resource: 'couponTemplate', action: 'read' } },
+      update: {},
+      create: { resource: 'couponTemplate', action: 'read', description: '查看券模板' },
+    }),
+    prisma.permission.upsert({
+      where: { resource_action: { resource: 'couponTemplate', action: 'update' } },
+      update: {},
+      create: { resource: 'couponTemplate', action: 'update', description: '更新券模板' },
+    }),
+    prisma.permission.upsert({
+      where: { resource_action: { resource: 'couponTemplate', action: 'delete' } },
+      update: {},
+      create: { resource: 'couponTemplate', action: 'delete', description: '删除券模板' },
+    }),
+    prisma.permission.upsert({
+      where: { resource_action: { resource: 'couponTemplate', action: 'adjust_stock' } },
+      update: {},
+      create: { resource: 'couponTemplate', action: 'adjust_stock', description: '调整券模板库存' },
+    }),
+
+    // Order permissions (订单管理 - 管理端)
+    prisma.permission.upsert({
+      where: { resource_action: { resource: 'order', action: 'read' } },
+      update: {},
+      create: { resource: 'order', action: 'read', description: '查看订单' },
+    }),
+    prisma.permission.upsert({
+      where: { resource_action: { resource: 'order', action: 'approve_refund' } },
+      update: {},
+      create: { resource: 'order', action: 'approve_refund', description: '审批退款' },
+    }),
+    prisma.permission.upsert({
+      where: { resource_action: { resource: 'order', action: 'reject_refund' } },
+      update: {},
+      create: { resource: 'order', action: 'reject_refund', description: '拒绝退款' },
+    }),
+
+    // Settlement permissions (结算管理)
+    prisma.permission.upsert({
+      where: { resource_action: { resource: 'settlement', action: 'read' } },
+      update: {},
+      create: { resource: 'settlement', action: 'read', description: '查看结算' },
+    }),
+    prisma.permission.upsert({
+      where: { resource_action: { resource: 'settlement', action: 'confirm' } },
+      update: {},
+      create: { resource: 'settlement', action: 'confirm', description: '确认结算' },
+    }),
+    prisma.permission.upsert({
+      where: { resource_action: { resource: 'settlement', action: 'mark_paid' } },
+      update: {},
+      create: { resource: 'settlement', action: 'mark_paid', description: '标记已支付' },
+    }),
+
+    // Handler permissions (核销员管理 - 补全)
+    prisma.permission.upsert({
+      where: { resource_action: { resource: 'handler', action: 'create' } },
+      update: {},
+      create: { resource: 'handler', action: 'create', description: '创建核销员' },
+    }),
+    prisma.permission.upsert({
+      where: { resource_action: { resource: 'handler', action: 'read' } },
+      update: {},
+      create: { resource: 'handler', action: 'read', description: '查看核销员' },
+    }),
+    prisma.permission.upsert({
+      where: { resource_action: { resource: 'handler', action: 'update' } },
+      update: {},
+      create: { resource: 'handler', action: 'update', description: '更新核销员' },
+    }),
+    prisma.permission.upsert({
+      where: { resource_action: { resource: 'handler', action: 'delete' } },
+      update: {},
+      create: { resource: 'handler', action: 'delete', description: '删除核销员' },
     }),
   ]);
 
@@ -495,8 +711,10 @@ async function main() {
         faceValue: 100,
         stock: 1000,
         merchantScope: [merchant1.id],
-        validFrom: now,
-        validUntil: nextMonth,
+        saleFrom: now,
+        saleUntil: nextMonth,
+        useFrom: now,
+        useUntil: nextMonth,
         description: '适用于海底捞火锅全场消费，每人每次限用2张',
         status: 'ACTIVE',
       },
@@ -506,8 +724,10 @@ async function main() {
         faceValue: 30,
         stock: 500,
         merchantScope: [merchant2.id],
-        validFrom: now,
-        validUntil: nextYear,
+        saleFrom: now,
+        saleUntil: nextYear,
+        useFrom: now,
+        useUntil: nextYear,
         description: '适用于星巴克全场饮品，不限时段',
         status: 'ACTIVE',
       },
@@ -517,8 +737,10 @@ async function main() {
         faceValue: 50,
         stock: 2000,
         merchantScope: [merchant3.id],
-        validFrom: now,
-        validUntil: nextMonth,
+        saleFrom: now,
+        saleUntil: nextMonth,
+        useFrom: now,
+        useUntil: nextMonth,
         description: '万达影城2D/3D通用，节假日可用',
         status: 'ACTIVE',
       },
@@ -528,8 +750,10 @@ async function main() {
         faceValue: 100,
         stock: 300,
         merchantScope: [merchant1.id, merchant2.id],
-        validFrom: now,
-        validUntil: nextMonth,
+        saleFrom: now,
+        saleUntil: nextMonth,
+        useFrom: now,
+        useUntil: nextMonth,
         description: '适用于所有餐饮类商户',
         status: 'ACTIVE',
       },
@@ -541,10 +765,10 @@ async function main() {
 
   // 获取刚创建的券模板
   const allTemplates = await prisma.couponTemplate.findMany();
-  const template1 = allTemplates.find((t) => t.title.includes('火锅券'))!;
-  const template2 = allTemplates.find((t) => t.title.includes('饮品券'))!;
-  const template3 = allTemplates.find((t) => t.title.includes('观影券'))!;
-  const template4 = allTemplates.find((t) => t.title.includes('通用券'))!;
+  const template1 = allTemplates.find((t) => t.title.includes('火锅'))!;
+  const template2 = allTemplates.find((t) => t.title.includes('星巴克') || t.title.includes('饮品'))!;
+  const template3 = allTemplates.find((t) => t.title.includes('观影') || t.title.includes('9.9'))!;
+  const template4 = allTemplates.find((t) => t.title.includes('通用'))!;
 
   // ============================================
   // 10. Create Demo Orders
@@ -627,7 +851,6 @@ async function main() {
         title: '春季美食节盛大开幕',
         bannerUrl: 'https://example.com/news1.jpg',
         content: '<p>春季美食节活动火热进行中！</p><p>参与商户：海底捞、星巴克、肯德基等</p><p>活动时间：2024年3月1日-3月31日</p>',
-        linkedCouponId: template4.id,
         viewCount: 1523,
         status: 'PUBLISHED',
       },

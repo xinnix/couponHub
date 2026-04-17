@@ -18,18 +18,46 @@ interface Permission {
 }
 
 const RESOURCE_LABELS: Record<string, string> = {
+  menu: "菜单权限",
   todo: "待办事项",
   user: "用户管理",
   role: "角色管理",
+  handler: "核销员管理",
+  admin: "管理员管理",
+  merchant: "商户管理",
+  merchantCategory: "商户分类管理",
+  news: "新闻管理",
+  couponTemplate: "券模板管理",
+  order: "订单管理",
+  settlement: "结算管理",
   settings: "系统设置",
 };
 
 const ACTION_LABELS: Record<string, string> = {
+  // 菜单权限 action
+  dashboard: "仪表盘",
+  merchants: "商户管理",
+  merchant_categories: "商户分类管理",
+  coupon_templates: "券模板管理",
+  orders: "订单管理",
+  settlements: "结算管理",
+  redemptions: "核销记录",
+  users: "用户管理",
+  news: "新闻管理",
+  admins: "管理员管理",
+  roles: "角色管理",
+  // 标准 CRUD action
   create: "创建",
   read: "读取",
   update: "更新",
   delete: "删除",
+  // 特殊 action
   manage_roles: "管理角色",
+  adjust_stock: "调整库存",
+  approve_refund: "审批退款",
+  reject_refund: "拒绝退款",
+  confirm: "确认结算",
+  mark_paid: "标记已支付",
 };
 
 export const PermissionCheckboxGroup = ({ selectedIds, onChange }: PermissionCheckboxGroupProps) => {
