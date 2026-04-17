@@ -1,6 +1,6 @@
 // apps/admin/src/modules/merchantCategory/pages/MerchantCategoryListPage.tsx
 import { useState } from "react";
-import { useList, useCreate, useUpdate, useDelete } from "@refinedev/core";
+import { useTable, useCreate, useUpdate, useDelete } from "@refinedev/core";
 import { List } from "@refinedev/antd";
 import {
   Table, Button, Modal, Form, Input, InputNumber, Select, Space, Tag, Popconfirm, Card, App
@@ -32,10 +32,19 @@ export const MerchantCategoryListPage = () => {
   const { mutate: update } = useUpdate();
   const { mutate: deleteOne } = useDelete();
 
-  const { result, query } = useList<MerchantCategory>({
+  const {
+    tableQuery,
+    currentPage,
+    setCurrentPage,
+    pageSize,
+    setPageSize,
+  } = useTable<MerchantCategory>({
     resource: "merchantCategory",
     pagination: { pageSize: 20 },
   });
+
+  const result = tableQuery.data;
+  const query = tableQuery;
 
   const handleSubmit = async () => {
     try {
@@ -156,9 +165,17 @@ export const MerchantCategoryListPage = () => {
             dataSource={categories}
             loading={query.isLoading}
             pagination={{
-              pageSize: 20,
+              current: currentPage,
+              pageSize: pageSize,
               total: result?.total || 0,
               showTotal: (total) => `共 ${total} 条`,
+              onChange: (page, newPageSize) => {
+                setCurrentPage(page);
+                if (newPageSize !== pageSize) {
+                  setPageSize(newPageSize);
+                  setCurrentPage(1);
+                }
+              },
             }}
           />
 

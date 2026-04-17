@@ -1,6 +1,6 @@
 // apps/admin/src/modules/merchant/pages/MerchantListPage.tsx
 import { useState } from "react";
-import { useList, useCreate, useUpdate, useDelete, useDeleteMany } from "@refinedev/core";
+import { useTable, useList, useCreate, useUpdate, useDelete, useDeleteMany } from "@refinedev/core";
 import { List } from "@refinedev/antd";
 import {
   Table,
@@ -94,17 +94,25 @@ export const MerchantListPage = () => {
 
   const categories = categoriesResult?.data || [];
 
-  const { result, query } = useList<Merchant>({
+  const {
+    tableQuery,
+    currentPage,
+    setCurrentPage,
+    pageSize,
+    setPageSize,
+  } = useTable<Merchant>({
     resource: "merchant",
     pagination: {
       pageSize: 10,
     },
-    filters: [
-      ...(searchText ? [{ field: "search", operator: "contains", value: searchText }] as any : []),
-      ...(statusFilter ? [{ field: "status", operator: "eq", value: statusFilter }] as any : []),
-      ...(categoryFilter ? [{ field: "categoryId", operator: "eq", value: categoryFilter }] as any : []),
-      ...(areaFilter ? [{ field: "area", operator: "eq", value: areaFilter }] as any : []),
-    ],
+    filters: {
+      initial: [
+        ...(searchText ? [{ field: "search", operator: "contains", value: searchText }] as any : []),
+        ...(statusFilter ? [{ field: "status", operator: "eq", value: statusFilter }] as any : []),
+        ...(categoryFilter ? [{ field: "categoryId", operator: "eq", value: categoryFilter }] as any : []),
+        ...(areaFilter ? [{ field: "area", operator: "eq", value: areaFilter }] as any : []),
+      ],
+    },
     meta: {
       include: {
         category: true,
@@ -117,6 +125,9 @@ export const MerchantListPage = () => {
       },
     },
   });
+
+  const result = tableQuery.data;
+  const query = tableQuery;
 
   const handleCreate = () => {
     setEditingRecord(null);
@@ -441,11 +452,18 @@ export const MerchantListPage = () => {
             loading={query.isLoading}
             scroll={{ x: 1350 }}
             pagination={{
-              current: 1,
-              pageSize: 10,
+              current: currentPage,
+              pageSize: pageSize,
               total: (result as any)?.total || 0,
               showSizeChanger: true,
               showTotal: (total) => `共 ${total} 条`,
+              onChange: (page, newPageSize) => {
+                setCurrentPage(page);
+                if (newPageSize !== pageSize) {
+                  setPageSize(newPageSize);
+                  setCurrentPage(1); // 改变页大小时重置到第一页
+                }
+              },
             }}
           />
 

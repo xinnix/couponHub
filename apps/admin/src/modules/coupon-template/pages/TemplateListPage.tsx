@@ -1,7 +1,7 @@
 // apps/admin/src/modules/coupon-template/pages/TemplateListPage.tsx
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useList, useCreate, useUpdate, useDelete, useDeleteMany } from "@refinedev/core";
+import { useTable, useCreate, useUpdate, useDelete, useDeleteMany } from "@refinedev/core";
 import { useMutation } from "@tanstack/react-query";
 import { List } from "@refinedev/antd";
 import {
@@ -125,16 +125,27 @@ export const TemplateListPage = () => {
     );
   };
 
-  const { result, query } = useList<CouponTemplate>({
+  const {
+    tableQuery,
+    currentPage,
+    setCurrentPage,
+    pageSize,
+    setPageSize,
+  } = useTable<CouponTemplate>({
     resource: "couponTemplate",
     pagination: {
       pageSize: 10,
     },
-    filters: [
-      ...(searchText ? [{ field: "title", operator: "contains", value: searchText }] as any : []),
-      ...(statusFilter ? [{ field: "status", operator: "eq", value: statusFilter }] as any : []),
-    ],
+    filters: {
+      initial: [
+        ...(searchText ? [{ field: "title", operator: "contains", value: searchText }] as any : []),
+        ...(statusFilter ? [{ field: "status", operator: "eq", value: statusFilter }] as any : []),
+      ],
+    },
   });
+
+  const result = tableQuery.data;
+  const query = tableQuery;
 
   const handleCreate = () => {
     setEditingRecord(null);
@@ -535,11 +546,18 @@ export const TemplateListPage = () => {
             loading={query.isLoading}
             scroll={{ x: 1500 }}
             pagination={{
-              current: 1,
-              pageSize: 10,
+              current: currentPage,
+              pageSize: pageSize,
               total: (result as any)?.total || 0,
               showSizeChanger: true,
               showTotal: (total) => `共 ${total} 条`,
+              onChange: (page, newPageSize) => {
+                setCurrentPage(page);
+                if (newPageSize !== pageSize) {
+                  setPageSize(newPageSize);
+                  setCurrentPage(1);
+                }
+              },
             }}
           />
 

@@ -1,7 +1,7 @@
 // apps/admin/src/modules/role/pages/RoleListPage.tsx
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useList, useUpdate } from "@refinedev/core";
+import { useTable, useUpdate } from "@refinedev/core";
 import { List } from "@refinedev/antd";
 import {
   Table,
@@ -51,15 +51,26 @@ export const RoleListPage = () => {
   const { message } = App.useApp();
 
   const { mutate: update } = useUpdate();
-  const { result, query } = useList<Role>({
+  const {
+    tableQuery,
+    currentPage,
+    setCurrentPage,
+    pageSize,
+    setPageSize,
+  } = useTable<Role>({
     resource: "role",
     pagination: {
       pageSize: 50, // 显示所有角色
     },
-    filters: searchText
-      ? [{ field: "search", operator: "contains", value: searchText } as any]
-      : [],
+    filters: {
+      initial: searchText
+        ? [{ field: "search", operator: "contains", value: searchText } as any]
+        : [],
+    },
   });
+
+  const result = tableQuery.data;
+  const query = tableQuery;
 
   const handleEdit = (record: Role) => {
     setEditingRecord(record);

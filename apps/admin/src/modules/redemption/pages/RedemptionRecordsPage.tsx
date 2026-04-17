@@ -1,6 +1,6 @@
 // apps/admin/src/modules/redemption/pages/RedemptionRecordsPage.tsx
 import { useState } from "react";
-import { useList } from "@refinedev/core";
+import { useTable, useList } from "@refinedev/core";
 import { List } from "@refinedev/antd";
 import {
   Table,
@@ -55,20 +55,30 @@ export const RedemptionRecordsPage = () => {
   const [merchantFilter, setMerchantFilter] = useState<string | undefined>(undefined);
   const [dateRange, setDateRange] = useState<[dayjs.Dayjs, dayjs.Dayjs] | null>(null);
 
-  const { result, query } = useList<RedemptionRecord>({
+  const {
+    tableQuery,
+    currentPage,
+    setCurrentPage,
+    pageSize,
+    setPageSize,
+  } = useTable<RedemptionRecord>({
     resource: "redemption",
     pagination: {
       pageSize: 20,
     },
-    filters: [
-      ...(merchantFilter ? [{ field: "redeemMerchantId", operator: "eq", value: merchantFilter }] as any : []),
-      ...(dateRange && dateRange[0] && dateRange[1] ? [
-        { field: "redeemedAt", operator: "gte", value: dateRange[0].startOf('day').toISOString() },
-        { field: "redeemedAt", operator: "lte", value: dateRange[1].endOf('day').toISOString() },
-      ] as any : []),
-    ],
+    filters: {
+      initial: [
+        ...(merchantFilter ? [{ field: "redeemMerchantId", operator: "eq", value: merchantFilter }] as any : []),
+        ...(dateRange && dateRange[0] && dateRange[1] ? [
+          { field: "redeemedAt", operator: "gte", value: dateRange[0].startOf('day').toISOString() },
+          { field: "redeemedAt", operator: "lte", value: dateRange[1].endOf('day').toISOString() },
+        ] as any : []),
+      ],
+    },
   });
 
+  const result = tableQuery.data;
+  const query = tableQuery;
   const records = (result as any)?.data || [];
 
   // 获取商户列表用于筛选
@@ -272,11 +282,18 @@ export const RedemptionRecordsPage = () => {
             loading={query.isLoading}
             scroll={{ x: 1300 }}
             pagination={{
-              current: 1,
-              pageSize: 20,
+              current: currentPage,
+              pageSize: pageSize,
               total: (result as any)?.total || 0,
               showSizeChanger: true,
               showTotal: (total) => `共 ${total} 条`,
+              onChange: (page, newPageSize) => {
+                setCurrentPage(page);
+                if (newPageSize !== pageSize) {
+                  setPageSize(newPageSize);
+                  setCurrentPage(1);
+                }
+              },
             }}
           />
         </Card>

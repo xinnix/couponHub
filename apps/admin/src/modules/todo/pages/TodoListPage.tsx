@@ -1,12 +1,18 @@
 // apps/admin/src/pages/list.tsx
-import { useList, useCreate, useUpdate, useDelete } from "@refinedev/core";
+import { useTable, useCreate, useUpdate, useDelete } from "@refinedev/core";
 import { List } from "@refinedev/antd";
 import { Table, Button, Modal, Form, Input, Select, Space, App, Tag, Popconfirm } from "antd";
 import { useState } from "react";
 
 export const TodoListPage = () => {
-  // Use useList instead of useTable
-  const { result, query } = useList({
+  // Use useTable instead of useList
+  const {
+    tableQuery,
+    currentPage,
+    setCurrentPage,
+    pageSize,
+    setPageSize,
+  } = useTable({
     resource: "todo",
     pagination: {
       pageSize: 10,
@@ -15,6 +21,9 @@ export const TodoListPage = () => {
       enabled: true, // Explicitly enable the query
     },
   });
+
+  const result = tableQuery.data;
+  const query = tableQuery;
 
   const { mutate: create } = useCreate();
   const { mutate: update } = useUpdate();
@@ -192,10 +201,17 @@ export const TodoListPage = () => {
           dataSource={result?.data || []}
           loading={query.isLoading}
           pagination={{
-            current: 1,
-            pageSize: 10,
+            current: currentPage,
+            pageSize: pageSize,
             total: result?.total || 0,
             showSizeChanger: true,
+            onChange: (page, newPageSize) => {
+              setCurrentPage(page);
+              if (newPageSize !== pageSize) {
+                setPageSize(newPageSize);
+                setCurrentPage(1);
+              }
+            },
           }}
         />
 

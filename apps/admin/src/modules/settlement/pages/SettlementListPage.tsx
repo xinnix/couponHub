@@ -1,6 +1,6 @@
 // apps/admin/src/modules/settlement/pages/SettlementListPage.tsx
 import { useState } from "react";
-import { useList, useCreate, useUpdate, useDelete, useDeleteMany } from "@refinedev/core";
+import { useTable, useCreate, useUpdate, useDelete, useDeleteMany } from "@refinedev/core";
 import { useQuery } from "@tanstack/react-query";
 import { trpcClient } from "../../../shared/dataProvider/dataProvider";
 import { List } from "@refinedev/antd";
@@ -133,18 +133,28 @@ export const SettlementListPage = () => {
     );
   };
 
-  const { result, query } = useList<Settlement>({
+  const {
+    tableQuery,
+    currentPage,
+    setCurrentPage,
+    pageSize,
+    setPageSize,
+  } = useTable<Settlement>({
     resource: "settlement",
     pagination: {
       pageSize: 10,
     },
-    filters: [
-      ...(searchText ? [{ field: "search", operator: "contains", value: searchText }] as any : []),
-      ...(statusFilter ? [{ field: "status", operator: "eq", value: statusFilter }] as any : []),
-      ...(merchantFilter ? [{ field: "merchantId", operator: "eq", value: merchantFilter }] as any : []),
-    ],
+    filters: {
+      initial: [
+        ...(searchText ? [{ field: "search", operator: "contains", value: searchText }] as any : []),
+        ...(statusFilter ? [{ field: "status", operator: "eq", value: statusFilter }] as any : []),
+        ...(merchantFilter ? [{ field: "merchantId", operator: "eq", value: merchantFilter }] as any : []),
+      ],
+    },
   });
 
+  const result = tableQuery.data;
+  const query = tableQuery;
   const settlements = (result as any)?.data || [];
 
   // 获取商户列表用于筛选
@@ -487,11 +497,18 @@ export const SettlementListPage = () => {
             loading={query.isLoading}
             scroll={{ x: 1500 }}
             pagination={{
-              current: 1,
-              pageSize: 10,
+              current: currentPage,
+              pageSize: pageSize,
               total: (result as any)?.total || 0,
               showSizeChanger: true,
               showTotal: (total) => `共 ${total} 条`,
+              onChange: (page, newPageSize) => {
+                setCurrentPage(page);
+                if (newPageSize !== pageSize) {
+                  setPageSize(newPageSize);
+                  setCurrentPage(1);
+                }
+              },
             }}
           />
 

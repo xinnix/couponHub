@@ -1,6 +1,6 @@
 // apps/admin/src/modules/news/pages/NewsListPage.tsx
 import { useState } from "react";
-import { useList, useCreate, useUpdate, useDelete, useDeleteMany } from "@refinedev/core";
+import { useTable, useCreate, useUpdate, useDelete, useDeleteMany } from "@refinedev/core";
 import { useMutation } from "@tanstack/react-query";
 import { List } from "@refinedev/antd";
 import {
@@ -110,17 +110,27 @@ export const NewsListPage = () => {
     );
   };
 
-  const { result, query } = useList<News>({
+  const {
+    tableQuery,
+    currentPage,
+    setCurrentPage,
+    pageSize,
+    setPageSize,
+  } = useTable<News>({
     resource: "news",
     pagination: {
       pageSize: 10,
     },
-    filters: [
-      ...(searchText ? [{ field: "search", operator: "contains", value: searchText }] as any : []),
-      ...(statusFilter ? [{ field: "status", operator: "eq", value: statusFilter }] as any : []),
-    ],
+    filters: {
+      initial: [
+        ...(searchText ? [{ field: "search", operator: "contains", value: searchText }] as any : []),
+        ...(statusFilter ? [{ field: "status", operator: "eq", value: statusFilter }] as any : []),
+      ],
+    },
   });
 
+  const result = tableQuery.data;
+  const query = tableQuery;
   const news = (result as any)?.data || [];
 
   // 统计数据
@@ -528,11 +538,18 @@ export const NewsListPage = () => {
             loading={query.isLoading}
             scroll={{ x: 1300 }}
             pagination={{
-              current: 1,
-              pageSize: 10,
+              current: currentPage,
+              pageSize: pageSize,
               total: (result as any)?.total || 0,
               showSizeChanger: true,
               showTotal: (total) => `共 ${total} 条`,
+              onChange: (page, newPageSize) => {
+                setCurrentPage(page);
+                if (newPageSize !== pageSize) {
+                  setPageSize(newPageSize);
+                  setCurrentPage(1);
+                }
+              },
             }}
           />
 

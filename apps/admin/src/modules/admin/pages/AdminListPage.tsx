@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useList, useCreate, useUpdate, useDelete, useDeleteMany } from "@refinedev/core";
+import { useTable, useCreate, useUpdate, useDelete, useDeleteMany } from "@refinedev/core";
 import { List } from "@refinedev/antd";
 import {
   Table,
@@ -86,14 +86,25 @@ export const AdminListPage = () => {
     );
   };
 
-  const { result, query } = useList<AdminRecord>({
+  const {
+    tableQuery,
+    currentPage,
+    setCurrentPage,
+    pageSize,
+    setPageSize,
+  } = useTable<AdminRecord>({
     resource: "admin",
     pagination: { pageSize: 10 },
-    filters: [
-      ...(searchText ? [{ field: "search", operator: "contains" as const, value: searchText }] : []),
-      ...(statusFilter !== undefined ? [{ field: "isActive", operator: "eq" as const, value: statusFilter }] : []),
-    ],
+    filters: {
+      initial: [
+        ...(searchText ? [{ field: "search", operator: "contains" as const, value: searchText }] : []),
+        ...(statusFilter !== undefined ? [{ field: "isActive", operator: "eq" as const, value: statusFilter }] : []),
+      ],
+    },
   });
+
+  const result = tableQuery.data;
+  const query = tableQuery;
 
   // 获取所有角色列表
   const { result: rolesResult } = useList({
@@ -440,10 +451,18 @@ export const AdminListPage = () => {
             loading={query.isLoading}
             scroll={{ x: 1400 }}
             pagination={{
-              current: 1,
-              pageSize: 10,
+              current: currentPage,
+              pageSize: pageSize,
               total: (result as any)?.total || 0,
               showSizeChanger: true,
+              onChange: (page, newPageSize) => {
+                setCurrentPage(page);
+                if (newPageSize !== pageSize) {
+                  setPageSize(newPageSize);
+                  setCurrentPage(1);
+                }
+              },
+            }}
               showTotal: (total) => `共 ${total} 条`,
             }}
           />

@@ -1,6 +1,6 @@
 // apps/admin/src/modules/order/pages/OrderListPage.tsx
 import { useState } from "react";
-import { useList, useUpdate } from "@refinedev/core";
+import { useTable, useUpdate } from "@refinedev/core";
 import { List } from "@refinedev/antd";
 import {
   Table,
@@ -72,19 +72,27 @@ export const OrderListPage = () => {
   const [statusFilter, setStatusFilter] = useState<string | undefined>(undefined);
   const [dateRange, setDateRange] = useState<[dayjs.Dayjs, dayjs.Dayjs] | null>(null);
 
-  const { result, query } = useList<Order>({
+  const {
+    tableQuery,
+    currentPage,
+    setCurrentPage,
+    pageSize,
+    setPageSize,
+  } = useTable<Order>({
     resource: "order",
     pagination: {
       pageSize: 10,
     },
-    filters: [
-      ...(searchText ? [{ field: "orderNo", operator: "contains", value: searchText }] as any : []),
-      ...(statusFilter ? [{ field: "status", operator: "eq", value: statusFilter }] as any : []),
-      ...(dateRange && dateRange[0] && dateRange[1] ? [
-        { field: "createdAt", operator: "gte", value: dateRange[0].startOf('day').toISOString() },
-        { field: "createdAt", operator: "lte", value: dateRange[1].endOf('day').toISOString() },
-      ] as any : []),
-    ],
+    filters: {
+      initial: [
+        ...(searchText ? [{ field: "orderNo", operator: "contains", value: searchText }] as any : []),
+        ...(statusFilter ? [{ field: "status", operator: "eq", value: statusFilter }] as any : []),
+        ...(dateRange && dateRange[0] && dateRange[1] ? [
+          { field: "createdAt", operator: "gte", value: dateRange[0].startOf('day').toISOString() },
+          { field: "createdAt", operator: "lte", value: dateRange[1].endOf('day').toISOString() },
+        ] as any : []),
+      ],
+    },
     meta: {
       include: {
         user: { select: { id: true, nickname: true, email: true } },
@@ -94,6 +102,8 @@ export const OrderListPage = () => {
     },
   });
 
+  const result = tableQuery.data;
+  const query = tableQuery;
   const orders = (result as any)?.data || [];
 
   // 统计数据
@@ -336,11 +346,18 @@ export const OrderListPage = () => {
             loading={query.isLoading}
             scroll={{ x: 2000 }}
             pagination={{
-              current: 1,
-              pageSize: 10,
+              current: currentPage,
+              pageSize: pageSize,
               total: (result as any)?.total || 0,
               showSizeChanger: true,
               showTotal: (total) => `共 ${total} 条`,
+              onChange: (page, newPageSize) => {
+                setCurrentPage(page);
+                if (newPageSize !== pageSize) {
+                  setPageSize(newPageSize);
+                  setCurrentPage(1);
+                }
+              },
             }}
           />
         </Card>

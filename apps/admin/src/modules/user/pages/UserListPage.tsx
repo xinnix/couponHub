@@ -1,6 +1,6 @@
 // apps/admin/src/modules/user/pages/UserListPage.tsx
 import { useState, useEffect } from "react";
-import { useList } from "@refinedev/core";
+import { useTable } from "@refinedev/core";
 import { List } from "@refinedev/antd";
 import {
   Table,
@@ -39,19 +39,30 @@ export const UserListPage = () => {
     };
   }, [searchText]);
 
-  const { result, query } = useList<User>({
+  const {
+    tableQuery,
+    currentPage,
+    setCurrentPage,
+    pageSize,
+    setPageSize,
+  } = useTable<User>({
     resource: "user",
     pagination: {
       pageSize: 10,
     },
-    filters: debouncedSearch ? [
-      {
-        field: "search",
-        operator: "eq",
-        value: debouncedSearch
-      }
-    ] as any : [],
+    filters: {
+      initial: debouncedSearch ? [
+        {
+          field: "search",
+          operator: "eq",
+          value: debouncedSearch
+        }
+      ] as any : [],
+    },
   });
+
+  const result = tableQuery.data;
+  const query = tableQuery;
 
   const columns = [
     {
@@ -140,11 +151,18 @@ export const UserListPage = () => {
             dataSource={(result as any)?.data || []}
             loading={query.isLoading}
             pagination={{
-              current: 1,
-              pageSize: 10,
+              current: currentPage,
+              pageSize: pageSize,
               total: (result as any)?.total || 0,
               showSizeChanger: true,
               showTotal: (total) => `共 ${total} 条`,
+              onChange: (page, newPageSize) => {
+                setCurrentPage(page);
+                if (newPageSize !== pageSize) {
+                  setPageSize(newPageSize);
+                  setCurrentPage(1);
+                }
+              },
             }}
           />
         </Card>
