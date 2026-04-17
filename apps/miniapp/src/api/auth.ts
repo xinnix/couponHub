@@ -5,7 +5,7 @@ import { http } from '@/utils/http'
 import { API_ENDPOINTS } from '@/config/api'
 
 export interface LoginParams {
-  email: string
+  username: string
   password: string
 }
 
