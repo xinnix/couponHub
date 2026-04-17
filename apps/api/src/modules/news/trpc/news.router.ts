@@ -4,19 +4,19 @@ import {
   UpdateNewsSchema,
   NewsListQuerySchema,
 } from '@opencode/shared';
-import { router, publicProcedure, protectedProcedure } from '../../../trpc/trpc';
+import { router, publicProcedure, permissionProcedure } from '../../../trpc/trpc';
 import { NewsService } from '../services/news.service';
 
 /**
  * News tRPC Router
  *
  * 新闻资讯管理路由，提供标准 CRUD 操作。
- * 所有变更操作需要管理员权限。
+ * 管理端操作需要对应权限，小程序端查询保持公开。
  *
  * 注意：使用自定义 methods 支持优惠券多对多关联
  */
 export const newsRouter = router({
-  // 查询操作（使用通用实现）
+  // 查询操作（小程序端使用，公开）
   getMany: publicProcedure
     .input(NewsListQuerySchema)
     .query(async ({ ctx, input }) => {
@@ -63,7 +63,7 @@ export const newsRouter = router({
       };
     }),
 
-  // 获取单个新闻（包含关联的优惠券）- 小程序端使用，过滤未开始的优惠券
+  // 获取单个新闻（小程序端）- 公开
   getOne: publicProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ ctx, input }) => {
@@ -71,24 +71,24 @@ export const newsRouter = router({
       return newsService.getNewsWithCoupons(input.id);
     }),
 
-  // 获取单个新闻（Admin端）- 包含所有关联的优惠券（不过滤）
-  getOneForAdmin: protectedProcedure
+  // 获取单个新闻（Admin端）- 需要权限
+  getOneForAdmin: permissionProcedure('news', 'read')
     .input(z.object({ id: z.string() }))
     .query(async ({ ctx, input }) => {
       const newsService = ctx.app.get(NewsService);
       return newsService.getNewsWithCouponsForAdmin(input.id);
     }),
 
-  // 创建新闻(支持优惠券关联)
-  create: protectedProcedure
+  // 创建新闻 - 需要权限
+  create: permissionProcedure('news', 'create')
     .input(z.object({ data: CreateNewsSchema }))
     .mutation(async ({ ctx, input }) => {
       const newsService = ctx.app.get(NewsService);
       return newsService.createWithCoupons(input.data, (ctx as any).user?.id);
     }),
 
-  // 更新新闻(支持优惠券关联)
-  update: protectedProcedure
+  // 更新新闻 - 需要权限
+  update: permissionProcedure('news', 'update')
     .input(z.object({
       id: z.string(),
       data: UpdateNewsSchema,
@@ -98,8 +98,8 @@ export const newsRouter = router({
       return newsService.updateWithCoupons(input.id, input.data, (ctx as any).user?.id);
     }),
 
-  // 删除新闻
-  delete: protectedProcedure
+  // 删除新闻 - 需要权限
+  delete: permissionProcedure('news', 'delete')
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const model = (ctx.prisma as any).news;
@@ -108,8 +108,8 @@ export const newsRouter = router({
       });
     }),
 
-  // 批量删除
-  deleteMany: protectedProcedure
+  // 批量删除 - 需要权限
+  deleteMany: permissionProcedure('news', 'delete')
     .input(z.object({ ids: z.array(z.string()) }))
     .mutation(async ({ ctx, input }) => {
       const model = (ctx.prisma as any).news;
@@ -118,16 +118,16 @@ export const newsRouter = router({
       });
     }),
 
-  // 生成小程序码
-  generateQrcode: protectedProcedure
+  // 生成小程序码 - 需要权限（属于更新操作）
+  generateQrcode: permissionProcedure('news', 'update')
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const newsService = ctx.app.get(NewsService);
       return newsService.generateQrcode(input.id);
     }),
 
-  // 获取或生成小程序码
-  getOrGenerateQrcode: protectedProcedure
+  // 获取或生成小程序码 - 需要权限（属于读取操作）
+  getOrGenerateQrcode: permissionProcedure('news', 'read')
     .input(z.object({ id: z.string() }))
     .query(async ({ ctx, input }) => {
       const newsService = ctx.app.get(NewsService);

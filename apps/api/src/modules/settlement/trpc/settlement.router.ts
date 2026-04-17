@@ -5,7 +5,7 @@ import {
   ConfirmSettlementSchema,
 } from '@opencode/shared';
 import { createCrudRouterWithCustom } from '../../../trpc/trpc.helper';
-import { protectedProcedure } from '../../../trpc/trpc';
+import { protectedProcedure, permissionProcedure } from '../../../trpc/trpc';
 import { TRPCError } from '@trpc/server';
 import ExcelJS from 'exceljs';
 import { z } from 'zod';
@@ -14,7 +14,7 @@ import { z } from 'zod';
  * Settlement tRPC Router
  *
  * 结算单管理路由，提供标准 CRUD 操作和自定义方法。
- * 所有操作需要管理员权限。
+ * 所有管理端操作需要对应权限。
  */
 export const settlementRouter = createCrudRouterWithCustom(
   'Settlement',
@@ -22,8 +22,8 @@ export const settlementRouter = createCrudRouterWithCustom(
     getMany: SettlementListQuerySchema,
   },
   (t) => ({
-    // 重写 getMany 以包含 merchant 关系
-    getMany: protectedProcedure
+    // 重写 getMany 以包含 merchant 关系 - 需要权限
+    getMany: permissionProcedure('settlement', 'read')
       .input(SettlementListQuerySchema)
       .query(async ({ ctx, input }) => {
         const { page = 1, pageSize = 10, merchantId, status, period } = input;
@@ -67,8 +67,8 @@ export const settlementRouter = createCrudRouterWithCustom(
         };
       }),
 
-    // 重写 getOne 以包含 merchant 关系
-    getOne: protectedProcedure
+    // 重写 getOne 以包含 merchant 关系 - 需要权限
+    getOne: permissionProcedure('settlement', 'read')
       .input(z.object({ id: z.string() }))
       .query(async ({ ctx, input }) => {
         return ctx.prisma.settlement.findUnique({
@@ -90,8 +90,8 @@ export const settlementRouter = createCrudRouterWithCustom(
         });
       }),
 
-    // 生成结算单
-    createSettlement: protectedProcedure
+    // 生成结算单 - 需要权限（本质上是创建操作）
+    createSettlement: permissionProcedure('settlement', 'read')
       .input(GenerateSettlementSchema)
       .mutation(async ({ input, ctx }) => {
         const { merchantId, period } = input;
@@ -201,8 +201,8 @@ export const settlementRouter = createCrudRouterWithCustom(
         return settlement;
       }),
 
-    // 确认结算单
-    confirm: protectedProcedure
+    // 确认结算单 - 需要权限
+    confirm: permissionProcedure('settlement', 'confirm')
       .input(ConfirmSettlementSchema)
       .mutation(async ({ input, ctx }) => {
         const { settlementId } = input;
@@ -238,8 +238,8 @@ export const settlementRouter = createCrudRouterWithCustom(
         return updated;
       }),
 
-    // 结算统计
-    getStats: protectedProcedure
+    // 结算统计 - 需要权限
+    getStats: permissionProcedure('settlement', 'read')
       .query(async ({ ctx }) => {
         const [pendingStats, confirmedStats, paidStats, totalCount] = await Promise.all([
           ctx.prisma.settlement.aggregate({
@@ -271,8 +271,8 @@ export const settlementRouter = createCrudRouterWithCustom(
         };
       }),
 
-    // 标记已支付
-    markPaid: protectedProcedure
+    // 标记已支付 - 需要权限
+    markPaid: permissionProcedure('settlement', 'mark_paid')
       .input(MarkPaidSchema)
       .mutation(async ({ input, ctx }) => {
         const { settlementId, paymentNote } = input;
@@ -307,8 +307,8 @@ export const settlementRouter = createCrudRouterWithCustom(
         return updated;
       }),
 
-    // 导出结算单为 Excel
-    exportExcel: protectedProcedure
+    // 导出结算单为 Excel - 需要权限
+    exportExcel: permissionProcedure('settlement', 'read')
       .input(ConfirmSettlementSchema)
       .mutation(async ({ input, ctx }) => {
         const { settlementId } = input;

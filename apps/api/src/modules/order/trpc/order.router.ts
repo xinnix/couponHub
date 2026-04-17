@@ -6,7 +6,7 @@ import {
   RejectRefundSchema,
 } from '@opencode/shared';
 import { createCrudRouterWithCustom } from '../../../trpc/trpc.helper';
-import { protectedProcedure } from '../../../trpc/trpc';
+import { protectedProcedure, permissionProcedure } from '../../../trpc/trpc';
 import { z } from 'zod';
 import { ConflictException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { verifyRedeemCode } from '../../../shared/utils/qrcode.util';
@@ -38,6 +38,42 @@ export const orderRouter = createCrudRouterWithCustom(
     getMany: OrderListQuerySchema,
   },
   (t) => ({
+    // 管理端查询订单列表 - 需要权限
+    getMany: permissionProcedure('order', 'read')
+      .input(OrderListQuerySchema)
+      .query(async ({ ctx, input }) => {
+        const parsedInput = OrderListQuerySchema.safeParse(input);
+        if (!parsedInput.success) {
+          throw parsedInput.error;
+        }
+        const data = parsedInput.data as any;
+
+        const model = ctx.prisma.order;
+        const [items, total] = await Promise.all([
+          model.findMany({
+            skip: data.skip ?? (data.page ? (data.page - 1) * (data.limit || 10) : 0),
+            take: data.take ?? data.limit,
+            where: data.where,
+            orderBy: data.orderBy ?? { createdAt: 'desc' },
+            include: data.include || {
+              user: { select: { id: true, nickname: true, email: true } },
+              template: true,
+              merchant: true,
+            },
+            select: data.select,
+          }),
+          model.count({ where: data.where }),
+        ]);
+
+        return {
+          items,
+          total,
+          page: data.page || 1,
+          pageSize: data.limit || 10,
+          totalPages: Math.ceil(total / (data.limit || 10)),
+        };
+      }),
+
     // 创建订单
     createOrder: protectedProcedure
       .input(CreateOrderSchema)
@@ -211,8 +247,8 @@ export const orderRouter = createCrudRouterWithCustom(
         return updated;
       }),
 
-    // 退款审核通过（管理员）
-    approveRefund: protectedProcedure
+    // 退款审核通过（管理员）- 需要权限
+    approveRefund: permissionProcedure('order', 'approve_refund')
       .input(ApproveRefundSchema)
       .mutation(async ({ input, ctx }) => {
         const { orderId, adminNote } = input;
@@ -274,8 +310,8 @@ export const orderRouter = createCrudRouterWithCustom(
         return updated;
       }),
 
-    // 退款审核拒绝（管理员）
-    rejectRefund: protectedProcedure
+    // 退款审核拒绝（管理员）- 需要权限
+    rejectRefund: permissionProcedure('order', 'reject_refund')
       .input(RejectRefundSchema)
       .mutation(async ({ input, ctx }) => {
         const { orderId, rejectReason } = input;
