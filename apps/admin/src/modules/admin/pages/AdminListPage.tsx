@@ -211,7 +211,7 @@ export const AdminListPage = () => {
           {
             onSuccess: async (response: any) => {
               // 处理角色分配
-              const newAdminId = response.id;
+              const newAdminId = response.data.id;
               const selectedRoleIds = roleIds || [];
 
               if (selectedRoleIds.length > 0) {
