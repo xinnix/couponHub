@@ -20,6 +20,7 @@ import {
 import { PlusOutlined, SearchOutlined, CheckCircleOutlined, StopOutlined, EyeOutlined } from "@ant-design/icons";
 import { MerchantForm } from "../components/MerchantForm";
 import { useNavigate } from "react-router-dom";
+import { PermissionGuard } from "../../../shared/components/PermissionGuard";
 
 interface MerchantCategory {
   id: string;
@@ -324,20 +325,24 @@ export const MerchantListPage = () => {
           >
             详情
           </Button>
-          <Button size="small" type="link" onClick={() => handleEdit(record)}>
-            编辑
-          </Button>
-          <Popconfirm
-            title="确认删除？"
-            description="删除后将无法恢复"
-            onConfirm={() => handleDelete(record.id)}
-            okText="确定"
-            cancelText="取消"
-          >
-            <Button size="small" type="link" danger>
-              删除
+          <PermissionGuard resource="merchant" action="update">
+            <Button size="small" type="link" onClick={() => handleEdit(record)}>
+              编辑
             </Button>
-          </Popconfirm>
+          </PermissionGuard>
+          <PermissionGuard resource="merchant" action="delete">
+            <Popconfirm
+              title="确认删除？"
+              description="删除后将无法恢复"
+              onConfirm={() => handleDelete(record.id)}
+              okText="确定"
+              cancelText="取消"
+            >
+              <Button size="small" type="link" danger>
+                删除
+              </Button>
+            </Popconfirm>
+          </PermissionGuard>
         </Space>
       ),
     },
@@ -352,9 +357,11 @@ export const MerchantListPage = () => {
               <h1 style={{ margin: 0, fontSize: 24, fontWeight: "bold" }}>商户管理</h1>
             </Col>
             <Col>
-              <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
-                新建商户
-              </Button>
+              <PermissionGuard resource="merchant" action="create">
+                <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
+                  新建商户
+                </Button>
+              </PermissionGuard>
             </Col>
           </Row>
 

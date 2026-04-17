@@ -6,6 +6,7 @@ import {
   Table, Button, Modal, Form, Input, InputNumber, Select, Space, Tag, Popconfirm, Card, App
 } from "antd";
 import { PlusOutlined } from '@ant-design/icons';
+import { PermissionGuard } from "../../../shared/components/PermissionGuard";
 
 interface MerchantCategory {
   id: string;
@@ -95,28 +96,32 @@ export const MerchantCategoryListPage = () => {
       width: 150,
       render: (_: any, record: MerchantCategory) => (
         <Space size="small">
-          <Button type="link" onClick={() => {
-            setEditingRecord(record);
-            form.setFieldsValue(record);
-            setIsModalVisible(true);
-          }}>
-            编辑
-          </Button>
-          <Popconfirm
-            title="确认删除？"
-            onConfirm={() => deleteOne(
-              { resource: "merchantCategory", id: record.id },
-              {
-                onSuccess: () => {
-                  message.success("删除成功");
-                  query.refetch();
-                },
-                onError: () => message.error("删除失败"),
-              }
-            )}
-          >
-            <Button type="link" danger>删除</Button>
-          </Popconfirm>
+          <PermissionGuard resource="merchantCategory" action="update">
+            <Button type="link" onClick={() => {
+              setEditingRecord(record);
+              form.setFieldsValue(record);
+              setIsModalVisible(true);
+            }}>
+              编辑
+            </Button>
+          </PermissionGuard>
+          <PermissionGuard resource="merchantCategory" action="delete">
+            <Popconfirm
+              title="确认删除？"
+              onConfirm={() => deleteOne(
+                { resource: "merchantCategory", id: record.id },
+                {
+                  onSuccess: () => {
+                    message.success("删除成功");
+                    query.refetch();
+                  },
+                  onError: () => message.error("删除失败"),
+                }
+              )}
+            >
+              <Button type="link" danger>删除</Button>
+            </Popconfirm>
+          </PermissionGuard>
         </Space>
       ),
     },
@@ -130,17 +135,19 @@ export const MerchantCategoryListPage = () => {
         <Card>
           <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between' }}>
             <h1 style={{ margin: 0 }}>商户类别管理</h1>
-            <Button
-              type="primary"
-              icon={<PlusOutlined />}
-              onClick={() => {
-                setEditingRecord(null);
-                form.resetFields();
-                setIsModalVisible(true);
-              }}
-            >
-              新建类别
-            </Button>
+            <PermissionGuard resource="merchantCategory" action="create">
+              <Button
+                type="primary"
+                icon={<PlusOutlined />}
+                onClick={() => {
+                  setEditingRecord(null);
+                  form.resetFields();
+                  setIsModalVisible(true);
+                }}
+              >
+                新建类别
+              </Button>
+            </PermissionGuard>
           </div>
 
           <Table

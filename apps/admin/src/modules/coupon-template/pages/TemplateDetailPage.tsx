@@ -8,6 +8,7 @@ import dayjs from "dayjs";
 import { StockAdjustModal } from "../components/StockAdjustModal";
 import { StockLogList } from "../components/StockLogList";
 import { StockStatistics } from "../components/StockStatistics";
+import { PermissionGuard } from "../../../shared/components/PermissionGuard";
 
 interface UsageRules {
   stacking?: {
@@ -291,14 +292,16 @@ export const TemplateDetailPage = () => {
             <Descriptions.Item label="库存">
               <Space>
                 <Typography.Text strong>{template.stock}</Typography.Text>
-                <Button
-                  type="link"
-                  size="small"
-                  icon={<ToolOutlined />}
-                  onClick={() => setAdjustModalVisible(true)}
-                >
-                  调整库存
-                </Button>
+                <PermissionGuard resource="couponTemplate" action="adjust_stock">
+                  <Button
+                    type="link"
+                    size="small"
+                    icon={<ToolOutlined />}
+                    onClick={() => setAdjustModalVisible(true)}
+                  >
+                    调整库存
+                  </Button>
+                </PermissionGuard>
               </Space>
             </Descriptions.Item>
             <Descriptions.Item label="展示到首页超值优惠">

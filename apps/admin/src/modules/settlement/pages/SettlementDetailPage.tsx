@@ -8,6 +8,7 @@ import { formatCurrency, toNumber } from "../../../shared/utils/decimal";
 import { trpcClient } from "../../../shared/dataProvider/dataProvider";
 import dayjs from "dayjs";
 import { useState } from "react";
+import { PermissionGuard } from "../../../shared/components/PermissionGuard";
 
 interface Settlement {
   id: string;
@@ -238,33 +239,39 @@ export const SettlementDetailPage = () => {
             <Card style={{ marginTop: 24 }}>
               <Space>
                 {settlement.status === 'PENDING' && (
-                  <Button
-                    type="primary"
-                    icon={<CheckCircleOutlined />}
-                    loading={loading}
-                    onClick={handleConfirm}
-                  >
-                    确认结算
-                  </Button>
+                  <PermissionGuard resource="settlement" action="confirm">
+                    <Button
+                      type="primary"
+                      icon={<CheckCircleOutlined />}
+                      loading={loading}
+                      onClick={handleConfirm}
+                    >
+                      确认结算
+                    </Button>
+                  </PermissionGuard>
                 )}
                 {settlement.status === 'CONFIRMED' && (
-                  <Button
-                    type="primary"
-                    icon={<DollarOutlined />}
-                    loading={loading}
-                    onClick={handleMarkPaid}
-                    style={{ background: '#52c41a', borderColor: '#52c41a' }}
-                  >
-                    标记已支付
-                  </Button>
+                  <PermissionGuard resource="settlement" action="mark_paid">
+                    <Button
+                      type="primary"
+                      icon={<DollarOutlined />}
+                      loading={loading}
+                      onClick={handleMarkPaid}
+                      style={{ background: '#52c41a', borderColor: '#52c41a' }}
+                    >
+                      标记已支付
+                    </Button>
+                  </PermissionGuard>
                 )}
-                <Button
-                  icon={<DownloadOutlined />}
-                  loading={loading}
-                  onClick={handleExport}
-                >
-                  导出 Excel
-                </Button>
+                <PermissionGuard resource="settlement" action="read">
+                  <Button
+                    icon={<DownloadOutlined />}
+                    loading={loading}
+                    onClick={handleExport}
+                  >
+                    导出 Excel
+                  </Button>
+                </PermissionGuard>
               </Space>
             </Card>
           )}
