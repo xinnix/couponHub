@@ -39,7 +39,8 @@ interface Merchant {
   categoryId: string;
   category?: MerchantCategory;
   area?: string;
-  floor?: string;
+  shopNumber?: string;
+  sortOrder: number;
   phone?: string;
   gallery?: string[];
   description?: string;
@@ -277,10 +278,17 @@ export const MerchantListPage = () => {
       render: (area: string) => area ? <Tag color="geekblue">{area}</Tag> : '-',
     },
     {
-      title: "楼层",
-      dataIndex: "floor",
+      title: "铺位号",
+      dataIndex: "shopNumber",
       width: 80,
-      render: (floor: string) => floor || '-',
+      render: (shopNumber: string) => shopNumber || '-',
+    },
+    {
+      title: "序号",
+      dataIndex: "sortOrder",
+      width: 80,
+      sorter: (a: Merchant, b: Merchant) => a.sortOrder - b.sortOrder,
+      render: (sortOrder: number) => sortOrder,
     },
     {
       title: "电话",

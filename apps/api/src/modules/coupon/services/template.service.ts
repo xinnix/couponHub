@@ -162,9 +162,11 @@ export class TemplateService extends BaseService<'CouponTemplate'> {
           name: true,
           logo: true,
           area: true,
-          floor: true,
+          shopNumber: true,
           phone: true,
           description: true,
+          businessHours: true,
+          sortOrder: true,
           status: true,
         },
       });

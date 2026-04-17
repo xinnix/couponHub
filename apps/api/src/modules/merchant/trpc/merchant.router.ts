@@ -1,3 +1,4 @@
+// Merchant Router - Field mapping fixed (businessHours, sortOrder, shopNumber)
 import { z } from 'zod';
 import {
   CreateMerchantSchema,

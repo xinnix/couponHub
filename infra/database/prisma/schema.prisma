@@ -273,10 +273,12 @@ model Merchant {
   logo        String?
   categoryId  String  // 商户类别ID
   area        String? // 区域（A区、B区、C区）
-  floor       String? // 楼层
+  shopNumber  String? // 铺位号（如：01、02、A1等）
   phone       String?
   gallery     Json? // 图片数组
   description String?
+  businessHours String? // 营业时间（格式：HH:MM-HH:MM，如 "10:00-22:00"）
+  sortOrder   Int     @default(0) // 排序权重（数字越小越靠前）
   status      String  @default("ACTIVE") // ACTIVE, INACTIVE
 
   // 创建者和更新者 (Admin)
@@ -297,6 +299,7 @@ model Merchant {
   @@index([area])
   @@index([status])
   @@index([createdById])
+  @@index([sortOrder])
   @@map("merchants")
 }
 

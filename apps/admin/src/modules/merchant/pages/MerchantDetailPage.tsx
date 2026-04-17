@@ -25,8 +25,10 @@ interface Merchant {
   categoryId: string;
   category?: MerchantCategory;
   area?: string;
-  floor?: string;
+  shopNumber?: string;
+  sortOrder: number;
   phone?: string;
+  businessHours?: string;
   gallery?: string[];
   description?: string;
   status: 'ACTIVE' | 'INACTIVE';
@@ -195,8 +197,10 @@ export const MerchantDetailPage = () => {
           <Descriptions.Item label="区域">
             {merchant.area ? <Tag color="geekblue">{merchant.area}</Tag> : '-'}
           </Descriptions.Item>
-          <Descriptions.Item label="楼层">{merchant.floor || '-'}</Descriptions.Item>
+          <Descriptions.Item label="铺位号">{merchant.shopNumber || '-'}</Descriptions.Item>
+          <Descriptions.Item label="排序序号">{merchant.sortOrder}</Descriptions.Item>
           <Descriptions.Item label="联系电话">{merchant.phone || '-'}</Descriptions.Item>
+          <Descriptions.Item label="营业时间">{merchant.businessHours || '-'}</Descriptions.Item>
           <Descriptions.Item label="核销员数量">{merchant._count?.handlers || 0}</Descriptions.Item>
           <Descriptions.Item label="核销订单">{merchant._count?.orders || 0}</Descriptions.Item>
           <Descriptions.Item label="创建时间">
@@ -385,7 +389,7 @@ export const MerchantDetailPage = () => {
             <Space style={{ marginTop: 8 }}>
               <Tag color="blue">{merchant.category?.name || '未分类'}</Tag>
               {merchant.area && <Tag color="geekblue">{merchant.area}</Tag>}
-              {merchant.floor && <Tag>{merchant.floor}</Tag>}
+              {merchant.shopNumber && <Tag>{merchant.shopNumber}铺位</Tag>}
               <Tag color={merchant.status === 'ACTIVE' ? 'success' : 'error'}>
                 {merchant.status === 'ACTIVE' ? '激活' : '停用'}
               </Tag>

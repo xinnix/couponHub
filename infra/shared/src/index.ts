@@ -393,10 +393,12 @@ export const MerchantSchema = z.object({
   logo: z.string().url().optional().nullable(),
   categoryId: z.string(),
   area: z.string().optional().nullable(),
-  floor: z.string().optional().nullable(),
+  shopNumber: z.string().optional().nullable(),
   phone: z.string().optional().nullable(),
   gallery: z.array(z.string().url()).optional().nullable(),
   description: z.string().optional().nullable(),
+  businessHours: z.string().optional().nullable(),
+  sortOrder: z.number().int().nonnegative(),
   status: z.enum(["ACTIVE", "INACTIVE"]),
   createdAt: z.date(),
   updatedAt: z.date(),
@@ -407,10 +409,12 @@ export const CreateMerchantSchema = z.object({
   logo: z.string().url("Logo URL格式无效").optional().nullable(),
   categoryId: z.string().min(1, "请选择商户类别"),
   area: z.string().optional(),
-  floor: z.string().optional(),
+  shopNumber: z.string().optional(),
   phone: z.string().optional(),
   gallery: z.array(z.string().url()).optional(),
   description: z.string().optional(),
+  businessHours: z.string().optional(),
+  sortOrder: z.number().int().nonnegative("排序必须为非负整数").optional(),
   status: z.enum(["ACTIVE", "INACTIVE"]).optional(), // 创建时可选，默认为 ACTIVE
 });
 
@@ -419,10 +423,12 @@ export const UpdateMerchantSchema = z.object({
   logo: z.string().url("Logo URL格式无效").optional().nullable(),
   categoryId: z.string().min(1, "请选择商户类别").optional(),
   area: z.string().optional(),
-  floor: z.string().optional(),
+  shopNumber: z.string().optional(),
   phone: z.string().optional(),
   gallery: z.array(z.string().url()).optional(),
   description: z.string().optional(),
+  businessHours: z.string().optional(),
+  sortOrder: z.number().int().nonnegative("排序必须为非负整数").optional(),
   status: z.enum(["ACTIVE", "INACTIVE"]).optional(), // 更新时可以修改状态
 });
 

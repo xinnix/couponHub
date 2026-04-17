@@ -859,6 +859,12 @@ function getDefaultImage(type: string, id: string) {
 /* 商户描述文字 */
 .merchant-desc-text {
   color: rgba(110, 120, 129, 0.8);
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* 边框透明度 */

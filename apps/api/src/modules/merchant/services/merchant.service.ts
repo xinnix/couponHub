@@ -48,10 +48,16 @@ export class MerchantService extends BaseService<'Merchant'> {
       },
     };
 
+    // Add default ordering by sortOrder (ascending) if not specified
+    const orderBy = args?.orderBy || {
+      sortOrder: 'asc',
+    };
+
     return super.list({
       ...args,
       where,
       include,
+      orderBy,
     });
   }
 

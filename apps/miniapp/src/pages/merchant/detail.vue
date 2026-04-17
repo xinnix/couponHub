@@ -65,9 +65,9 @@ const displayCategory = computed(() => {
   return '其他'
 })
 
-const displayFloor = computed(() => {
-  if (merchant.value && merchant.value.floor) {
-    return merchant.value.floor
+const displayShopNumber = computed(() => {
+  if (merchant.value && merchant.value.shopNumber) {
+    return merchant.value.shopNumber
   }
   return ''
 })
@@ -79,11 +79,35 @@ const displayArea = computed(() => {
   return ''
 })
 
+const displayLocation = computed(() => {
+  if (merchant.value) {
+    const area = merchant.value.area || ''
+    const shopNumber = merchant.value.shopNumber || ''
+    if (area && shopNumber) {
+      return `${area} ${shopNumber}铺位`
+    }
+    if (area) {
+      return area
+    }
+    if (shopNumber) {
+      return `${shopNumber}铺位`
+    }
+  }
+  return '暂无位置信息'
+})
+
 const displayPhone = computed(() => {
   if (merchant.value && merchant.value.phone) {
     return merchant.value.phone
   }
   return ''
+})
+
+const displayBusinessHours = computed(() => {
+  if (merchant.value && merchant.value.businessHours) {
+    return merchant.value.businessHours
+  }
+  return '暂无营业时间'
 })
 
 const displayDescription = computed(() => {
@@ -348,7 +372,7 @@ async function loadCoupons(merchantId: string) {
               营业时间
             </text>
             <text class="info-value">
-              10:00-22:00
+              {{ displayBusinessHours }}
             </text>
           </view>
           <view class="info-row">
@@ -356,7 +380,7 @@ async function loadCoupons(merchantId: string) {
               店铺位置
             </text>
             <text class="info-value">
-              {{ displayFloor }} {{ displayArea }}
+              {{ displayLocation }}
             </text>
           </view>
         </view>

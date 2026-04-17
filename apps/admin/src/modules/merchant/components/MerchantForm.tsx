@@ -1,6 +1,6 @@
 // apps/admin/src/modules/merchant/components/MerchantForm.tsx
 import { useList } from "@refinedev/core";
-import { Form, Input, Select } from "antd";
+import { Form, Input, Select, InputNumber } from "antd";
 import { OSSUpload } from "@/shared/components/OSSUpload";
 import { OSSUploadMultiple } from "@/shared/components/OSSUploadMultiple";
 
@@ -76,12 +76,40 @@ export const MerchantForm: React.FC<MerchantFormProps> = ({ form, isEdit }) => {
         </Select>
       </Form.Item>
 
-      <Form.Item name="floor" label="楼层">
-        <Input placeholder="例如：1F、2F、B1" />
+      <Form.Item name="shopNumber" label="铺位号">
+        <Input placeholder="例如：01、02、A1" />
+      </Form.Item>
+
+      <Form.Item
+        name="sortOrder"
+        label="排序序号"
+        tooltip="数字越小越靠前，用于控制首页商户展示顺序"
+        initialValue={0}
+      >
+        <InputNumber
+          placeholder="请输入排序序号"
+          min={0}
+          max={9999}
+          style={{ width: '100%' }}
+        />
       </Form.Item>
 
       <Form.Item name="phone" label="联系电话">
         <Input placeholder="请输入联系电话" />
+      </Form.Item>
+
+      <Form.Item
+        name="businessHours"
+        label="营业时间"
+        tooltip="格式：HH:MM-HH:MM，例如：10:00-22:00"
+        rules={[
+          {
+            pattern: /^([0-1]?[0-9]|2[0-3]):([0-5][0-9])-([0-1]?[0-9]|2[0-3]):([0-5][0-9])$/,
+            message: "请输入正确的时间格式，例如：10:00-22:00"
+          }
+        ]}
+      >
+        <Input placeholder="例如：10:00-22:00" />
       </Form.Item>
 
       <Form.Item name="description" label="商户描述">
