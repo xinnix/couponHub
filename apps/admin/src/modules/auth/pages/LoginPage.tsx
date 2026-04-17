@@ -31,7 +31,7 @@ export const LoginPage = () => {
         <div className="login-card-wrapper">
           <Card className="login-card" bordered={false}>
             <div className="login-header">
-              <h1>Admin</h1>
+              <h1>汉都天地数字化系统</h1>
               <p>后台管理系统</p>
             </div>
             <Form
@@ -66,65 +66,6 @@ export const LoginPage = () => {
                 </Button>
               </Form.Item>
             </Form>
-            <div className="login-footer">
-              <div
-                style={{
-                  marginTop: 16,
-                  padding: "16px",
-                  background: "#f5f5f5",
-                  borderRadius: "8px",
-                }}
-              >
-                <h4 style={{ marginBottom: 12, color: "#666", fontSize: 14 }}>
-                  管理端测试账号 (密码: password123)
-                </h4>
-                <div
-                  style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: 8,
-                    fontSize: 12,
-                  }}
-                >
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      padding: "8px",
-                      background: "#fff",
-                      borderRadius: "4px",
-                    }}
-                  >
-                    <span style={{ fontWeight: 500 }}>超级管理员</span>
-                    <span style={{ color: "#1890ff" }}>superadmin</span>
-                  </div>
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      padding: "8px",
-                      background: "#fff",
-                      borderRadius: "4px",
-                    }}
-                  >
-                    <span style={{ fontWeight: 500 }}>管理员</span>
-                    <span style={{ color: "#1890ff" }}>admin</span>
-                  </div>
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      padding: "8px",
-                      background: "#fff",
-                      borderRadius: "4px",
-                    }}
-                  >
-                    <span style={{ fontWeight: 500 }}>访客</span>
-                    <span style={{ color: "#1890ff" }}>viewer</span>
-                  </div>
-                </div>
-              </div>
-            </div>
           </Card>
         </div>
       </div>
