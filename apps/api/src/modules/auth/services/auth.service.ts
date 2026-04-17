@@ -76,14 +76,19 @@ export class AuthService {
     // 1️⃣ 验证输入
     const data = LoginSchema.parse(input);
 
-    // 2️⃣ 查找用户
-    const user = await this.prisma.user.findUnique({
-      where: { email: data.email },
+    // 2️⃣ 查找用户（支持用户名或邮箱）
+    const user = await this.prisma.user.findFirst({
+      where: {
+        OR: [
+          { username: data.username },
+          { email: data.username }
+        ]
+      },
     });
 
     // 用户不存在
     if (!user) {
-      throw new UnauthorizedException('邮箱不存在');
+      throw new UnauthorizedException('用户名不存在');
     }
 
     // 3️⃣ 验证密码
@@ -174,9 +179,14 @@ export class AuthService {
     // 1️⃣ 验证输入
     const data = LoginSchema.parse(input);
 
-    // 2️⃣ 查找管理员
-    const admin = await this.prisma.admin.findUnique({
-      where: { email: data.email },
+    // 2️⃣ 查找管理员（支持用户名或邮箱）
+    const admin = await this.prisma.admin.findFirst({
+      where: {
+        OR: [
+          { username: data.username },
+          { email: data.username }
+        ]
+      },
       include: {
         roles: {
           include: {
@@ -196,7 +206,7 @@ export class AuthService {
 
     // 用户不存在
     if (!admin) {
-      throw new UnauthorizedException('邮箱不存在');
+      throw new UnauthorizedException('用户名不存在');
     }
 
     // 3️⃣ 验证密码

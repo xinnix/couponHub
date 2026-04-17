@@ -97,16 +97,21 @@ export const authRouter = router({
   login: publicProcedure
     .input(LoginSchema)
     .mutation(async ({ ctx, input }) => {
-      // Find user
-      const user = await ctx.prisma.user.findUnique({
-        where: { email: input.email },
+      // Find user by username or email
+      const user = await ctx.prisma.user.findFirst({
+        where: {
+          OR: [
+            { username: input.username },
+            { email: input.username }
+          ]
+        },
       });
 
       // 用户不存在
       if (!user) {
         throw new TRPCError({
           code: 'UNAUTHORIZED',
-          message: '邮箱不存在',
+          message: '用户名不存在',
         });
       }
 
@@ -248,9 +253,14 @@ export const authRouter = router({
   adminLogin: publicProcedure
     .input(LoginSchema)
     .mutation(async ({ ctx, input }) => {
-      // Find admin
-      const admin = await ctx.prisma.admin.findUnique({
-        where: { email: input.email },
+      // Find admin by username or email
+      const admin = await ctx.prisma.admin.findFirst({
+        where: {
+          OR: [
+            { username: input.username },
+            { email: input.username }
+          ]
+        },
         include: {
           roles: {
             include: {
@@ -272,7 +282,7 @@ export const authRouter = router({
       if (!admin) {
         throw new TRPCError({
           code: 'UNAUTHORIZED',
-          message: '邮箱不存在',
+          message: '用户名不存在',
         });
       }
 
@@ -321,10 +331,21 @@ export const authRouter = router({
         ar.role.permissions?.map((rp: any) => `${rp.permission.resource}:${rp.permission.action}`)
       ) || [];
 
+      // Format roles for frontend
+      const roles = sanitizedAdmin.roles?.map((ar: any) => ({
+        id: ar.role.id,
+        name: ar.role.name,
+        slug: ar.role.slug,
+        level: ar.role.level,
+        isSystem: ar.role.isSystem,
+        assignedAt: ar.assignedAt,
+      })) || [];
+
       return {
         user: {
           ...sanitizedAdmin,
           permissions,
+          roles,
         },
         accessToken,
         refreshToken,
@@ -429,6 +450,69 @@ export const authRouter = router({
         permissions: ctx.user.permissions,
         roles: ctx.user.roles,
       };
+    }),
+
+  // Change password for current admin user
+  changePassword: protectedProcedure
+    .input(z.object({
+      oldPassword: z.string().min(1, "请输入旧密码"),
+      newPassword: z.string().min(8, "新密码至少8个字符"),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      // 1. Get current admin with password hash
+      const admin = await ctx.prisma.admin.findUnique({
+        where: { id: ctx.user.id },
+        select: { passwordHash: true },
+      });
+
+      if (!admin) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: '用户不存在',
+        });
+      }
+
+      // 2. Verify old password
+      const isValidPassword = await bcrypt.compare(input.oldPassword, admin.passwordHash);
+      if (!isValidPassword) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: '旧密码错误',
+        });
+      }
+
+      // 3. Hash new password
+      const newPasswordHash = await bcrypt.hash(input.newPassword, 10);
+
+      // 4. Update password
+      await ctx.prisma.admin.update({
+        where: { id: ctx.user.id },
+        data: { passwordHash: newPasswordHash },
+      });
+
+      return { success: true };
+    }),
+
+  // Update avatar for current admin user
+  updateAdminProfile: protectedProcedure
+    .input(z.object({
+      avatar: z.string().url("头像链接格式错误"),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      // Update Admin table avatar field
+      const updatedAdmin = await ctx.prisma.admin.update({
+        where: { id: ctx.user.id },
+        data: { avatar: input.avatar },
+        select: {
+          id: true,
+          username: true,
+          email: true,
+          avatar: true,
+          updatedAt: true,
+        },
+      });
+
+      return updatedAdmin;
     }),
 
   // Logout

@@ -5,8 +5,8 @@ import { z } from "zod";
 // ============================================
 
 export const LoginSchema = z.object({
-  email: z.string().email("Invalid email format"),
-  password: z.string().min(1, "Password is required"),
+  username: z.string().min(1, "用户名不能为空"),
+  password: z.string().min(1, "密码不能为空"),
 });
 
 export const RegisterSchema = z.object({
@@ -80,6 +80,19 @@ export interface RefreshTokenResponse {
 // ============================================
 
 export const PERMISSIONS = {
+  MENU: {
+    DASHBOARD: 'menu:dashboard',
+    MERCHANTS: 'menu:merchants',
+    MERCHANT_CATEGORIES: 'menu:merchant-categories',
+    COUPON_TEMPLATES: 'menu:coupon-templates',
+    ORDERS: 'menu:orders',
+    SETTLEMENTS: 'menu:settlements',
+    REDEMPTIONS: 'menu:redemptions',
+    USERS: 'menu:users',
+    NEWS: 'menu:news',
+    ADMINS: 'menu:admins',
+    ROLES: 'menu:roles',
+  },
   TODO: {
     CREATE: 'todo:create',
     READ: 'todo:read',
@@ -91,7 +104,13 @@ export const PERMISSIONS = {
     READ: 'user:read',
     UPDATE: 'user:update',
     DELETE: 'user:delete',
-    MANAGE_ROLES: 'user:manage_roles',
+  },
+  ADMIN: {
+    CREATE: 'admin:create',
+    READ: 'admin:read',
+    UPDATE: 'admin:update',
+    DELETE: 'admin:delete',
+    MANAGE_ROLES: 'admin:manage_roles',
   },
   ROLE: {
     CREATE: 'role:create',
@@ -99,15 +118,23 @@ export const PERMISSIONS = {
     UPDATE: 'role:update',
     DELETE: 'role:delete',
   },
-  SETTINGS: {
-    READ: 'settings:read',
-    UPDATE: 'settings:update',
+  HANDLER: {
+    CREATE: 'handler:create',
+    READ: 'handler:read',
+    UPDATE: 'handler:update',
+    DELETE: 'handler:delete',
   },
   MERCHANT: {
     CREATE: 'merchant:create',
     READ: 'merchant:read',
     UPDATE: 'merchant:update',
     DELETE: 'merchant:delete',
+  },
+  MERCHANT_CATEGORY: {
+    CREATE: 'merchantCategory:create',
+    READ: 'merchantCategory:read',
+    UPDATE: 'merchantCategory:update',
+    DELETE: 'merchantCategory:delete',
   },
   NEWS: {
     CREATE: 'news:create',
@@ -116,22 +143,25 @@ export const PERMISSIONS = {
     DELETE: 'news:delete',
   },
   COUPON_TEMPLATE: {
-    CREATE: 'coupon_template:create',
-    READ: 'coupon_template:read',
-    UPDATE: 'coupon_template:update',
-    DELETE: 'coupon_template:delete',
+    CREATE: 'couponTemplate:create',
+    READ: 'couponTemplate:read',
+    UPDATE: 'couponTemplate:update',
+    DELETE: 'couponTemplate:delete',
+    ADJUST_STOCK: 'couponTemplate:adjust_stock',
   },
   ORDER: {
-    CREATE: 'order:create',
     READ: 'order:read',
-    UPDATE: 'order:update',
-    DELETE: 'order:delete',
+    APPROVE_REFUND: 'order:approve_refund',
+    REJECT_REFUND: 'order:reject_refund',
   },
   SETTLEMENT: {
-    CREATE: 'settlement:create',
     READ: 'settlement:read',
-    UPDATE: 'settlement:update',
-    DELETE: 'settlement:delete',
+    CONFIRM: 'settlement:confirm',
+    MARK_PAID: 'settlement:mark_paid',
+  },
+  SETTINGS: {
+    READ: 'settings:read',
+    UPDATE: 'settings:update',
   },
 } as const;
 
