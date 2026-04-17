@@ -455,6 +455,7 @@ export const AdminListPage = () => {
               pageSize: pageSize,
               total: (result as any)?.total || 0,
               showSizeChanger: true,
+              showTotal: (total) => `共 ${total} 条`,
               onChange: (page, newPageSize) => {
                 setCurrentPage(page);
                 if (newPageSize !== pageSize) {
@@ -462,8 +463,6 @@ export const AdminListPage = () => {
                   setCurrentPage(1);
                 }
               },
-            }}
-              showTotal: (total) => `共 ${total} 条`,
             }}
           />
 
