@@ -27,7 +27,7 @@ export interface UploadResult {
   fileSize: number;
 }
 
-export type UploadType = 'merchant_logo' | 'news_banner' | 'merchant_gallery' | 'news_content';
+export type UploadType = 'merchant_logo' | 'news_banner' | 'merchant_gallery' | 'news_content' | 'avatar';
 
 /**
  * OSS 直传上传类

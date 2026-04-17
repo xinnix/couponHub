@@ -15,9 +15,13 @@ import {
   SafetyCertificateOutlined,
   SettingOutlined,
   AppstoreOutlined,
+  EditOutlined,
+  LockOutlined,
 } from "@ant-design/icons";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useAuth } from "../auth";
+import { ProfileModal } from "../components/ProfileModal";
+import { ChangePasswordModal } from "../components/ChangePasswordModal";
 
 const { Header, Sider, Content } = Layout;
 
@@ -26,10 +30,14 @@ export function AdminLayout() {
   const location = useLocation();
   const { user, logout } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
+  const [profileModalVisible, setProfileModalVisible] = useState(false);
+  const [passwordModalVisible, setPasswordModalVisible] = useState(false);
 
-  const menuItems = [
+  // 菜单项配置（带权限标识）
+  const allMenuItems = [
     {
       key: "dashboard",
+      permission: "menu:dashboard",
       icon: <DashboardOutlined />,
       label: "仪表盘",
       onClick: () => navigate("/dashboard"),
@@ -41,42 +49,49 @@ export function AdminLayout() {
       children: [
         {
           key: "/merchants",
+          permission: "menu:merchants",
           icon: <ShopOutlined />,
           label: "商户管理",
           onClick: () => navigate("/merchants"),
         },
         {
           key: "/merchant-categories",
+          permission: "menu:merchant-categories",
           icon: <AppstoreOutlined />,
           label: "商户分类管理",
           onClick: () => navigate("/merchant-categories"),
         },
         {
           key: "/coupon-templates",
+          permission: "menu:coupon-templates",
           icon: <TagOutlined />,
           label: "券模板管理",
           onClick: () => navigate("/coupon-templates"),
         },
         {
           key: "/orders",
+          permission: "menu:orders",
           icon: <ShoppingCartOutlined />,
           label: "订单管理",
           onClick: () => navigate("/orders"),
         },
         {
           key: "/settlements",
+          permission: "menu:settlements",
           icon: <AccountBookOutlined />,
           label: "结算管理",
           onClick: () => navigate("/settlements"),
         },
         {
           key: "/redemptions",
+          permission: "menu:redemptions",
           icon: <CheckCircleOutlined />,
           label: "核销记录",
           onClick: () => navigate("/redemptions"),
         },
         {
           key: "/users",
+          permission: "menu:users",
           icon: <UserOutlined />,
           label: "用户管理",
           onClick: () => navigate("/users"),
@@ -90,6 +105,7 @@ export function AdminLayout() {
       children: [
         {
           key: "/news",
+          permission: "menu:news",
           icon: <FileTextOutlined />,
           label: "新闻管理",
           onClick: () => navigate("/news"),
@@ -103,12 +119,14 @@ export function AdminLayout() {
       children: [
         {
           key: "/admins",
+          permission: "menu:admins",
           icon: <SafetyCertificateOutlined />,
           label: "管理员管理",
           onClick: () => navigate("/admins"),
         },
         {
           key: "/roles",
+          permission: "menu:roles",
           icon: <SafetyCertificateOutlined />,
           label: "角色管理",
           onClick: () => navigate("/roles"),
@@ -117,7 +135,64 @@ export function AdminLayout() {
     },
   ];
 
+  // 权限过滤函数
+  const filterMenuByPermission = (items: any[]): any[] => {
+    // Super Admin 拥有所有权限，直接返回所有菜单
+    const hasSuperAdminRole = user?.roles?.some((r: any) => r?.role?.slug === 'super_admin') || false;
+    if (hasSuperAdminRole) {
+      console.log('Super Admin detected, showing all menus');
+      return items;
+    }
+
+    console.log('User permissions:', user?.permissions);
+    console.log('User roles:', user?.roles);
+
+    return items
+      .filter(item => {
+        // 父菜单：至少有一个子菜单有权限才显示
+        if (item.children) {
+          const filteredChildren = filterMenuByPermission(item.children);
+          return filteredChildren.length > 0;
+        }
+
+        // 子菜单：检查权限
+        if (!item.permission) return true; // 无权限要求的菜单项直接显示
+        return user?.permissions?.includes(item.permission) || false;
+      })
+      .map(item => {
+        // 如果有 children，返回修改后的对象（不污染原始数据）
+        if (item.children) {
+          return {
+            ...item,
+            children: filterMenuByPermission(item.children)
+          };
+        }
+        return item;
+      });
+  };
+
+  // 使用 useMemo 缓存过滤后的菜单，避免每次渲染都重新计算
+  const menuItems = useMemo(
+    () => filterMenuByPermission(allMenuItems),
+    [user?.permissions, user?.roles]
+  );
+
   const userMenuItems = [
+    {
+      key: "profile",
+      icon: <EditOutlined />,
+      label: "个人信息",
+      onClick: () => setProfileModalVisible(true),
+    },
+    {
+      key: "password",
+      icon: <LockOutlined />,
+      label: "修改密码",
+      onClick: () => setPasswordModalVisible(true),
+    },
+    {
+      type: 'divider',
+    },
     {
       key: "logout",
       icon: <LogoutOutlined />,
@@ -270,6 +345,18 @@ export function AdminLayout() {
           <Outlet />
         </Content>
       </Layout>
+
+      {/* Modals */}
+      <ProfileModal
+        visible={profileModalVisible}
+        onCancel={() => setProfileModalVisible(false)}
+        onSuccess={() => setProfileModalVisible(false)}
+      />
+      <ChangePasswordModal
+        visible={passwordModalVisible}
+        onCancel={() => setPasswordModalVisible(false)}
+        onSuccess={() => setPasswordModalVisible(false)}
+      />
     </Layout>
   );
 }
