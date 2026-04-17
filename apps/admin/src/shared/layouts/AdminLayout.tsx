@@ -107,6 +107,12 @@ export function AdminLayout() {
           label: "管理员管理",
           onClick: () => navigate("/admins"),
         },
+        {
+          key: "/roles",
+          icon: <SafetyCertificateOutlined />,
+          label: "角色管理",
+          onClick: () => navigate("/roles"),
+        },
       ],
     },
   ];
@@ -154,7 +160,7 @@ export function AdminLayout() {
     if (["/news"].includes(path)) {
       return ["content"];
     }
-    if (["/admins"].includes(path)) {
+    if (["/admins", "/roles"].includes(path)) {
       return ["system"];
     }
     return [];

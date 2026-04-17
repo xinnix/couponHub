@@ -9,6 +9,21 @@ import { StockAdjustModal } from "../components/StockAdjustModal";
 import { StockLogList } from "../components/StockLogList";
 import { StockStatistics } from "../components/StockStatistics";
 
+interface UsageRules {
+  stacking?: {
+    type: string;
+    customText?: string;
+  };
+  refund?: {
+    type: string;
+    customText?: string;
+  };
+  usage?: {
+    type: string;
+    customText?: string;
+  };
+}
+
 interface CouponTemplate {
   id: string;
   title: string;
@@ -23,7 +38,7 @@ interface CouponTemplate {
   useUntil: Date; // 使用结束时间
   validDays?: number; // 相对有效天数（可选）
   description?: string;
-  usageRules?: string; // 使用规则说明
+  usageRules?: UsageRules; // 使用规则说明（JSON对象）
   featuredOnHome?: boolean; // 是否展示到首页超值优惠
   status: 'ACTIVE' | 'EXPIRED' | 'DISABLED';
   createdAt: Date;
@@ -304,7 +319,41 @@ export const TemplateDetailPage = () => {
               {template.description || '-'}
             </Descriptions.Item>
             <Descriptions.Item label="使用规则" span={2}>
-              {template.usageRules || '-'}
+              {template.usageRules ? (
+                <Space direction="vertical" size="small">
+                  {template.usageRules.stacking?.type && (
+                    <Typography.Text>
+                      <strong>叠加规则：</strong>
+                      {template.usageRules.stacking.type === 'custom'
+                        ? template.usageRules.stacking.customText
+                        : template.usageRules.stacking.type === 'no_stack' ? '不与其他优惠叠加'
+                        : template.usageRules.stacking.type === 'limited_stack' ? '限制叠加'
+                        : '可自由叠加'}
+                    </Typography.Text>
+                  )}
+                  {template.usageRules.refund?.type && (
+                    <Typography.Text>
+                      <strong>退改规则：</strong>
+                      {template.usageRules.refund.type === 'custom' || template.usageRules.refund.type === 'limited'
+                        ? template.usageRules.refund.customText
+                        : template.usageRules.refund.type === 'flexible' ? '未核销前随时退款'
+                        : template.usageRules.refund.type === 'no_refund' ? '不可退款'
+                        : '-'}
+                    </Typography.Text>
+                  )}
+                  {template.usageRules.usage?.type && (
+                    <Typography.Text>
+                      <strong>使用规则：</strong>
+                      {template.usageRules.usage.type === 'custom'
+                        ? template.usageRules.usage.customText
+                        : template.usageRules.usage.type === 'min_amount' ? '最低消费金额'
+                        : template.usageRules.usage.type === 'time_limit' ? '时间限制'
+                        : template.usageRules.usage.type === 'category' ? '商品类别限制'
+                        : '-'}
+                    </Typography.Text>
+                  )}
+                </Space>
+              ) : '-'}
             </Descriptions.Item>
           </Descriptions>
         </div>

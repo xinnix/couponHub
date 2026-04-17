@@ -37,6 +37,21 @@ import { getTrpcClient } from "../../../shared/trpc/trpcClient";
 
 const { RangePicker } = DatePicker;
 
+interface UsageRules {
+  stacking?: {
+    type: string;
+    customText?: string;
+  };
+  refund?: {
+    type: string;
+    customText?: string;
+  };
+  usage?: {
+    type: string;
+    customText?: string;
+  };
+}
+
 interface CouponTemplate {
   id: string;
   title: string;
@@ -58,7 +73,7 @@ interface CouponTemplate {
   // 相对有效期
   validDays?: number;
   description?: string;
-  usageRules?: string; // 使用规则说明
+  usageRules?: UsageRules; // 使用规则说明（JSON对象）
   status: 'ACTIVE' | 'EXPIRED' | 'DISABLED';
   qrcodeUrl?: string; // 小程序码 URL
   qrcodeGeneratedAt?: Date; // 小程序码生成时间
@@ -143,6 +158,12 @@ export const TemplateListPage = () => {
       saleUntil: dayjs(record.saleUntil),
       useFrom: dayjs(record.useFrom),
       useUntil: dayjs(record.useUntil),
+      // 确保 usageRules 有默认结构
+      usageRules: record.usageRules || {
+        stacking: { type: 'no_stack' },
+        refund: { type: 'flexible' },
+        usage: undefined,
+      },
     });
     setIsModalVisible(true);
   };

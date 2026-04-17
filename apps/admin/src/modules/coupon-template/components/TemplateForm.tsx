@@ -4,7 +4,7 @@ import { Form, Input, InputNumber, Select, DatePicker, Row, Col, Tooltip, Checkb
 import { QuestionCircleOutlined, InfoCircleOutlined } from '@ant-design/icons';
 import { MerchantScopeSelector } from './MerchantScopeSelector';
 import { CouponRulesForm } from './CouponRulesForm';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
 const { TextArea } = Input;
 const { RangePicker } = DatePicker;
@@ -24,35 +24,35 @@ export const TemplateForm: React.FC<TemplateFormProps> = ({ form, isEdit }) => {
 
   const categories = categoriesResult?.data || [];
 
-  // 监听 categoryId 变化，自动填充 merchantScope
+  // 监听 categoryId 变化
   const categoryId = Form.useWatch('categoryId', form);
 
   // 获取该类别下的所有商户
   const { result: categoryMerchantsResult } = useList({
     resource: "merchant",
-    pagination: { pageSize: 1000 }, // 获取足够多的商户
+    pagination: { pageSize: 1000 },
     filters: [
       { field: "status", operator: "eq", value: "ACTIVE" },
       ...(categoryId ? [{ field: "categoryId", operator: "eq", value: categoryId }] as any : []),
     ],
     meta: {
       include: {
-        category: true, // 包含类别信息用于显示
+        category: true,
       },
     },
   });
 
   const categoryMerchants = categoryMerchantsResult?.data || [];
 
+  // 监听 categoryId 变化，只在用户选择/修改类别时才自动填充 merchantScope
   useEffect(() => {
+    // 核心逻辑：只在有 categoryId 时才自动填充
+    // 没有 categoryId 时，不做任何操作（保留原始值或让用户手动选择）
     if (categoryId) {
-      // 自动填充该类别下的所有商户到 merchantScope
       const merchantIds = categoryMerchants.map((m: any) => m.id);
       form.setFieldValue('merchantScope', merchantIds);
-    } else {
-      // 清空类别时，清空商户范围（让用户重新手动选择）
-      form.setFieldValue('merchantScope', []);
     }
+    // 注意：不处理 categoryId 为空的情况，避免覆盖编辑模式下的原始值
   }, [categoryId, categoryMerchants, form]);
 
   return (

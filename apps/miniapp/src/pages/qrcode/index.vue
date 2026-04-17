@@ -45,6 +45,40 @@ const orderFaceValue = computed(() => {
   return 0
 })
 
+const orderExpireFrom = computed(() => {
+  if (order.value && order.value.template) {
+    // 相对有效期模式：从支付时间开始
+    if (order.value.template.validDays && order.value.paidAt) {
+      const date = new Date(order.value.paidAt)
+      const year = date.getFullYear()
+      const month = String(date.getMonth() + 1).padStart(2, '0')
+      const day = String(date.getDate()).padStart(2, '0')
+      return `${year}-${month}-${day}`
+    }
+    // 固定有效期模式：从券模板的使用开始时间
+    if (order.value.template.useFrom) {
+      const date = new Date(order.value.template.useFrom)
+      const year = date.getFullYear()
+      const month = String(date.getMonth() + 1).padStart(2, '0')
+      const day = String(date.getDate()).padStart(2, '0')
+      return `${year}-${month}-${day}`
+    }
+  }
+  return '未设置'
+})
+
+const orderExpireAt = computed(() => {
+  if (order.value && order.value.expireAt) {
+    // 格式化日期为 YYYY-MM-DD
+    const date = new Date(order.value.expireAt)
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day}`
+  }
+  return '未设置'
+})
+
 const statusText = computed(() => {
   if (order.value && order.value.status) {
     return getStatusText(order.value.status)
@@ -313,6 +347,9 @@ async function handleRefund() {
             </text>
             <text class="text-sm text-on-surface-variant font-medium">
               面值: ¥{{ orderFaceValue }}
+            </text>
+            <text class="text-sm text-on-surface-variant font-medium">
+              有效期: {{ orderExpireFrom }} 至 {{ orderExpireAt }}
             </text>
             <view class="status-badge mt-2 flex items-center self-start rounded-full bg-primary-container px-3 py-1">
               <text class="text-xs text-white font-bold">

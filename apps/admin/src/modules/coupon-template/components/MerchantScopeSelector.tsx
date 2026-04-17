@@ -1,5 +1,5 @@
 // apps/admin/src/modules/coupon-template/components/MerchantScopeSelector.tsx
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { Select, Tag } from "antd";
 import { useList } from "@refinedev/core";
 
@@ -56,10 +56,24 @@ export const MerchantScopeSelector: React.FC<MerchantScopeSelectorProps> = ({ va
 
   const merchants = (result as any)?.data || [];
 
-  const options = merchants.map((merchant: any) => ({
-    label: `${merchant.name} (${merchant.category?.name || '未分类'})`,
-    value: merchant.id,
-  }));
+  // 使用 useMemo 确保 options 正确计算，包含已选择的商户
+  const options = useMemo(() => {
+    const baseOptions = merchants.map((merchant: any) => ({
+      label: `${merchant.name} (${merchant.category?.name || '未分类'})`,
+      value: merchant.id,
+    }));
+
+    // 添加已选择的商户（如果不在当前加载的列表中）
+    const selectedMerchants = value || [];
+    const fallbackOptions = selectedMerchants
+      .filter((merchantId) => !baseOptions.find((opt) => opt.value === merchantId))
+      .map((merchantId) => ({
+        label: `商户 ID: ${merchantId}`,
+        value: merchantId,
+      }));
+
+    return [...baseOptions, ...fallbackOptions];
+  }, [merchants, value]);
 
   return (
     <Select
@@ -82,6 +96,21 @@ export const MerchantScopeSelector: React.FC<MerchantScopeSelectorProps> = ({ va
         const { label, value: tagValue, closable, onClose } = props;
         const merchant = merchants.find((m: any) => m.id === tagValue);
         const categoryName = merchant?.category?.name || '未分类';
+
+        // 如果商户不在当前列表中，显示灰色标签
+        if (!merchant) {
+          return (
+            <Tag
+              closable={!disabled && closable}
+              onClose={onClose}
+              style={{ marginRight: 3 }}
+              color="default"
+            >
+              {label}
+            </Tag>
+          );
+        }
+
         return (
           <Tag
             closable={!disabled && closable} // 禁用时不可删除
