@@ -107,7 +107,7 @@ const displayBusinessHours = computed(() => {
   if (merchant.value && merchant.value.businessHours) {
     return merchant.value.businessHours
   }
-  return '暂无营业时间'
+  return '24小时营业'
 })
 
 const displayDescription = computed(() => {
@@ -349,10 +349,10 @@ async function loadCoupons(merchantId: string) {
           {{ displayName }}
         </text>
 
-        <!-- 分类标签 -->
-        <view class="category-row">
-          <text class="category-text">
-            {{ displayCategory }}
+        <!-- 商户描述 -->
+        <view class="description-row">
+          <text class="description-text">
+            {{ displayDescription }}
           </text>
         </view>
 
@@ -589,13 +589,14 @@ async function loadCoupons(merchantId: string) {
   display: block;
 }
 
-.category-row {
+.description-row {
   margin-bottom: 32rpx;
 }
 
-.category-text {
+.description-text {
   font-size: 24rpx;
   color: #3e4850;
+  line-height: 1.5;
 }
 
 .offer-badges {

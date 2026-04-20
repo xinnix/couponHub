@@ -187,6 +187,13 @@ function getDefaultImage(id: string) {
 function handleImageError(e: any) {
   e.target.src = 'https://picsum.photos/seed/default/400/300'
 }
+
+// 清理商户介绍中的换行符，确保只显示一行
+function cleanDescription(text: string | undefined | null): string {
+  if (!text) return ''
+  // 移除所有换行符（包括 \n, \r, \r\n）并替换为空格
+  return text.replace(/[\r\n]+/g, ' ').trim()
+}
 </script>
 
 <template>
@@ -278,7 +285,7 @@ function handleImageError(e: any) {
 
             <!-- 商户类别 -->
             <text class="merchant-category">
-              {{ merchant.category?.name || merchant.category || '未分类' }}{{ merchant.description ? ` · ${merchant.description}` : '' }}
+              {{ merchant.category?.name || merchant.category || '未分类' }}{{ cleanDescription(merchant.description) ? ` · ${cleanDescription(merchant.description)}` : '' }}
             </text>
 
             <!-- 商户地址 -->
