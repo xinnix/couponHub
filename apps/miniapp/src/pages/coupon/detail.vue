@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, onUnmounted } from 'vue'
 import { couponApi, orderApi, paymentApi } from '@/api/business'
 
 const loading = ref(true)
 const coupon = ref<any>(null)
 const buying = ref(false)
 const statusBarHeight = ref(0)
+const countdownText = ref('') // 倒计时文本
+const countdownTimer = ref<any>(null) // 倒计时定时器
 
 // 计算属性 - 显示数据
 const displayTitle = computed(() => {
@@ -54,14 +56,27 @@ const displayMerchantName = computed(() => {
 })
 
 const displayButtonText = computed(() => {
+  // 处理中状态
   if (buying.value) {
     return '处理中...'
   }
+
+  // 未到销售期
+  if (!isSaleStarted.value) {
+    return countdownText.value || '即将开抢'
+  }
+
+  // 销售已结束
+  if (isSaleEnded.value) {
+    return '已结束'
+  }
+
+  // 库存不足
   if (!coupon.value || displayStock.value <= 0) {
     return '已售罄'
   }
 
-  // 新增：根据价格显示不同文案
+  // 根据价格显示不同文案
   if (displayBuyPrice.value === 0) {
     return '立即领取'
   }
@@ -70,7 +85,39 @@ const displayButtonText = computed(() => {
 })
 
 const isButtonDisabled = computed(() => {
-  return buying.value || !coupon.value || displayStock.value <= 0
+  // 如果正在购买中，禁用
+  if (buying.value) return true
+
+  // 如果优惠券不存在，禁用
+  if (!coupon.value) return true
+
+  // 如果未到销售期，禁用
+  if (!isSaleStarted.value) return true
+
+  // 如果库存为0，禁用
+  if (displayStock.value <= 0) return true
+
+  return false
+})
+
+// 判断是否已开始销售
+const isSaleStarted = computed(() => {
+  if (!coupon.value || !coupon.value.saleFrom) return true
+
+  const saleFrom = new Date(coupon.value.saleFrom)
+  const now = new Date()
+
+  return saleFrom <= now
+})
+
+// 判断是否已结束销售
+const isSaleEnded = computed(() => {
+  if (!coupon.value || !coupon.value.saleUntil) return false
+
+  const saleUntil = new Date(coupon.value.saleUntil)
+  const now = new Date()
+
+  return saleUntil < now
 })
 
 const discountPercent = computed(() => {
@@ -197,6 +244,62 @@ function formatPrice(price: number): string {
   return price.toFixed(2)
 }
 
+// 更新倒计时文本
+function updateCountdown() {
+  if (!coupon.value || !coupon.value.saleFrom) {
+    countdownText.value = ''
+    return
+  }
+
+  const saleFrom = new Date(coupon.value.saleFrom)
+  const now = new Date()
+  const diff = saleFrom.getTime() - now.getTime()
+
+  if (diff <= 0) {
+    countdownText.value = ''
+    return
+  }
+
+  // 计算天、小时、分钟、秒
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24))
+  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
+  const seconds = Math.floor((diff % (1000 * 60)) / 1000)
+
+  // 格式化显示
+  if (days > 0) {
+    countdownText.value = `${days}天${hours}小时后开抢`
+  } else if (hours > 0) {
+    countdownText.value = `${hours}小时${minutes}分钟后开抢`
+  } else if (minutes > 0) {
+    countdownText.value = `${minutes}分${seconds}秒后开抢`
+  } else {
+    countdownText.value = `${seconds}秒后开抢`
+  }
+}
+
+// 启动倒计时定时器
+function startCountdownTimer() {
+  // 清除旧定时器
+  if (countdownTimer.value) {
+    clearInterval(countdownTimer.value)
+  }
+
+  // 立即更新一次
+  updateCountdown()
+
+  // 启动定时器，每秒更新
+  countdownTimer.value = setInterval(() => {
+    updateCountdown()
+
+    // 如果倒计时结束，清除定时器
+    if (!countdownText.value) {
+      clearInterval(countdownTimer.value)
+      countdownTimer.value = null
+    }
+  }, 1000)
+}
+
 // 获取状态栏高度
 const sysInfo = uni.getSystemInfoSync()
 statusBarHeight.value = sysInfo.statusBarHeight || 0
@@ -244,6 +347,11 @@ async function loadCoupon(id: string) {
     loading.value = true
     const res = await couponApi.getDetail(id)
     coupon.value = res.data
+
+    // 启动倒计时定时器（如果未到销售期）
+    if (!isSaleStarted.value) {
+      startCountdownTimer()
+    }
   }
   catch (error) {
     console.error('加载失败:', error)
@@ -259,6 +367,17 @@ async function handleBuy() {
     return
   if (!coupon.value)
     return
+
+  // ✅ 检查销售期
+  if (!isSaleStarted.value) {
+    uni.showToast({ title: '还未开始销售', icon: 'none' })
+    return
+  }
+
+  if (isSaleEnded.value) {
+    uni.showToast({ title: '销售已结束', icon: 'none' })
+    return
+  }
 
   // ✅ 先检查登录状态
   const token = uni.getStorageSync('token')
@@ -495,6 +614,14 @@ function goToMerchant(merchantId?: string) {
     url: `/pages/merchant/detail?id=${merchantId}`,
   })
 }
+
+// 页面卸载时清除定时器
+onUnmounted(() => {
+  if (countdownTimer.value) {
+    clearInterval(countdownTimer.value)
+    countdownTimer.value = null
+  }
+})
 </script>
 
 <template>
