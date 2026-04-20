@@ -38,15 +38,17 @@ export const OSSUploadMultiple: React.FC<OSSUploadMultipleProps> = ({
   const { message } = App.useApp();
   const [loading, setLoading] = useState(false);
 
-  // 将 URL 数组转换为 UploadFile 数组
-  const [fileList, setFileList] = useState<UploadFile[]>((
-    value || []).map((url, index) => ({
+  // 将 URL 数组转换为 UploadFile 数组，确保 value 不为 null
+  const safeValue = value || [];
+
+  const [fileList, setFileList] = useState<UploadFile[]>(
+    safeValue.map((url, index) => ({
       uid: `${index}`,
       name: `image-${index}`,
       status: 'done',
       url: url,
-    })
-  ));
+    }))
+  );
 
   /**
    * 自定义上传处理
