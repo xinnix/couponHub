@@ -1,6 +1,6 @@
 // apps/admin/src/modules/settlement/pages/SettlementListPage.tsx
 import { useState } from "react";
-import { useTable, useCreate, useUpdate, useDelete, useDeleteMany } from "@refinedev/core";
+import { useTable, useList, useCreate, useUpdate, useDelete, useDeleteMany } from "@refinedev/core";
 import { useQuery } from "@tanstack/react-query";
 import { trpcClient } from "../../../shared/dataProvider/dataProvider";
 import { List } from "@refinedev/antd";
