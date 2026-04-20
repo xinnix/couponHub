@@ -486,7 +486,7 @@ function getDefaultImage(type: string, id: string) {
               <view class="absolute bottom-0 left-0 top-0 w-1 rounded-l bg-primary-container" />
               <view class="mb-1 pl-2">
                 <view class="mb-1">
-                  <text class="text-xs text-on-surface font-bold leading-tight line-clamp-2">
+                  <text class="voucher-title-text text-xs text-on-surface font-bold leading-tight">
                     {{ voucher.title }}
                   </text>
                 </view>
@@ -547,10 +547,10 @@ function getDefaultImage(type: string, id: string) {
                 @error="(e) => onImageError(e, '商户', merchant.id)" @load="onImageLoad('商户', merchant.id)" />
             </view>
             <view class="flex flex-col gap-1 p-2">
-              <text class="truncate text-left text-11px text-on-surface font-bold leading-tight">
+              <text class="merchant-name-text text-left text-11px text-on-surface font-bold leading-tight">
                 {{ merchant.name }}
               </text>
-              <text class="merchant-desc-text truncate text-left text-10px font-medium">
+              <text class="merchant-desc-text text-left text-10px font-medium">
                 {{ merchant.desc }}
               </text>
             </view>
@@ -835,6 +835,16 @@ function getDefaultImage(type: string, id: string) {
   text-decoration: line-through;
 }
 
+/* 优惠券标题文字 - 单行溢出省略 */
+.voucher-title-text {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* 分类图标背景 */
 .category-icon-bg {
   background: rgba(239, 244, 250, 0.8);
@@ -856,7 +866,17 @@ function getDefaultImage(type: string, id: string) {
   background: rgba(255, 255, 255, 0.9);
 }
 
-/* 商户描述文字 */
+/* 商户名称文字 - 单行溢出省略 */
+.merchant-name-text {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 商户描述文字 - 单行溢出省略 */
 .merchant-desc-text {
   color: rgba(110, 120, 129, 0.8);
   display: block;
