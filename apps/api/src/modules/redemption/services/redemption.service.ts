@@ -147,6 +147,7 @@ export class RedemptionService {
         where,
         include: {
           template: true,
+          merchant: true, // 包含核销商户信息（包括分类）
           user: {
             select: {
               id: true,

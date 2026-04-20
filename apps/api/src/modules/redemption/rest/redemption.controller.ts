@@ -174,7 +174,11 @@ export class RedemptionController {
         where,
         include: {
           template: true,
-          merchant: true,
+          merchant: {
+            include: {
+              category: true, // 包含商户分类信息
+            },
+          },
           user: {
             select: {
               id: true,

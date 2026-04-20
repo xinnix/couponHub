@@ -61,7 +61,11 @@ export const redemptionRouter = router({
           orderBy: orderBy || { redeemedAt: 'desc' },
           include: include || {
             template: true,
-            merchant: true,
+            merchant: {
+              include: {
+                category: true, // 包含商户分类信息
+              },
+            },
             user: {
               select: {
                 id: true,
@@ -229,7 +233,11 @@ export const redemptionRouter = router({
           where,
           include: {
             template: true,
-            merchant: true,
+            merchant: {
+              include: {
+                category: true, // 包含商户分类信息
+              },
+            },
             user: {
               select: {
                 id: true,
