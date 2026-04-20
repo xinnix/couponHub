@@ -48,7 +48,9 @@ export const UserListPage = () => {
   } = useTable<User>({
     resource: "user",
     pagination: {
+      currentPage: 1,
       pageSize: 10,
+      mode: "server",
     },
     filters: {
       initial: debouncedSearch ? [

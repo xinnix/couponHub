@@ -40,7 +40,11 @@ export const MerchantCategoryListPage = () => {
     setPageSize,
   } = useTable<MerchantCategory>({
     resource: "merchantCategory",
-    pagination: { pageSize: 20 },
+    pagination: {
+      currentPage: 1,
+      pageSize: 20,
+      mode: "server",
+    },
   });
 
   const result = tableQuery.data;

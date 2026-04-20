@@ -81,7 +81,9 @@ export const OrderListPage = () => {
   } = useTable<Order>({
     resource: "order",
     pagination: {
+      currentPage: 1,
       pageSize: 10,
+      mode: "server",
     },
     filters: {
       initial: [

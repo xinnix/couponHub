@@ -94,7 +94,11 @@ export const AdminListPage = () => {
     setPageSize,
   } = useTable<AdminRecord>({
     resource: "admin",
-    pagination: { pageSize: 10 },
+    pagination: {
+      currentPage: 1,
+      pageSize: 10,
+      mode: "server",
+    },
     filters: {
       initial: [
         ...(searchText ? [{ field: "search", operator: "contains" as const, value: searchText }] : []),

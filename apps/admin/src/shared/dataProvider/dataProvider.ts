@@ -208,7 +208,9 @@ export const dataProvider = {
    */
   getList: async ({ resource, pagination, filters, sorters, meta }: any) => {
     try {
-      const { page = 1, pageSize = 10 } = pagination || {};
+      // Refine 的 getList 接收的 pagination 格式：{ currentPage, pageSize }
+      // 参考：https://refine.dev/docs/data/data-provider/#getlist
+      const { currentPage = 1, pageSize = 10 } = pagination || {};
 
       // Handle custom methods (like getTree, getManyFiltered)
       if (meta?.method) {
@@ -224,7 +226,7 @@ export const dataProvider = {
 
         // Call custom method with filters
         const customResult = await (trpcClient as any)[resource][meta.method].query({
-          page,
+          page: currentPage,
           limit: pageSize,
           ...filterValues,
         });
@@ -277,7 +279,7 @@ export const dataProvider = {
 
       // Call the getMany procedure with unified format
       const result = await (trpcClient as any)[resource].getMany.query({
-        page,
+        page: currentPage,
         limit: pageSize,
         where,
         orderBy: Object.keys(orderBy).length > 0 ? orderBy : undefined,

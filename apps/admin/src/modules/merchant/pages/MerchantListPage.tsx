@@ -104,7 +104,9 @@ export const MerchantListPage = () => {
   } = useTable<Merchant>({
     resource: "merchant",
     pagination: {
+      currentPage: 1,
       pageSize: 10,
+      mode: "server",
     },
     filters: {
       initial: [

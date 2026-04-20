@@ -15,7 +15,9 @@ export const TodoListPage = () => {
   } = useTable({
     resource: "todo",
     pagination: {
+      currentPage: 1,
       pageSize: 10,
+      mode: "server",
     },
     queryOptions: {
       enabled: true, // Explicitly enable the query

@@ -119,7 +119,9 @@ export const NewsListPage = () => {
   } = useTable<News>({
     resource: "news",
     pagination: {
+      currentPage: 1,
       pageSize: 10,
+      mode: "server",
     },
     filters: {
       initial: [

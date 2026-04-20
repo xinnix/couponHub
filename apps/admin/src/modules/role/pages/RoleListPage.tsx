@@ -60,7 +60,9 @@ export const RoleListPage = () => {
   } = useTable<Role>({
     resource: "role",
     pagination: {
+      currentPage: 1,
       pageSize: 50, // 显示所有角色
+      mode: "server",
     },
     filters: {
       initial: searchText

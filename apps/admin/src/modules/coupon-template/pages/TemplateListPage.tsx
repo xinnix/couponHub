@@ -134,7 +134,9 @@ export const TemplateListPage = () => {
   } = useTable<CouponTemplate>({
     resource: "couponTemplate",
     pagination: {
+      currentPage: 1,
       pageSize: 10,
+      mode: "server",
     },
     filters: {
       initial: [
