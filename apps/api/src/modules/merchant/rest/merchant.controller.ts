@@ -24,17 +24,18 @@ export class MerchantController {
   @ApiOperation({ summary: '获取商户列表' })
   @ApiResponse({ status: 200, description: '获取成功' })
   async findAll(@Query() query: any) {
-    const { page = 1, limit = 10, status, category } = query;
+    const { page = 1, limit = 10, status, category, area } = query;
     const where: any = {};
 
     if (status) where.status = status;
     if (category) where.category = category;
+    if (area) where.area = area;
 
     const result = await this.merchantService.list({
       skip: (Number(page) - 1) * Number(limit),
       take: Number(limit),
       where,
-      orderBy: { createdAt: 'desc' },
+      // 不指定 orderBy，使用 service 默认的 sortOrder 升序排序
     });
 
     return {

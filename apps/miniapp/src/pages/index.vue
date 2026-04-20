@@ -35,7 +35,7 @@ const categories = ref([
   { id: 4, name: '智慧教培', icon: 'icon-jiaopeiwangputong' },
 ])
 
-// 商户数据
+// 商户数据（直接使用，不再需要前端筛选）
 const merchants = ref<any[]>([])
 
 // 新闻数据
@@ -54,17 +54,10 @@ const currentHeroIndex = ref(0)
 // 自动轮播定时器
 let autoPlayTimer: any = null
 
-// 筛选商户
-const filteredMerchants = computed(() => {
-  if (currentArea.value === '全部') {
-    return merchants.value
-  }
-  return merchants.value.filter(m => m.area === currentArea.value)
-})
-
-// 切换区域
-function switchArea(area: string) {
+// 切换区域并重新加载数据
+async function switchArea(area: string) {
   currentArea.value = area
+  await loadMerchants(area)
 }
 
 // 抢购优惠券 - 跳转到详情页
@@ -126,17 +119,18 @@ function goToNewsDetail(news: any) {
   })
 }
 
-// 加载首页数据
-async function loadHomeData() {
-  loading.value = true
+// 加载商户数据（根据区域动态加载）
+async function loadMerchants(area: string = '全部') {
   try {
-    // 并行加载四个接口数据（新增弹窗新闻）
-    const [merchantsRes, newsRes, couponsRes, popupRes] = await Promise.all([
-      merchantApi.getList({ limit: 6, status: 'ACTIVE' }),
-      newsApi.getList({ limit: 10, status: 'PUBLISHED' }),
-      couponApi.getList({ limit: 10, status: 'ACTIVE', featuredOnHome: true }),
-      newsApi.getPopup(), // 新增：获取弹窗新闻
-    ])
+    // 构建API参数
+    const params: any = { limit: 6, status: 'ACTIVE' }
+
+    // 如果选择了特定区域，添加 area 筛选参数
+    if (area !== '全部') {
+      params.area = area
+    }
+
+    const merchantsRes = await merchantApi.getList(params)
 
     // 处理商户数据
     if (merchantsRes.success && merchantsRes.data) {
@@ -154,13 +148,35 @@ async function loadHomeData() {
           name: m.name,
           desc: m.description || categoryDisplay,
           image: imageUrl,
-          area: m.area || 'A区',
+          area: m.area || '未分配', // 使用真实的区域数据，如果没有则标记为"未分配"
         }
         console.log('商户数据项:', merchantItem)
         return merchantItem
       })
       console.log('商户列表:', merchants.value)
     }
+  } catch (error) {
+    console.error('加载商户失败:', error)
+    uni.showToast({
+      title: '加载商户失败',
+      icon: 'none',
+    })
+  }
+}
+
+// 加载首页数据
+async function loadHomeData() {
+  loading.value = true
+  try {
+    // 并行加载三个接口数据（商户、新闻、优惠券）
+    const [newsRes, couponsRes, popupRes] = await Promise.all([
+      newsApi.getList({ limit: 10, status: 'PUBLISHED' }),
+      couponApi.getList({ limit: 10, status: 'ACTIVE', featuredOnHome: true }),
+      newsApi.getPopup(), // 新增：获取弹窗新闻
+    ])
+
+    // 加载商户数据（默认加载"全部"区域的商户）
+    await loadMerchants('全部')
 
     // 处理弹窗新闻
     if (popupRes.success && popupRes.data) {
@@ -539,7 +555,7 @@ function getDefaultImage(type: string, id: string) {
         <!-- Categories Grid -->
 
         <view class="grid grid-cols-3 gap-2">
-          <view v-for="merchant in filteredMerchants" :key="merchant.id"
+          <view v-for="merchant in merchants" :key="merchant.id"
             class="merchant-card-bg border-outline-variant-30 flex flex-col overflow-hidden border rounded-lg transition-transform duration-200 shadow-card active-scale-98"
             @click="goToMerchant(merchant)">
             <view class="merchant-image-container-tall bg-gray-100">

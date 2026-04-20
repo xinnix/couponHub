@@ -143,11 +143,11 @@ async function loadMerchants() {
     loading.value = true
     const res = await merchantApi.getList({ limit: 50, status: 'ACTIVE' })
     if (res.success && res.data) {
-      // 为商户添加模拟数据
+      // 使用真实的商户数据，不再随机赋值
       merchants.value = res.data.map(m => ({
         ...m,
-        area: m.area || ['A区', 'B区', 'C区'][Math.floor(Math.random() * 3)],
-        location: m.area ? `${m.area.replace('区', '馆')}-${Math.floor(Math.random() * 200 + 1)}号` : 'A馆-024号',
+        area: m.area || '未分配', // 使用真实的区域数据
+        location: m.area ? `${m.area.replace('区', '馆')}-${m.shopNumber || Math.floor(Math.random() * 200 + 1)}号` : '位置待定',
         // 添加活动标签（参考图片的"花现珠""赚现珠"）
         tags: Math.random() > 0.5 ? ['花现珠', '赚现珠'].slice(0, Math.floor(Math.random() * 2 + 1)) : [],
       }))
