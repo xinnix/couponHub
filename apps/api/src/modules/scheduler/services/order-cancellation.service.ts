@@ -34,10 +34,12 @@ export class OrderCancellationService {
    * 4. 释放锁
    */
   async handleTimeoutOrders() {
-    // 1. 获取分布式锁
+    // 1. 获取分布式锁（缩短超时时间到30秒，避免长时间阻塞）
     const lock = await this.redisService.acquireLock(
       'scheduler:order-cancellation',
-      90000, // 90秒
+      30000, // 30秒（之前是90秒）
+      1, // 只重试1次，避免多次重试导致长时间等待
+      1000, // 重试间隔1秒
     );
 
     if (!lock) {

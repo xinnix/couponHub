@@ -7,10 +7,12 @@ import { OrderCancellationService } from '../services/order-cancellation.service
  * 未支付订单超时取消定时任务
  *
  * 执行频率：每15分钟
+ * 使用分布式锁避免多实例重复执行
  */
 @Injectable()
 export class OrderCancellationTask {
   private readonly logger = new Logger(OrderCancellationTask.name);
+  private isRunning = false; // 防止同一实例内重复执行
 
   constructor(
     private readonly configService: ConfigService,
@@ -28,6 +30,13 @@ export class OrderCancellationTask {
       return;
     }
 
+    // 防止同一实例内重复执行（如果上一个任务还在执行）
+    if (this.isRunning) {
+      this.logger.warn('上一个任务还在执行，跳过本次触发');
+      return;
+    }
+
+    this.isRunning = true;
     this.logger.log('开始检查超时未支付订单...');
     const startTime = Date.now();
 
@@ -38,6 +47,8 @@ export class OrderCancellationTask {
       this.logger.log(`超时订单检查完成，耗时 ${duration}ms`);
     } catch (error) {
       this.logger.error('超时订单检查失败', error);
+    } finally {
+      this.isRunning = false; // 确保标志位被重置
     }
   }
 }
