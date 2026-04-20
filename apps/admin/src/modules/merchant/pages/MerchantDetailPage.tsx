@@ -200,7 +200,7 @@ export const MerchantDetailPage = () => {
           <Descriptions.Item label="铺位号">{merchant.shopNumber || '-'}</Descriptions.Item>
           <Descriptions.Item label="排序序号">{merchant.sortOrder}</Descriptions.Item>
           <Descriptions.Item label="联系电话">{merchant.phone || '-'}</Descriptions.Item>
-          <Descriptions.Item label="营业时间">{merchant.businessHours || '-'}</Descriptions.Item>
+          <Descriptions.Item label="营业时间">{merchant.businessHours || '24 小时营业'}</Descriptions.Item>
           <Descriptions.Item label="核销员数量">{merchant._count?.handlers || 0}</Descriptions.Item>
           <Descriptions.Item label="核销订单">{merchant._count?.orders || 0}</Descriptions.Item>
           <Descriptions.Item label="创建时间">

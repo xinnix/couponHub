@@ -101,7 +101,7 @@ export const MerchantForm: React.FC<MerchantFormProps> = ({ form, isEdit }) => {
       <Form.Item
         name="businessHours"
         label="营业时间"
-        tooltip="格式：HH:MM-HH:MM，例如：10:00-22:00"
+        tooltip="格式：HH:MM-HH:MM，例如：10:00-22:00。不填写则默认为 24 小时营业"
         rules={[
           {
             pattern: /^([0-1]?[0-9]|2[0-3]):([0-5][0-9])-([0-1]?[0-9]|2[0-3]):([0-5][0-9])$/,
@@ -109,7 +109,7 @@ export const MerchantForm: React.FC<MerchantFormProps> = ({ form, isEdit }) => {
           }
         ]}
       >
-        <Input placeholder="例如：10:00-22:00" />
+        <Input placeholder="例如：10:00-22:00（不填写代表 24 小时营业）" />
       </Form.Item>
 
       <Form.Item name="description" label="商户描述">
