@@ -20,12 +20,69 @@ const statusBarHeight = ref(0)
 const loading = ref(false)
 const newsDetail = ref<any>(null)
 
-// 处理富文本内容，强制图片宽度
-function processContent(content: string): string {
-  if (!content) return ''
+// 解析富文本内容，提取图片并支持长按识别
+interface ContentBlock {
+  type: 'text' | 'image'
+  content?: string
+  imageUrl?: string
+}
 
-  // 给所有 img 标签添加内联样式，强制宽度 100%
-  return content.replace(/<img/gi, '<img style="width: 100%; max-width: 100%; height: auto; display: block; border-radius: 8rpx; margin: 1em 0;"')
+const contentBlocks = ref<ContentBlock[]>([])
+
+// 解析富文本内容为内容块数组
+function parseContentToBlocks(content: string): ContentBlock[] {
+  if (!content) return []
+
+  const blocks: ContentBlock[] = []
+  const imgRegex = /<img[^>]+src=["']([^"']+)["'][^>]*>/gi
+  let lastIndex = 0
+  let match
+
+  // 提取所有图片标签
+  while ((match = imgRegex.exec(content)) !== null) {
+    // 添加图片前的文本内容
+    if (match.index > lastIndex) {
+      const textContent = content.substring(lastIndex, match.index)
+      if (textContent.trim()) {
+        blocks.push({
+          type: 'text',
+          content: textContent,
+        })
+      }
+    }
+
+    // 添加图片块
+    blocks.push({
+      type: 'image',
+      imageUrl: match[1],
+    })
+
+    lastIndex = match.index + match[0].length
+  }
+
+  // 添加最后剩余的文本内容
+  if (lastIndex < content.length) {
+    const textContent = content.substring(lastIndex)
+    if (textContent.trim()) {
+      blocks.push({
+        type: 'text',
+        content: textContent,
+      })
+    }
+  }
+
+  return blocks
+}
+
+// 处理富文本内容，解析为内容块
+function processContent(content: string): void {
+  if (!content) {
+    contentBlocks.value = []
+    return
+  }
+
+  // 解析为内容块
+  contentBlocks.value = parseContentToBlocks(content)
 }
 
 // 加载新闻详情
@@ -42,11 +99,11 @@ async function loadNewsDetail() {
   try {
     const res = await newsApi.getDetail(newsId.value)
     if (res.success && res.data) {
-      newsDetail.value = {
-        ...res.data,
-        content: processContent(res.data.content), // 处理图片样式
-      }
+      newsDetail.value = res.data
+      // 处理富文本内容，解析为内容块
+      processContent(res.data.content)
       console.log('新闻详情:', newsDetail.value)
+      console.log('内容块:', contentBlocks.value)
     }
     else {
       uni.showToast({
@@ -99,6 +156,11 @@ function goBack() {
     uni.navigateBack()
   }
 }
+
+// 图片长按识别功能说明
+// 使用 show-menu-by-longpress 属性，微信小程序会自动弹出操作菜单
+// 支持：识别小程序码、保存图片、转发等操作
+// 注意：普通网址二维码可能需要保存后手动扫码识别
 
 // 页面加载（支持 scene 参数）
 onLoad((options: any) => {
@@ -193,9 +255,16 @@ function onShareAppMessage() {
 
       <!-- 新闻内容 -->
       <view class="px-6 py-6">
-        <!-- 富文本内容（使用 rich-text 组件） -->
-        <rich-text class="article-content text-sm text-on-surface font-medium leading-relaxed"
-          :nodes="newsDetail.content" />
+        <!-- 渲染内容块 -->
+        <view v-for="(block, index) in contentBlocks" :key="index" class="content-block">
+          <!-- 文本内容 -->
+          <rich-text v-if="block.type === 'text'" class="article-content text-sm text-on-surface font-medium leading-relaxed"
+            :nodes="block.content" />
+
+          <!-- 图片内容（支持长按识别） -->
+          <image v-else-if="block.type === 'image'" class="content-image" :src="block.imageUrl" mode="widthFix"
+            :show-menu-by-longpress="true" />
+        </view>
       </view>
 
       <!-- 关联优惠券列表（如果有） -->
@@ -323,28 +392,22 @@ function onShareAppMessage() {
 .article-content {
   word-break: break-word;
   line-height: 1.8;
+}
 
-  /* 使用深度选择器穿透 rich-text 组件 */
-  :deep(img) {
-    width: 100% !important;
-    max-width: 100% !important;
-    height: auto !important;
-    display: block;
-    border-radius: 8rpx;
-    margin: 1em 0;
-  }
+/* 注意：小程序不支持标签选择器，富文本内容样式依赖 HTML 自带样式 */
 
-  :deep(p) {
-    margin-bottom: 1em;
-  }
+/* 内容块样式 */
+.content-block {
+  margin-bottom: 0;
+}
 
-  :deep(h1),
-  :deep(h2),
-  :deep(h3) {
-    font-weight: bold;
-    margin-top: 1.5em;
-    margin-bottom: 0.8em;
-  }
+/* 图片样式 */
+.content-image {
+  width: 100%;
+  max-width: 100%;
+  display: block;
+  border-radius: 8rpx;
+  margin: 1em 0;
 }
 
 /* 关联优惠券卡片 */
