@@ -380,7 +380,7 @@ export const TemplateForm: React.FC<TemplateFormProps> = ({ form, isEdit }) => {
 
       {/* 首页展示设置 */}
       <Row gutter={16}>
-        <Col span={24}>
+        <Col span={12}>
           <Form.Item
             name="featuredOnHome"
             label={
@@ -395,6 +395,31 @@ export const TemplateForm: React.FC<TemplateFormProps> = ({ form, isEdit }) => {
             initialValue={false}
           >
             <Checkbox>展示到首页超值优惠列表</Checkbox>
+          </Form.Item>
+        </Col>
+        <Col span={12}>
+          {/* 排序权重 */}
+          <Form.Item
+            name="sortOrder"
+            label={
+              <span>
+                排序权重&nbsp;
+                <Tooltip title="数字越大越靠前。用于控制券模板在列表中的显示顺序">
+                  <QuestionCircleOutlined style={{ color: '#1890ff' }} />
+                </Tooltip>
+              </span>
+            }
+            initialValue={0}
+            rules={[
+              { type: 'number', message: '请输入数字' },
+            ]}
+          >
+            <InputNumber
+              placeholder="数字越大越靠前"
+              style={{ width: '100%' }}
+              min={0}
+              precision={0}
+            />
           </Form.Item>
         </Col>
       </Row>

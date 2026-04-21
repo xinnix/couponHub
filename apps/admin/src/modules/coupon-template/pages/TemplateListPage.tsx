@@ -62,6 +62,7 @@ interface CouponTemplate {
   claimLimit?: number; // 每人限领数量（可选）
   isFree?: boolean; // 是否为免费券
   featuredOnHome?: boolean; // 是否展示到首页超值优惠
+  sortOrder?: number; // 排序权重（数字越大越靠前）
   categoryId?: string; // 商户类别ID（可选）
   merchantScope: string[];
   // 销售期
@@ -166,6 +167,7 @@ export const TemplateListPage = () => {
       validDays: record.validDays || 30,
       categoryId: record.categoryId || undefined,
       featuredOnHome: record.featuredOnHome || false,
+      sortOrder: record.sortOrder || 0,
       // 使用正确的字段名：saleFrom/saleUntil/useFrom/useUntil
       saleFrom: dayjs(record.saleFrom),
       saleUntil: dayjs(record.saleUntil),
