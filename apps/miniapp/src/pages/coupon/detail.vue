@@ -9,6 +9,31 @@ const statusBarHeight = ref(0)
 const countdownText = ref('') // 倒计时文本
 const countdownTimer = ref<any>(null) // 倒计时定时器
 
+// 分享功能
+onShareAppMessage(() => {
+	if (!coupon.value) {
+		return {
+			title: '优惠券详情',
+			path: '/pages/home/index',
+			imageUrl: '/static/share-default.png',
+		}
+	}
+
+	const title = coupon.value.title || '优惠券'
+	const id = coupon.value.id
+
+	// 分享配置
+	// 如果优惠券有图片，优先使用优惠券图片
+	// 否则使用默认分享图片
+	const shareConfig: any = {
+		title: `${title} - 限时优惠`,
+		path: `/pages/coupon/detail?id=${id}`,
+		imageUrl: coupon.value.imageUrl || '/static/share-default.png',
+	}
+
+	return shareConfig
+})
+
 // 计算属性 - 显示数据
 const displayTitle = computed(() => {
   if (coupon.value && coupon.value.title) {
@@ -907,11 +932,24 @@ onUnmounted(() => {
           </text>
         </text>
       </view>
-      <view class="bar-btn" :class="{ 'bar-btn-disabled': isButtonDisabled }" @click="handleBuy">
-        <text class="iconfont icon-youhuiquan bar-btn-icon-font" />
-        <text class="bar-btn-text">
-          {{ displayButtonText }}
-        </text>
+
+      <!-- 右侧按钮组 -->
+      <view class="bar-right">
+        <!-- 分享按钮 -->
+        <button class="bar-btn bar-btn-share" open-type="share">
+          <text class="iconfont icon-icon_fenxiang bar-btn-icon-font" />
+          <text class="bar-btn-text">
+            分享
+          </text>
+        </button>
+
+        <!-- 立即购买按钮 -->
+        <view class="bar-btn bar-btn-buy" :class="{ 'bar-btn-disabled': isButtonDisabled }" @click="handleBuy">
+          <text class="iconfont icon-youhuiquan bar-btn-icon-font" />
+          <text class="bar-btn-text">
+            {{ displayButtonText }}
+          </text>
+        </view>
       </view>
     </view>
   </view>
@@ -1374,20 +1412,50 @@ onUnmounted(() => {
   /* 主题色 */
 }
 
+.bar-right {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  flex-shrink: 0;
+}
+
 .bar-btn {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 12rpx;
-  padding: 22rpx 48rpx;
-  background: #00AEEF;
+  padding: 22rpx 32rpx;
   border-radius: 16rpx;
   flex-shrink: 0;
+  transition: all 0.2s ease;
 }
 
 .bar-btn:active {
   transform: scale(0.98);
   opacity: 0.9;
+}
+
+/* 分享按钮样式 - 蓝色边框白色背景 */
+.bar-btn-share {
+  background: #ffffff;
+  border: 2rpx solid #00AEEF;
+  outline: none;
+  min-height: 0;
+  line-height: normal;
+}
+
+.bar-btn-share::after {
+  border: none;
+}
+
+.bar-btn-share .bar-btn-icon-font,
+.bar-btn-share .bar-btn-text {
+  color: #00AEEF;
+}
+
+/* 立即购买按钮样式 */
+.bar-btn-buy {
+  background: #00AEEF;
 }
 
 .bar-btn-disabled {
@@ -1408,6 +1476,6 @@ onUnmounted(() => {
   font-size: 26rpx;
   font-weight: 600;
   color: #ffffff;
-  letter-spacing: 4rpx;
+  letter-spacing: 2rpx;
 }
 </style>
