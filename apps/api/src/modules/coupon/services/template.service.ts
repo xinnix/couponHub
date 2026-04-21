@@ -129,9 +129,10 @@ export class TemplateService extends BaseService<'CouponTemplate'> {
         // Prisma 的 JSON 查询语法：array_contains 或 array_ends_with 等
         // 但对于字符串数组，我们需要检查数组中是否有某个元素
       },
-      orderBy: {
-        createdAt: 'desc',
-      },
+      orderBy: [
+        { sortOrder: 'desc' }, // 优先按排序权重降序（数字越大越靠前）
+        { createdAt: 'desc' }, // 其次按创建时间降序
+      ],
     });
 
     // 手动过滤：检查 merchantScope 数组是否包含 merchantId

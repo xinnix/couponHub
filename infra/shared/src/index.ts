@@ -363,7 +363,7 @@ const BaseMerchantCategorySchema = z.object({
     .regex(/^[a-z0-9-]+$/, "标识符只能包含小写字母、数字和连字符"),
   description: z.string().max(200, "描述最多200字").optional().nullable(),
   icon: z.string().optional().nullable(),
-  sortOrder: z.number().int().nonnegative("排序必须为非负整数").optional(),
+  sortOrder: z.number().int().nonnegative("排序必须为非负整数").optional(), // 数字越大越靠前（降序）
   status: z.enum(["ACTIVE", "INACTIVE"]).optional(),
 });
 
@@ -414,7 +414,7 @@ export const CreateMerchantSchema = z.object({
   gallery: z.array(z.string().url()).optional().nullable(),
   description: z.string().optional().nullable(),
   businessHours: z.string().optional().nullable().transform(val => val === "" ? undefined : val),
-  sortOrder: z.number().int().nonnegative("排序必须为非负整数").optional(),
+  sortOrder: z.number().int().nonnegative("排序必须为非负整数").optional(), // 数字越大越靠前（降序）
   status: z.enum(["ACTIVE", "INACTIVE"]).optional(), // 创建时可选，默认为 ACTIVE
 });
 
@@ -428,7 +428,7 @@ export const UpdateMerchantSchema = z.object({
   gallery: z.array(z.string().url()).optional().nullable(),
   description: z.string().optional().nullable(),
   businessHours: z.string().optional().nullable().transform(val => val === "" ? undefined : val),
-  sortOrder: z.number().int().nonnegative("排序必须为非负整数").optional(),
+  sortOrder: z.number().int().nonnegative("排序必须为非负整数").optional(), // 数字越大越靠前（降序）
   status: z.enum(["ACTIVE", "INACTIVE"]).optional(), // 更新时可以修改状态
 });
 
@@ -625,6 +625,7 @@ export const CouponTemplateSchema = z.object({
   claimLimit: z.number().int().positive().optional().nullable(), // 新增：每人限领数量
   isFree: z.boolean().optional(), // 新增：是否为免费券
   featuredOnHome: z.boolean().optional(), // 新增：是否展示到首页超值优惠
+  sortOrder: z.number().int().nonnegative().optional(), // 新增：排序权重（数字越大越靠前）
   categoryId: z.string().optional().nullable(), // 商户类别ID（可选）
   merchantScope: z.array(z.string()),
   saleFrom: z.date(), // 销售开始时间
@@ -649,6 +650,7 @@ const BaseCouponTemplateSchema = z.object({
   claimLimit: z.number().int().positive("每人限领数量必须为正整数").optional().nullable(), // 新增：每人限领数量
   validDays: z.number().int().positive("有效天数必须为正整数").optional().nullable(), // 新增：相对有效天数
   featuredOnHome: z.boolean().optional(), // 新增：是否展示到首页超值优惠
+  sortOrder: z.number().int().nonnegative("排序必须为非负整数").optional(), // 新增：排序权重（数字越大越靠前）
   categoryId: z.string().optional().nullable(), // 商户类别ID（可选）
   merchantScope: z.array(z.string()), // 商户ID数组（允许空数组）
   saleFrom: z.coerce.date(), // 销售开始时间
@@ -691,6 +693,7 @@ export const UpdateCouponTemplateSchema = z.object({
   claimLimit: z.number().int().positive("每人限领数量必须为正整数").optional().nullable(),
   validDays: z.number().int().positive("有效天数必须为正整数").optional().nullable(),
   featuredOnHome: z.boolean().optional(),
+  sortOrder: z.number().int().nonnegative("排序必须为非负整数").optional(), // 新增：排序权重
   categoryId: z.string().optional().nullable(), // 商户类别ID（可选）
   merchantScope: z.array(z.string()).optional(), // 商户ID数组（NOT NULL，但不能设为 null，只能更新为新数组）
   saleFrom: z.coerce.date().optional(), // 销售开始时间

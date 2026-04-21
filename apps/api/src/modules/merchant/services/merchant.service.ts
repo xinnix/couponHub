@@ -48,10 +48,12 @@ export class MerchantService extends BaseService<'Merchant'> {
       },
     };
 
-    // Add default ordering by sortOrder (ascending) if not specified
-    const orderBy = args?.orderBy || {
-      sortOrder: 'asc',
-    };
+    // Add default ordering by sortOrder (descending) if not specified
+    // 数字越大越靠前（降序）
+    const orderBy = args?.orderBy || [
+      { sortOrder: 'desc' },
+      { createdAt: 'desc' },
+    ];
 
     return super.list({
       ...args,
@@ -69,9 +71,10 @@ export class MerchantService extends BaseService<'Merchant'> {
       where: {
         status: 'ACTIVE',
       },
-      orderBy: {
-        sortOrder: 'asc',
-      },
+      orderBy: [
+        { sortOrder: 'desc' }, // 数字越大越靠前（降序）
+        { createdAt: 'desc' },
+      ],
       select: {
         id: true,
         name: true,

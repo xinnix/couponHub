@@ -46,7 +46,10 @@ export class TemplateController {
       skip: (Number(page) - 1) * Number(limit),
       take: Number(limit),
       where,
-      orderBy: { createdAt: 'desc' },
+      orderBy: [
+        { sortOrder: 'desc' }, // 优先按排序权重降序（数字越大越靠前）
+        { createdAt: 'desc' }, // 其次按创建时间降序
+      ],
     });
 
     return {

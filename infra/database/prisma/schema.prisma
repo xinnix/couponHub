@@ -245,7 +245,7 @@ model MerchantCategory {
   slug        String @unique // URL标识符（唯一，如 "restaurant"）
   description String?        // 描述
   icon        String?        // 图标 URL
-  sortOrder   Int    @default(0) // 排序权重（数字越小越靠前）
+  sortOrder   Int    @default(0) // 排序权重（数字越大越靠前）
   status      String @default("ACTIVE") // ACTIVE, INACTIVE
 
   // 创建者和更新者 (Admin)
@@ -278,7 +278,7 @@ model Merchant {
   gallery     Json? // 图片数组
   description String?
   businessHours String? // 营业时间（格式：HH:MM-HH:MM，如 "10:00-22:00"）
-  sortOrder   Int     @default(0) // 排序权重（数字越小越靠前）
+  sortOrder   Int     @default(0) // 排序权重（数字越大越靠前）
   status      String  @default("ACTIVE") // ACTIVE, INACTIVE
 
   // 创建者和更新者 (Admin)
@@ -400,6 +400,9 @@ model CouponTemplate {
   // 首页展示标记
   featuredOnHome Boolean @default(false) // 是否展示到首页超值优惠列表
 
+  // 排序权重
+  sortOrder      Int      @default(0)    // 排序权重（数字越大越靠前）
+
   categoryId    String?  // 商户类别ID（可选）
   merchantScope Json     // 适用商户 ID 数组
 
@@ -447,6 +450,8 @@ model CouponTemplate {
   @@index([status, isFree])      // 新增复合索引：优化小程序端查询
   @@index([featuredOnHome])      // 新增索引：便于查询首页超值优惠
   @@index([status, featuredOnHome]) // 新增复合索引：优化首页超值优惠查询
+  @@index([sortOrder])           // 新增索引：便于排序查询
+  @@index([status, sortOrder])   // 新增复合索引：优化排序查询
   @@map("coupon_templates")
 }
 
