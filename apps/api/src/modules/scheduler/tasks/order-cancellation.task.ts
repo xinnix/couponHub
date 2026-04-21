@@ -40,12 +40,21 @@ export class OrderCancellationTask {
     this.logger.log('开始检查超时未支付订单...');
     const startTime = Date.now();
 
+    // 添加超时保护：5分钟强制终止
+    const TIMEOUT_MS = 5 * 60 * 1000;
+    const timeoutTimer = setTimeout(() => {
+      this.logger.error('任务执行超时（5分钟），强制终止');
+      this.isRunning = false;
+    }, TIMEOUT_MS);
+
     try {
       await this.cancellationService.handleTimeoutOrders();
 
+      clearTimeout(timeoutTimer); // 清除超时计时器
       const duration = Date.now() - startTime;
       this.logger.log(`超时订单检查完成，耗时 ${duration}ms`);
     } catch (error) {
+      clearTimeout(timeoutTimer); // 清除超时计时器
       this.logger.error('超时订单检查失败', error);
     } finally {
       this.isRunning = false; // 确保标志位被重置

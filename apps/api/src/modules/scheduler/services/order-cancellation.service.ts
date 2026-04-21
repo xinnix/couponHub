@@ -29,11 +29,38 @@ export class OrderCancellationService {
    *
    * 流程：
    * 1. 获取分布式锁
-   * 2. 分批查询超时订单
+   * 2. 分批查询超时订单（限制最大批次次数）
    * 3. 逐个处理（取消订单 + 恢复库存）
    * 4. 释放锁
+   *
+   * 安全措施：
+   * - 限制最大批次次数（10次），防止无限循环
+   * - 任务总超时保护（5分钟），防止长时间阻塞
    */
   async handleTimeoutOrders() {
+    // 添加任务整体超时保护（5分钟）
+    const TASK_TIMEOUT = 5 * 60 * 1000; // 5分钟
+    const MAX_BATCH_COUNT = 10; // 最多处理10批次，防止无限循环
+
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('任务执行超时')), TASK_TIMEOUT)
+    );
+
+    try {
+      await Promise.race([
+        this.processOrdersInternal(MAX_BATCH_COUNT),
+        timeoutPromise
+      ]);
+    } catch (error) {
+      this.logger.error('处理超时订单失败', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 内部处理逻辑
+   */
+  private async processOrdersInternal(maxBatchCount: number) {
     // 1. 获取分布式锁（缩短超时时间到30秒，避免长时间阻塞）
     const lock = await this.redisService.acquireLock(
       'scheduler:order-cancellation',
@@ -57,11 +84,15 @@ export class OrderCancellationService {
 
       let processed = 0;
       let failed = 0;
+      let batchCount = 0; // 批次计数器
 
-      // 2. 分批处理超时订单
-      while (true) {
+      // 2. 分批处理超时订单（限制批次次数）
+      while (batchCount < maxBatchCount) {
+        batchCount++;
         const orders = await this.getTimeoutOrders(batchSize, timeoutMinutes);
         if (orders.length === 0) break;
+
+        this.logger.debug(`第 ${batchCount} 批次：找到 ${orders.length} 条超时订单`);
 
         for (const order of orders) {
           try {
@@ -75,6 +106,10 @@ export class OrderCancellationService {
 
         // 避免 CPU 占用过高
         await this.sleep(500);
+      }
+
+      if (batchCount >= maxBatchCount) {
+        this.logger.warn(`已达到最大批次次数 ${maxBatchCount}，停止处理`);
       }
 
       if (processed > 0 || failed > 0) {
