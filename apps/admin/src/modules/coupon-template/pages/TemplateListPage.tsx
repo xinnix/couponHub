@@ -164,7 +164,7 @@ export const TemplateListPage = () => {
       faceValue: Number(record.faceValue),
       settlementAmount: record.settlementAmount ? Number(record.settlementAmount) : undefined,
       claimLimit: record.claimLimit || 1,
-      validDays: record.validDays || 30,
+      validDays: record.validDays || undefined, // 不设置默认值，保持可选
       categoryId: record.categoryId || undefined,
       featuredOnHome: record.featuredOnHome || false,
       sortOrder: record.sortOrder || 0,

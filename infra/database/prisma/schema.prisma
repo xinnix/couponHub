@@ -415,7 +415,7 @@ model CouponTemplate {
   useUntil      DateTime              @default(now()) // 使用结束时间
 
   // 相对有效期（可选）
-  validDays     Int?     @default(30) // 购买后X天内有效（如果不设置则使用 useUntil）
+  validDays     Int?     // 购买后X天内有效（如果不设置则使用 useUntil）
                                       // expireAt = 有validDays ? min(useUntil, paidAt+validDays) : useUntil
 
   description   String?
