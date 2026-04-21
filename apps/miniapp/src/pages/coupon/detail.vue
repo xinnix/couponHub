@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, onUnmounted } from 'vue'
+import { computed, onUnmounted, ref } from 'vue'
 import { couponApi, orderApi, paymentApi } from '@/api/business'
 
 const loading = ref(true)
@@ -11,27 +11,27 @@ const countdownTimer = ref<any>(null) // 倒计时定时器
 
 // 分享功能
 onShareAppMessage(() => {
-	if (!coupon.value) {
-		return {
-			title: '优惠券详情',
-			path: '/pages/home/index',
-			imageUrl: '/static/share-default.png',
-		}
-	}
+  if (!coupon.value) {
+    return {
+      title: '优惠券详情',
+      path: '/pages/home/index',
+      imageUrl: '/static/share-default.png',
+    }
+  }
 
-	const title = coupon.value.title || '优惠券'
-	const id = coupon.value.id
+  const title = coupon.value.title || '优惠券'
+  const id = coupon.value.id
 
-	// 分享配置
-	// 如果优惠券有图片，优先使用优惠券图片
-	// 否则使用默认分享图片
-	const shareConfig: any = {
-		title: `${title} - 限时优惠`,
-		path: `/pages/coupon/detail?id=${id}`,
-		imageUrl: coupon.value.imageUrl || '/static/share-default.png',
-	}
+  // 分享配置
+  // 如果优惠券有图片，优先使用优惠券图片
+  // 否则使用默认分享图片
+  const shareConfig: any = {
+    title: `${title} - 限时优惠`,
+    path: `/pages/coupon/detail?id=${id}`,
+    imageUrl: coupon.value.imageUrl || '/static/share-default.png',
+  }
 
-	return shareConfig
+  return shareConfig
 })
 
 // 计算属性 - 显示数据
@@ -111,23 +111,28 @@ const displayButtonText = computed(() => {
 
 const isButtonDisabled = computed(() => {
   // 如果正在购买中，禁用
-  if (buying.value) return true
+  if (buying.value)
+    return true
 
   // 如果优惠券不存在，禁用
-  if (!coupon.value) return true
+  if (!coupon.value)
+    return true
 
   // 如果未到销售期，禁用
-  if (!isSaleStarted.value) return true
+  if (!isSaleStarted.value)
+    return true
 
   // 如果库存为0，禁用
-  if (displayStock.value <= 0) return true
+  if (displayStock.value <= 0)
+    return true
 
   return false
 })
 
 // 判断是否已开始销售
 const isSaleStarted = computed(() => {
-  if (!coupon.value || !coupon.value.saleFrom) return true
+  if (!coupon.value || !coupon.value.saleFrom)
+    return true
 
   const saleFrom = new Date(coupon.value.saleFrom)
   const now = new Date()
@@ -137,7 +142,8 @@ const isSaleStarted = computed(() => {
 
 // 判断是否已结束销售
 const isSaleEnded = computed(() => {
-  if (!coupon.value || !coupon.value.saleUntil) return false
+  if (!coupon.value || !coupon.value.saleUntil)
+    return false
 
   const saleUntil = new Date(coupon.value.saleUntil)
   const now = new Date()
@@ -146,11 +152,11 @@ const isSaleEnded = computed(() => {
 })
 
 const discountPercent = computed(() => {
-  if (displayFaceValue.value > 0 && displayBuyPrice.value > 0) {
+  if (displayFaceValue.value > 0) {
     const discount = ((displayFaceValue.value - displayBuyPrice.value) / displayFaceValue.value * 100).toFixed(0)
     return discount
   }
-  return '50'
+  return '0'
 })
 
 // 库存文案
@@ -217,10 +223,10 @@ const parsedRules = computed(() => {
       stacking: '不与其他优惠活动同时使用，每单限用一张',
       refund: '未核销前支持随时退款',
       usage: null,
-    };
+    }
   }
 
-  const rules = coupon.value.usageRules as any;
+  const rules = coupon.value.usageRules as any
 
   // 检查是否是旧格式（纯字符串）- 向后兼容
   if (typeof rules === 'string') {
@@ -228,7 +234,7 @@ const parsedRules = computed(() => {
       stacking: '不与其他优惠活动同时使用，每单限用一张',
       refund: '未核销前支持随时退款',
       usage: rules, // 原文本作为使用规则
-    };
+    }
   }
 
   // 新格式（JSON 对象）
@@ -249,19 +255,19 @@ const parsedRules = computed(() => {
       time_limit: '仅限工作日使用',
       category: '仅限指定商品类别使用',
     },
-  };
+  }
 
   return {
-    stacking: rules.stacking?.customText ||
-              templates.STACKING[rules.stacking?.type] ||
-              '不与其他优惠活动同时使用，每单限用一张',
-    refund: rules.refund?.customText ||
-            templates.REFUND[rules.refund?.type] ||
-            '未核销前支持随时退款',
-    usage: rules.usage?.customText ||
-           templates.USAGE[rules.usage?.type] ||
-           null,
-  };
+    stacking: rules.stacking?.customText
+      || templates.STACKING[rules.stacking?.type]
+      || '不与其他优惠活动同时使用，每单限用一张',
+    refund: rules.refund?.customText
+      || templates.REFUND[rules.refund?.type]
+      || '未核销前支持随时退款',
+    usage: rules.usage?.customText
+      || templates.USAGE[rules.usage?.type]
+      || null,
+  }
 })
 
 // 格式化价格函数
@@ -294,11 +300,14 @@ function updateCountdown() {
   // 格式化显示
   if (days > 0) {
     countdownText.value = `${days}天${hours}小时后开抢`
-  } else if (hours > 0) {
+  }
+  else if (hours > 0) {
     countdownText.value = `${hours}小时${minutes}分钟后开抢`
-  } else if (minutes > 0) {
+  }
+  else if (minutes > 0) {
     countdownText.value = `${minutes}分${seconds}秒后开抢`
-  } else {
+  }
+  else {
     countdownText.value = `${seconds}秒后开抢`
   }
 }
@@ -330,18 +339,19 @@ const sysInfo = uni.getSystemInfoSync()
 statusBarHeight.value = sysInfo.statusBarHeight || 0
 
 function goBack() {
-	// 获取当前页面栈
-	const pages = getCurrentPages()
+  // 获取当前页面栈
+  const pages = getCurrentPages()
 
-	// 如果页面栈只有当前页面（从分享卡片进入），跳转到首页
-	if (pages.length <= 1) {
-		uni.reLaunch({
-			url: '/pages/home/index',
-		})
-	} else {
-		// 正常返回上一页
-		uni.navigateBack({ delta: 1 })
-	}
+  // 如果页面栈只有当前页面（从分享卡片进入），跳转到首页
+  if (pages.length <= 1) {
+    uni.reLaunch({
+      url: '/pages/home/index',
+    })
+  }
+  else {
+    // 正常返回上一页
+    uni.navigateBack({ delta: 1 })
+  }
 }
 
 onLoad(async (options: any) => {
@@ -544,13 +554,12 @@ async function handleFreeClaim() {
 // 付费购买处理函数（保持原有逻辑）
 async function handlePaidPurchase() {
   const buyPriceNum = Number.parseFloat(coupon.value.buyPrice) || 0
-  const faceValueNum = Number.parseFloat(coupon.value.faceValue) || 0
 
   // 确认购买
   await new Promise<void>((resolve) => {
     uni.showModal({
       title: '确认购买',
-      content: `${coupon.value!.title}\n价格：¥${formatPrice(buyPriceNum)}\n面值：¥${formatPrice(faceValueNum)}`,
+      content: `${coupon.value!.title}\n价格：¥${formatPrice(buyPriceNum)}\n`,
       confirmText: '确认支付',
       success: (res) => {
         if (res.confirm)
@@ -864,7 +873,9 @@ onUnmounted(() => {
             </text>
           </view>
           <view class="all-merchants-simple">
-            <text class="simple-text">全商户可用</text>
+            <text class="simple-text">
+              全商户可用
+            </text>
           </view>
         </view>
 
