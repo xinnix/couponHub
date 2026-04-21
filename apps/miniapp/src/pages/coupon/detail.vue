@@ -382,6 +382,24 @@ async function handleBuy() {
   // ✅ 先检查登录状态
   const token = uni.getStorageSync('token')
   if (!token) {
+    // 获取当前页面路径和参数
+    const pages = getCurrentPages()
+    const currentPage = pages[pages.length - 1]
+    const currentRoute = currentPage.route || ''
+    const currentOptions = currentPage.options || {}
+
+    // 构建完整的跳转路径（包含参数）
+    let redirectPath = `/${currentRoute}`
+    if (currentOptions.id) {
+      redirectPath += `?id=${currentOptions.id}`
+    }
+    if (currentOptions.scene) {
+      redirectPath += `?scene=${currentOptions.scene}`
+    }
+
+    // 编码路径以防止特殊字符问题
+    const encodedRedirect = encodeURIComponent(redirectPath)
+
     uni.showModal({
       title: '请先登录',
       content: '您尚未登录，无法领取或购买优惠券。是否立即登录？',
@@ -389,7 +407,7 @@ async function handleBuy() {
       cancelText: '稍后再说',
       success: (res) => {
         if (res.confirm) {
-          uni.navigateTo({ url: '/pages/login' })
+          uni.navigateTo({ url: `/pages/login?redirect=${encodedRedirect}` })
         }
       },
     })
@@ -444,6 +462,24 @@ async function handleFreeClaim() {
 
     // ✅ 特殊处理 401 未登录错误
     if (error.statusCode === 401 || error.message?.includes('No auth token')) {
+      // 获取当前页面路径和参数
+      const pages = getCurrentPages()
+      const currentPage = pages[pages.length - 1]
+      const currentRoute = currentPage.route || ''
+      const currentOptions = currentPage.options || {}
+
+      // 构建完整的跳转路径（包含参数）
+      let redirectPath = `/${currentRoute}`
+      if (currentOptions.id) {
+        redirectPath += `?id=${currentOptions.id}`
+      }
+      if (currentOptions.scene) {
+        redirectPath += `?scene=${currentOptions.scene}`
+      }
+
+      // 编码路径以防止特殊字符问题
+      const encodedRedirect = encodeURIComponent(redirectPath)
+
       uni.showModal({
         title: '请先登录',
         content: '您尚未登录，无法领取优惠券。是否立即登录？',
@@ -451,7 +487,7 @@ async function handleFreeClaim() {
         cancelText: '稍后再说',
         success: (res) => {
           if (res.confirm) {
-            uni.navigateTo({ url: '/pages/login' })
+            uni.navigateTo({ url: `/pages/login?redirect=${encodedRedirect}` })
           }
         },
       })
@@ -565,6 +601,24 @@ async function handlePaidPurchase() {
 
     // ✅ 特殊处理 401 未登录错误
     if (error.statusCode === 401 || error.message?.includes('No auth token')) {
+      // 获取当前页面路径和参数
+      const pages = getCurrentPages()
+      const currentPage = pages[pages.length - 1]
+      const currentRoute = currentPage.route || ''
+      const currentOptions = currentPage.options || {}
+
+      // 构建完整的跳转路径（包含参数）
+      let redirectPath = `/${currentRoute}`
+      if (currentOptions.id) {
+        redirectPath += `?id=${currentOptions.id}`
+      }
+      if (currentOptions.scene) {
+        redirectPath += `?scene=${currentOptions.scene}`
+      }
+
+      // 编码路径以防止特殊字符问题
+      const encodedRedirect = encodeURIComponent(redirectPath)
+
       uni.showModal({
         title: '请先登录',
         content: '您尚未登录，无法购买优惠券。是否立即登录？',
@@ -572,7 +626,7 @@ async function handlePaidPurchase() {
         cancelText: '稍后再说',
         success: (res) => {
           if (res.confirm) {
-            uni.navigateTo({ url: '/pages/login' })
+            uni.navigateTo({ url: `/pages/login?redirect=${encodedRedirect}` })
           }
         },
       })

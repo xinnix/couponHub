@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
+import { onLoad } from '@dcloudio/uni-app'
 import { authApi } from '@/api/auth'
 
 definePage({
@@ -14,6 +15,15 @@ const loading = ref(false)
 const agreed = ref(false)
 // 第一步完成后进入第二步
 const step = ref(1)
+// 登录后要跳转的目标页面
+const redirectUrl = ref('')
+
+onLoad((options: any) => {
+  // 接收跳转参数
+  if (options && options.redirect) {
+    redirectUrl.value = decodeURIComponent(options.redirect)
+  }
+})
 
 onMounted(() => {
   const systemInfo = uni.getSystemInfoSync()
@@ -89,17 +99,33 @@ async function navigateAfterLogin() {
     uni.setStorageSync('handlerInfo', handlerRes.data.handler)
 
     uni.showToast({ title: '登录成功', icon: 'success' })
-    setTimeout(() => {
-      if (handlerRes.data.isHandler) {
-        uni.reLaunch({ url: '/pages/handler/index' })
-      }
-      else {
-        uni.reLaunch({ url: '/pages/index' })
-      }
-    }, 1000)
+
+    // 如果有指定的跳转目标，使用 navigateBack 返回上一页
+    if (redirectUrl.value) {
+      setTimeout(() => {
+        uni.navigateBack({ delta: 1 })
+      }, 1000)
+    }
+    else {
+      // 没有指定跳转目标时，使用 reLaunch（因为是直接打开登录页）
+      setTimeout(() => {
+        if (handlerRes.data.isHandler) {
+          uni.reLaunch({ url: '/pages/handler/index' })
+        }
+        else {
+          uni.reLaunch({ url: '/pages/index' })
+        }
+      }, 1000)
+    }
   }
-  catch {
-    uni.reLaunch({ url: '/pages/index' })
+  catch (error) {
+    // 如果有指定的跳转目标，使用 navigateBack 返回上一页
+    if (redirectUrl.value) {
+      uni.navigateBack({ delta: 1 })
+    }
+    else {
+      uni.reLaunch({ url: '/pages/index' })
+    }
   }
 }
 
