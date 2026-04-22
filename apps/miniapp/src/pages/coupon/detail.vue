@@ -216,58 +216,27 @@ const displayValidDays = computed(() => {
 })
 
 // 规则解析（向后兼容）
+// 默认规则常量
+const DEFAULT_COUPON_RULES = [
+  { title: '叠加规则', content: '不与其他优惠活动同时使用，每单限用一张' },
+  { title: '退改政策', content: '未核销前支持随时退款' },
+]
+
 const parsedRules = computed(() => {
   if (!coupon.value?.usageRules) {
-    // 向后兼容：无数据时使用默认值
-    return {
-      stacking: '不与其他优惠活动同时使用，每单限用一张',
-      refund: '未核销前支持随时退款',
-      usage: null,
-    }
+    // 无数据时使用默认值
+    return DEFAULT_COUPON_RULES
   }
 
   const rules = coupon.value.usageRules as any
 
-  // 检查是否是旧格式（纯字符串）- 向后兼容
-  if (typeof rules === 'string') {
-    return {
-      stacking: '不与其他优惠活动同时使用，每单限用一张',
-      refund: '未核销前支持随时退款',
-      usage: rules, // 原文本作为使用规则
-    }
+  // 直接检查是否是数组格式
+  if (Array.isArray(rules) && rules.length > 0) {
+    return rules
   }
 
-  // 新格式（JSON 对象）
-  // 定义模板映射
-  const templates = {
-    STACKING: {
-      no_stack: '不与其他优惠活动同时使用，每单限用一张',
-      limited_stack: '可与部分优惠叠加使用',
-      free_stack: '可与其他优惠活动自由叠加',
-    },
-    REFUND: {
-      flexible: '未核销前支持随时退款',
-      limited: '购买后限制时间内可退款',
-      no_refund: '购买后不支持退款',
-    },
-    USAGE: {
-      min_amount: '满XX元可用',
-      time_limit: '仅限工作日使用',
-      category: '仅限指定商品类别使用',
-    },
-  }
-
-  return {
-    stacking: rules.stacking?.customText
-      || templates.STACKING[rules.stacking?.type]
-      || '不与其他优惠活动同时使用，每单限用一张',
-    refund: rules.refund?.customText
-      || templates.REFUND[rules.refund?.type]
-      || '未核销前支持随时退款',
-    usage: rules.usage?.customText
-      || templates.USAGE[rules.usage?.type]
-      || null,
-  }
+  // 兜底：默认规则
+  return DEFAULT_COUPON_RULES
 })
 
 // 格式化价格函数
@@ -818,45 +787,17 @@ onUnmounted(() => {
               </view>
             </view>
 
-            <!-- 使用规则 -->
-            <view class="rule-item">
+            <!-- 循环展示所有规则 -->
+            <view v-for="(rule, index) in parsedRules" :key="index" class="rule-item">
               <view class="rule-icon-box">
                 <text class="iconfont icon-icon-shiyongguize rule-icon-font" />
               </view>
               <view class="rule-body">
                 <text class="rule-label">
-                  使用规则
+                  {{ rule.title }}
                 </text>
                 <text class="rule-desc">
-                  {{ parsedRules.usage || `仅限 ${displayMerchantName} 门店使用` }}
-                </text>
-              </view>
-            </view>
-            <view class="rule-item">
-              <view class="rule-icon-box">
-                <text class="iconfont icon-shezhiguize rule-icon-font" />
-              </view>
-              <view class="rule-body">
-                <text class="rule-label">
-                  叠加规则
-                </text>
-                <text class="rule-desc">
-                  {{ parsedRules.stacking }}
-                </text>
-              </view>
-            </view>
-
-            <!-- 退改规则 -->
-            <view class="rule-item">
-              <view class="rule-icon-box">
-                <text class="iconfont icon-tuikuan rule-icon-font" />
-              </view>
-              <view class="rule-body">
-                <text class="rule-label">
-                  退改规则
-                </text>
-                <text class="rule-desc">
-                  {{ parsedRules.refund }}
+                  {{ rule.content }}
                 </text>
               </view>
             </view>
@@ -1207,17 +1148,17 @@ onUnmounted(() => {
 
 .rule-label {
   display: block;
-  font-size: 28rpx;
+  font-size: 24rpx;
   font-weight: 700;
   color: #171c20;
-  margin-bottom: 6rpx;
+  margin-bottom: 4rpx;
 }
 
 .rule-desc {
   display: block;
-  font-size: 28rpx;
+  font-size: 24rpx;
   color: #6e7881;
-  line-height: 1.6;
+  line-height: 1.5;
 }
 
 /* ========== 适用商户 ========== */
@@ -1273,9 +1214,9 @@ onUnmounted(() => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  /* gap: 12rpx; */
-  /* width: calc((100% - 40rpx) / 3); */
-  /* 每行3个，间距20rpx */
+  gap: 8rpx;
+  width: calc((100% - 80rpx) / 5);
+  /* 每行5个，间距20rpx */
   transition: all 0.2s ease;
 }
 
@@ -1286,9 +1227,9 @@ onUnmounted(() => {
 
 /* 商户头像（圆角方形） */
 .merchant-avatar-box {
-  width: 60rpx;
-  height: 60rpx;
-  border-radius: 16rpx;
+  width: 48rpx;
+  height: 48rpx;
+  border-radius: 12rpx;
   overflow: hidden;
   flex-shrink: 0;
   background-color: #fff;
@@ -1300,9 +1241,9 @@ onUnmounted(() => {
 }
 
 .merchant-avatar-placeholder {
-  width: 100rpx;
-  height: 100rpx;
-  border-radius: 16rpx;
+  width: 48rpx;
+  height: 48rpx;
+  border-radius: 12rpx;
   background: #dee3e8;
   display: flex;
   align-items: center;
@@ -1311,20 +1252,22 @@ onUnmounted(() => {
 }
 
 .merchant-avatar-icon {
-  font-size: 48rpx;
+  font-size: 24rpx;
   color: #00AEEF;
 }
 
-/* 商户名称（居中显示） */
+/* 商户名称（居中显示，超出省略） */
 .merchant-card-name {
-  font-size: 18rpx;
+  font-size: 22rpx;
   color: #171c20;
   text-align: center;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  width: 100%;
   max-width: 100%;
-  margin-top: 6rpx;
+  margin-top: 4rpx;
+  line-height: 1.3;
 }
 
 /* ========== 底部保障区域 ========== */
