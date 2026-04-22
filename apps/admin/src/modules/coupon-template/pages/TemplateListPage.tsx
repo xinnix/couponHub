@@ -34,23 +34,9 @@ import { TemplateForm } from "../components/TemplateForm";
 import dayjs from "dayjs";
 import { createMutationCallbacks, createBatchMutationCallbacks } from "../../../shared/utils/mutationCallbacks";
 import { getTrpcClient } from "../../../shared/trpc/trpcClient";
+import { DEFAULT_COUPON_RULES } from "@opencode/shared";
 
 const { RangePicker } = DatePicker;
-
-interface UsageRules {
-  stacking?: {
-    type: string;
-    customText?: string;
-  };
-  refund?: {
-    type: string;
-    customText?: string;
-  };
-  usage?: {
-    type: string;
-    customText?: string;
-  };
-}
 
 interface CouponTemplate {
   id: string;
@@ -153,11 +139,20 @@ export const TemplateListPage = () => {
   const handleCreate = () => {
     setEditingRecord(null);
     form.resetFields();
+    form.setFieldsValue({
+      usageRules: DEFAULT_COUPON_RULES, // 新建时填充默认规则
+    });
     setIsModalVisible(true);
   };
 
   const handleEdit = (record: CouponTemplate) => {
     setEditingRecord(record);
+
+    // 直接使用规则数据，如果为空或不是数组则使用默认规则
+    const rulesData = record.usageRules && Array.isArray(record.usageRules) && record.usageRules.length > 0
+      ? record.usageRules
+      : DEFAULT_COUPON_RULES;
+
     form.setFieldsValue({
       ...record,
       buyPrice: Number(record.buyPrice),
@@ -173,12 +168,7 @@ export const TemplateListPage = () => {
       saleUntil: dayjs(record.saleUntil),
       useFrom: dayjs(record.useFrom),
       useUntil: dayjs(record.useUntil),
-      // 确保 usageRules 有默认结构
-      usageRules: record.usageRules || {
-        stacking: { type: 'no_stack' },
-        refund: { type: 'flexible' },
-        usage: undefined,
-      },
+      usageRules: rulesData,
     });
     setIsModalVisible(true);
   };

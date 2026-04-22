@@ -1,7 +1,8 @@
 // apps/admin/src/modules/coupon-template/components/MerchantScopeSelector.tsx
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { Select, Tag } from "antd";
-import { useList } from "@refinedev/core";
+import { useQuery } from "@tanstack/react-query";
+import { getTrpcClient } from "../../../shared/trpc/trpcClient";
 
 interface Merchant {
   id: string;
@@ -38,23 +39,27 @@ export const MerchantScopeSelector: React.FC<MerchantScopeSelectorProps> = ({ va
     };
   }, []);
 
-  const { result, isLoading } = useList<Merchant>({
-    resource: "merchant",
-    pagination: {
-      pageSize: 100,
-    },
-    filters: [
-      { field: "status", operator: "eq", value: "ACTIVE" },
-      ...(debouncedSearch ? [{ field: "name", operator: "contains", value: debouncedSearch }] as any : []),
-    ],
-    meta: {
-      include: {
-        category: true, // 包含商户类别信息
-      },
+  // 使用 useQuery 直接调用 tRPC，一次性获取所有商户（绕过 Refine 分页）
+  const { data, isLoading } = useQuery({
+    queryKey: ["merchants", "all", debouncedSearch],
+    queryFn: async () => {
+      const trpcClient = await getTrpcClient();
+      const result = await trpcClient.merchant.getMany.query({
+        page: 1,
+        limit: 1000, // 获取所有商户
+        where: {
+          status: "ACTIVE",
+          ...(debouncedSearch ? { name: { contains: debouncedSearch } } : {}),
+        },
+        include: {
+          category: true,
+        },
+      });
+      return result.items || [];
     },
   });
 
-  const merchants = (result as any)?.data || [];
+  const merchants = data || [];
 
   // 使用 useMemo 确保 options 正确计算，包含已选择的商户
   const options = useMemo(() => {

@@ -1,6 +1,7 @@
 // apps/admin/src/modules/coupon-template/pages/TemplateDetailPage.tsx
 import { useParams, useNavigate } from "react-router-dom";
-import { useOne, useList } from "@refinedev/core";
+import { useOne } from "@refinedev/core";
+import { useQuery } from "@tanstack/react-query";
 import { Card, Descriptions, Tag, Button, Tabs, Table, Space, App, Spin, Empty, Statistic, Row, Col, Typography, Divider, Alert } from "antd";
 import { ArrowLeftOutlined, DollarOutlined, TagOutlined, ShoppingCartOutlined, ToolOutlined, ClockCircleOutlined, CalendarOutlined } from "@ant-design/icons";
 import { useState } from "react";
@@ -9,21 +10,7 @@ import { StockAdjustModal } from "../components/StockAdjustModal";
 import { StockLogList } from "../components/StockLogList";
 import { StockStatistics } from "../components/StockStatistics";
 import { PermissionGuard } from "../../../shared/components/PermissionGuard";
-
-interface UsageRules {
-  stacking?: {
-    type: string;
-    customText?: string;
-  };
-  refund?: {
-    type: string;
-    customText?: string;
-  };
-  usage?: {
-    type: string;
-    customText?: string;
-  };
-}
+import { getTrpcClient } from "../../../shared/trpc/trpcClient";
 
 interface CouponTemplate {
   id: string;
@@ -67,7 +54,11 @@ interface Order {
 interface Merchant {
   id: string;
   name: string;
-  category: string;
+  category?: {
+    id: string;
+    name: string;
+    slug: string;
+  };
   status: string;
 }
 
@@ -83,11 +74,22 @@ export const TemplateDetailPage = () => {
     id: id!,
   });
 
-  // 获取适用商户列表
-  const { result: merchants } = useList<Merchant>({
-    resource: "merchant",
-    pagination: { pageSize: 100 },
+  // 获取适用商户列表（直接使用 tRPC，避免 Refine 分页机制）
+  const { data: merchantsData } = useQuery({
+    queryKey: ["merchants", "all"],
+    queryFn: async () => {
+      const trpcClient = await getTrpcClient();
+      const result = await trpcClient.merchant.getMany.query({
+        page: 1,
+        limit: 1000,
+        where: { status: "ACTIVE" },
+        include: { category: true },
+      });
+      return result.items || [];
+    },
   });
+
+  const merchants = merchantsData || [];
 
   if (isLoading) {
     return (
@@ -104,7 +106,7 @@ export const TemplateDetailPage = () => {
   // 匹配适用商户
   const applicableMerchants = template.merchantScope.length === 0
     ? [] // 空数组表示全商户可用，不显示具体商户列表
-    : (merchants?.data || []).filter(m => template.merchantScope.includes(m.id));
+    : merchants.filter(m => template.merchantScope.includes(m.id));
 
   // 判断是否全商户可用
   const isAllMerchants = template.merchantScope.length === 0;
@@ -322,41 +324,18 @@ export const TemplateDetailPage = () => {
               {template.description || '-'}
             </Descriptions.Item>
             <Descriptions.Item label="使用规则" span={2}>
-              {template.usageRules ? (
+              {template.usageRules && Array.isArray(template.usageRules) && template.usageRules.length > 0 ? (
                 <Space direction="vertical" size="small">
-                  {template.usageRules.stacking?.type && (
-                    <Typography.Text>
-                      <strong>叠加规则：</strong>
-                      {template.usageRules.stacking.type === 'custom'
-                        ? template.usageRules.stacking.customText
-                        : template.usageRules.stacking.type === 'no_stack' ? '不与其他优惠叠加'
-                        : template.usageRules.stacking.type === 'limited_stack' ? '限制叠加'
-                        : '可自由叠加'}
+                  {template.usageRules.map((rule, index) => (
+                    <Typography.Text key={index}>
+                      <strong>{rule.title}：</strong>
+                      {rule.content}
                     </Typography.Text>
-                  )}
-                  {template.usageRules.refund?.type && (
-                    <Typography.Text>
-                      <strong>退改规则：</strong>
-                      {template.usageRules.refund.type === 'custom' || template.usageRules.refund.type === 'limited'
-                        ? template.usageRules.refund.customText
-                        : template.usageRules.refund.type === 'flexible' ? '未核销前随时退款'
-                        : template.usageRules.refund.type === 'no_refund' ? '不可退款'
-                        : '-'}
-                    </Typography.Text>
-                  )}
-                  {template.usageRules.usage?.type && (
-                    <Typography.Text>
-                      <strong>使用规则：</strong>
-                      {template.usageRules.usage.type === 'custom'
-                        ? template.usageRules.usage.customText
-                        : template.usageRules.usage.type === 'min_amount' ? '最低消费金额'
-                        : template.usageRules.usage.type === 'time_limit' ? '时间限制'
-                        : template.usageRules.usage.type === 'category' ? '商品类别限制'
-                        : '-'}
-                    </Typography.Text>
-                  )}
+                  ))}
                 </Space>
-              ) : '-'}
+              ) : (
+                <Typography.Text type="secondary">未设置规则</Typography.Text>
+              )}
             </Descriptions.Item>
           </Descriptions>
         </div>
@@ -391,7 +370,9 @@ export const TemplateDetailPage = () => {
                   title: '分类',
                   dataIndex: 'category',
                   key: 'category',
-                  render: (category: string) => <Tag color="blue">{category}</Tag>,
+                  render: (category: any) => (
+                    <Tag color="blue">{category?.name || '未分类'}</Tag>
+                  ),
                 },
                 {
                   title: '状态',
