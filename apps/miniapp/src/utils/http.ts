@@ -23,6 +23,10 @@ interface Response<T = unknown> {
   success: boolean
   data: T
   message?: string
+  total?: number // 总记录数（用于分页）
+  page?: number // 当前页码
+  pageSize?: number // 每页大小
+  totalPages?: number // 总页数
 }
 
 class HttpClient {

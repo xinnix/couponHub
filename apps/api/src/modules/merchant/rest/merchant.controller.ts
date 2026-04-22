@@ -24,18 +24,26 @@ export class MerchantController {
   @ApiOperation({ summary: '获取商户列表' })
   @ApiResponse({ status: 200, description: '获取成功' })
   async findAll(@Query() query: any) {
-    const { page = 1, limit = 10, status, category, area } = query;
+    const { page = 1, limit = 10, status, category, area, search } = query;
     const where: any = {};
 
     if (status) where.status = status;
-    if (category) where.category = category;
+    if (category) where.categoryId = category; // 修改：使用 categoryId 而不是 category
     if (area) where.area = area;
+    if (search) where.search = search; // 添加搜索参数
 
     const result = await this.merchantService.list({
       skip: (Number(page) - 1) * Number(limit),
       take: Number(limit),
       where,
       // 不指定 orderBy，使用 service 默认的 sortOrder 升序排序
+    });
+
+    console.log('商户列表查询结果:', {
+      dataCount: result.data.length,
+      total: result.total,
+      page: result.page,
+      pageSize: result.pageSize,
     });
 
     return {
