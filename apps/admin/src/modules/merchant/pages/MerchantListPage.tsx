@@ -118,13 +118,6 @@ export const MerchantListPage = () => {
       pageSize: 10,
       mode: "server",
     },
-    filters: {
-      permanent: [
-        ...(statusFilter ? [{ field: "status", operator: "eq", value: statusFilter }] as any : []),
-        ...(categoryFilter ? [{ field: "categoryId", operator: "eq", value: categoryFilter }] as any : []),
-        ...(areaFilter ? [{ field: "area", operator: "eq", value: areaFilter }] as any : []),
-      ],
-    },
     meta: {
       include: {
         category: true,
@@ -158,8 +151,9 @@ export const MerchantListPage = () => {
       filters.push({ field: "area", operator: "eq", value: areaFilter });
     }
 
-    setFilters(filters);
-  }, [debouncedSearchText, statusFilter, categoryFilter, areaFilter, setFilters]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    setFilters(filters.length > 0 ? filters : []);
+  }, [debouncedSearchText, statusFilter, categoryFilter, areaFilter]);
 
   const result = tableQuery.data;
   const query = tableQuery;
