@@ -596,20 +596,34 @@ export const COUPON_RULE_TEMPLATES = {
   },
 } as const;
 
-// 规则结构 Schema
-export const CouponRuleSchema = z.object({
-  type: z.string(),
-  customText: z.string().optional().nullable(),
+// ============================================
+// Coupon Rules Schemas (Dynamic Array)
+// ============================================
+
+// 单条规则 Schema
+export const CouponRuleItemSchema = z.object({
+  title: z.string()
+    .min(1, "规则标题不能为空")
+    .max(50, "规则标题最多50字"),
+  content: z.string()
+    .min(1, "规则内容不能为空")
+    .max(500, "规则内容最多500字"),
 });
 
-export const CouponRulesSchema = z.object({
-  stacking: CouponRuleSchema.optional(),
-  refund: CouponRuleSchema.optional(),
-  usage: CouponRuleSchema.optional(),
-});
+// 规则数组 Schema
+export const CouponRulesSchema = z.array(CouponRuleItemSchema)
+  .min(1, "至少需要1条规则")
+  .max(10, "最多支持10条规则");
 
-export type CouponRule = z.infer<typeof CouponRuleSchema>;
+// 类型导出
+export type CouponRuleItem = z.infer<typeof CouponRuleItemSchema>;
 export type CouponRules = z.infer<typeof CouponRulesSchema>;
+
+// 默认规则（新建模板时使用）
+export const DEFAULT_COUPON_RULES: CouponRuleItem[] = [
+  { title: '叠加规则', content: '不与其他优惠活动同时使用，每单限用一张' },
+  { title: '退改政策', content: '未核销前支持随时退款' },
+];
 
 // ============================================
 // Coupon Template Schemas
