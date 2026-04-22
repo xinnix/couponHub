@@ -7,6 +7,7 @@ import {
 } from '@opencode/shared';
 import { createCrudRouterWithCustom } from '../../../trpc/trpc.helper';
 import { permissionProcedure } from '../../../trpc/trpc';
+import { MerchantService } from '../services/merchant.service';
 
 /**
  * Merchant tRPC Router
@@ -31,25 +32,24 @@ export const merchantRouter = createCrudRouterWithCustom(
         }
         const data = parsedInput.data as any;
 
-        const model = ctx.prisma.merchant;
-        const [items, total] = await Promise.all([
-          model.findMany({
-            skip: data.skip ?? (data.page ? (data.page - 1) * (data.limit || 10) : 0),
-            take: data.take ?? data.limit,
-            where: data.where,
-            orderBy: data.orderBy ?? { createdAt: 'desc' },
-            include: data.include,
-            select: data.select,
-          }),
-          model.count({ where: data.where }),
-        ]);
+        // 使用 MerchantService 的 list 方法来处理搜索逻辑
+        const merchantService = new MerchantService(ctx.prisma);
+        const result = await merchantService.list({
+          skip: data.skip ?? (data.page ? (data.page - 1) * (data.limit || 10) : 0),
+          take: data.take ?? data.limit,
+          where: data.where,
+          orderBy: data.orderBy,
+          include: data.include,
+          select: data.select,
+        });
 
+        // 将 data 字段转换为 items 字段，适配前端格式
         return {
-          items,
-          total,
-          page: data.page || 1,
-          pageSize: data.limit || 10,
-          totalPages: Math.ceil(total / (data.limit || 10)),
+          items: result.data,
+          total: result.total,
+          page: result.page,
+          pageSize: result.pageSize,
+          totalPages: result.totalPages,
         };
       }),
 

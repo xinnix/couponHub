@@ -1,5 +1,5 @@
 // apps/admin/src/modules/merchant/pages/MerchantListPage.tsx
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useTable, useList, useCreate, useUpdate, useDelete, useDeleteMany } from "@refinedev/core";
 import { List } from "@refinedev/antd";
 import {
@@ -59,11 +59,20 @@ export const MerchantListPage = () => {
   const [editingRecord, setEditingRecord] = useState<Merchant | null>(null);
   const [selectedRowKeys, setSelectedRowKeys] = useState<string[]>([]);
   const [searchText, setSearchText] = useState("");
+  const [debouncedSearchText, setDebouncedSearchText] = useState("");
   const [statusFilter, setStatusFilter] = useState<string | undefined>(undefined);
   const [categoryFilter, setCategoryFilter] = useState<string | undefined>(undefined);
   const [areaFilter, setAreaFilter] = useState<string | undefined>(undefined);
   const [form] = Form.useForm();
   const { message } = App.useApp();
+
+  // 延迟搜索：300ms 延迟
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchText(searchText);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchText]);
 
   const { mutate: create } = useCreate();
   const { mutate: update } = useUpdate();
@@ -101,6 +110,7 @@ export const MerchantListPage = () => {
     setCurrentPage,
     pageSize,
     setPageSize,
+    setFilters,
   } = useTable<Merchant>({
     resource: "merchant",
     pagination: {
@@ -109,8 +119,7 @@ export const MerchantListPage = () => {
       mode: "server",
     },
     filters: {
-      initial: [
-        ...(searchText ? [{ field: "search", operator: "contains", value: searchText }] as any : []),
+      permanent: [
         ...(statusFilter ? [{ field: "status", operator: "eq", value: statusFilter }] as any : []),
         ...(categoryFilter ? [{ field: "categoryId", operator: "eq", value: categoryFilter }] as any : []),
         ...(areaFilter ? [{ field: "area", operator: "eq", value: areaFilter }] as any : []),
@@ -128,6 +137,29 @@ export const MerchantListPage = () => {
       },
     },
   });
+
+  // 当过滤器变化时自动触发搜索
+  useEffect(() => {
+    const filters: any[] = [];
+
+    if (debouncedSearchText) {
+      filters.push({ field: "search", operator: "contains", value: debouncedSearchText });
+    }
+
+    if (statusFilter) {
+      filters.push({ field: "status", operator: "eq", value: statusFilter });
+    }
+
+    if (categoryFilter) {
+      filters.push({ field: "categoryId", operator: "eq", value: categoryFilter });
+    }
+
+    if (areaFilter) {
+      filters.push({ field: "area", operator: "eq", value: areaFilter });
+    }
+
+    setFilters(filters);
+  }, [debouncedSearchText, statusFilter, categoryFilter, areaFilter, setFilters]);
 
   const result = tableQuery.data;
   const query = tableQuery;

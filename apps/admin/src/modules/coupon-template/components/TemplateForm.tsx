@@ -15,6 +15,9 @@ interface TemplateFormProps {
 }
 
 export const TemplateForm: React.FC<TemplateFormProps> = ({ form, isEdit }) => {
+  // 使用 ref 存储稳定的 form 引用，避免循环依赖警告
+  const formRef = useRef(form);
+  formRef.current = form;
   // 获取商户类别列表
   const { result: categoriesResult } = useList({
     resource: "merchantCategory",
@@ -48,12 +51,13 @@ export const TemplateForm: React.FC<TemplateFormProps> = ({ form, isEdit }) => {
   useEffect(() => {
     // 核心逻辑：只在有 categoryId 时才自动填充
     // 没有 categoryId 时，不做任何操作（保留原始值或让用户手动选择）
-    if (categoryId) {
+    if (categoryId && categoryMerchants.length > 0) {
       const merchantIds = categoryMerchants.map((m: any) => m.id);
-      form.setFieldValue('merchantScope', merchantIds);
+      formRef.current.setFieldValue('merchantScope', merchantIds);
     }
     // 注意：不处理 categoryId 为空的情况，避免覆盖编辑模式下的原始值
-  }, [categoryId, categoryMerchants, form]);
+    // 使用 merchantIds 而非整个数组，避免循环引用警告
+  }, [categoryId, categoryMerchants?.length]);
 
   return (
     <Form form={form} layout="vertical">

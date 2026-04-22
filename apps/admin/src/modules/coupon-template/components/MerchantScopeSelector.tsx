@@ -27,6 +27,9 @@ export const MerchantScopeSelector: React.FC<MerchantScopeSelectorProps> = ({ va
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const timerRef = useRef<ReturnType<typeof setTimeout>>();
 
+  // 商户信息缓存：存储已选择商户的完整信息
+  const [merchantCache, setMerchantCache] = useState<Map<string, Merchant>>(new Map());
+
   const handleSearch = useCallback((text: string) => {
     setSearchText(text);
     if (timerRef.current) clearTimeout(timerRef.current);
@@ -61,9 +64,48 @@ export const MerchantScopeSelector: React.FC<MerchantScopeSelectorProps> = ({ va
 
   const merchants = data || [];
 
+  // 更新商户缓存：将新加载的商户信息添加到缓存中
+  useEffect(() => {
+    if (merchants.length > 0) {
+      const newCache = new Map(merchantCache);
+      merchants.forEach((merchant: Merchant) => {
+        newCache.set(merchant.id, merchant);
+      });
+      setMerchantCache(newCache);
+    }
+  }, [merchants]);
+
+  // 当 value 变化时，加载缺失商户的完整信息
+  useEffect(() => {
+    if (value && value.length > 0) {
+      const missingIds = value.filter(id => !merchantCache.has(id));
+      if (missingIds.length > 0) {
+        // 加载缺失的商户信息
+        (async () => {
+          const trpcClient = await getTrpcClient();
+          const result = await trpcClient.merchant.getMany.query({
+            page: 1,
+            limit: 1000,
+            where: {
+              id: { in: missingIds },
+            },
+            include: {
+              category: true,
+            },
+          });
+          const newCache = new Map(merchantCache);
+          result.items?.forEach((merchant: Merchant) => {
+            newCache.set(merchant.id, merchant);
+          });
+          setMerchantCache(newCache);
+        })();
+      }
+    }
+  }, [value]);
+
   // 使用 useMemo 确保 options 正确计算，包含已选择的商户
   const options = useMemo(() => {
-    const baseOptions = merchants.map((merchant: any) => ({
+    const baseOptions = merchants.map((merchant: Merchant) => ({
       label: `${merchant.name} (${merchant.category?.name || '未分类'})`,
       value: merchant.id,
     }));
@@ -72,13 +114,19 @@ export const MerchantScopeSelector: React.FC<MerchantScopeSelectorProps> = ({ va
     const selectedMerchants = value || [];
     const fallbackOptions = selectedMerchants
       .filter((merchantId) => !baseOptions.find((opt) => opt.value === merchantId))
-      .map((merchantId) => ({
-        label: `商户 ID: ${merchantId}`,
-        value: merchantId,
-      }));
+      .map((merchantId) => {
+        // 从缓存中获取商户信息
+        const cachedMerchant = merchantCache.get(merchantId);
+        return {
+          label: cachedMerchant
+            ? `${cachedMerchant.name} (${cachedMerchant.category?.name || '未分类'})`
+            : `商户 ID: ${merchantId}`,
+          value: merchantId,
+        };
+      });
 
     return [...baseOptions, ...fallbackOptions];
-  }, [merchants, value]);
+  }, [merchants, value, merchantCache]);
 
   return (
     <Select
@@ -99,10 +147,11 @@ export const MerchantScopeSelector: React.FC<MerchantScopeSelectorProps> = ({ va
       disabled={disabled} // 添加禁用状态
       tagRender={(props) => {
         const { label, value: tagValue, closable, onClose } = props;
-        const merchant = merchants.find((m: any) => m.id === tagValue);
+        // 优先从缓存中查找商户信息，然后再从当前列表中查找
+        const merchant = merchantCache.get(tagValue as string) || merchants.find((m: Merchant) => m.id === tagValue);
         const categoryName = merchant?.category?.name || '未分类';
 
-        // 如果商户不在当前列表中，显示灰色标签
+        // 如果商户不在缓存和当前列表中，显示灰色标签
         if (!merchant) {
           return (
             <Tag
