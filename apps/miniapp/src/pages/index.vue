@@ -155,7 +155,8 @@ async function loadMerchants(area: string = '全部') {
       })
       console.log('商户列表:', merchants.value)
     }
-  } catch (error) {
+  }
+  catch (error) {
     console.error('加载商户失败:', error)
     uni.showToast({
       title: '加载商户失败',
@@ -502,7 +503,7 @@ function getDefaultImage(type: string, id: string) {
               <view class="absolute bottom-0 left-0 top-0 w-1 rounded-l bg-primary-container" />
               <view class="mb-1 pl-2">
                 <view class="mb-1">
-                  <text class="voucher-title-text text-xs text-on-surface font-bold leading-tight">
+                  <text class="voucher-title-text text-sm text-on-surface font-bold leading-tight">
                     {{ voucher.title }}
                   </text>
                 </view>
@@ -630,7 +631,8 @@ function getDefaultImage(type: string, id: string) {
   color: #1c1c1c;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
-  overflow-x: hidden; /* 强制防止横向溢出 */
+  overflow-x: hidden;
+  /* 强制防止横向溢出 */
   width: 100vw;
   max-width: 100vw;
 }
@@ -651,7 +653,8 @@ function getDefaultImage(type: string, id: string) {
   position: relative;
   z-index: 10;
   padding-bottom: calc(160rpx + env(safe-area-inset-bottom));
-  overflow-x: hidden; /* 防止横向溢出 */
+  overflow-x: hidden;
+  /* 防止横向溢出 */
   width: 100%;
   max-width: 100vw;
 }
@@ -822,8 +825,10 @@ function getDefaultImage(type: string, id: string) {
 /* 优惠券横向滚动容器 */
 .voucher-scroll {
   width: 100%;
-  max-width: 100vw; /* 强制约束最大宽度 */
-  overflow-x: hidden; /* 父容器不溢出，由 scroll-view 内部滚动 */
+  max-width: 100vw;
+  /* 强制约束最大宽度 */
+  overflow-x: hidden;
+  /* 父容器不溢出，由 scroll-view 内部滚动 */
 }
 
 /* 优惠券卡片 */
@@ -916,7 +921,8 @@ function getDefaultImage(type: string, id: string) {
 /* 区域标签横向滚动容器 */
 .area-scroll {
   width: 100%;
-  max-width: 100vw; /* 强制约束最大宽度 */
+  max-width: 100vw;
+  /* 强制约束最大宽度 */
   overflow-x: hidden;
 }
 

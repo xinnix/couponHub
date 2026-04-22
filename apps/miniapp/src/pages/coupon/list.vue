@@ -277,24 +277,24 @@ onPullDownRefresh(() => {
             <!-- 优惠券信息 -->
             <view class="coupon-info-section relative flex flex-col gap-2 p-4">
               <!-- 装饰性圆形（上方锯齿） -->
-              <view class="absolute h-6 w-6 rounded-full -top-3 -left-3" style="background: #F5FAFF;" />
-              <view class="absolute h-6 w-6 rounded-full -top-3 -right-3" style="background: #F5FAFF;" />
-              <text class="truncate text-13px text-on-surface font-bold leading-tight">
+              <view class="absolute h-6 w-6 rounded-full -left-3 -top-3" style="background: #F5FAFF;" />
+              <view class="absolute h-6 w-6 rounded-full -right-3 -top-3" style="background: #F5FAFF;" />
+              <text class="truncate text-sm text-on-surface font-bold leading-tight">
                 {{ coupon.title }}
               </text>
-              <text class="text-11px text-primary-container font-medium">
+              <text class="text-xs text-primary-container font-medium">
                 {{ formatCouponDiscount(coupon) }}
               </text>
-              <text :class="getCountdownStyle(coupon)" class="text-10px font-medium">
+              <text :class="getCountdownStyle(coupon)" class="text-xs font-medium">
                 {{ formatCountdown(coupon) }}
               </text>
-              <view class="mt-2 flex items-center justify-between">
+              <view class="mt-2 flex items-center justify-between gap-2">
                 <text class="rounded bg-blue-50 px-2 py-1 text-10px text-primary-container font-bold">
                   {{ calculateSavePercent(coupon) }}
                 </text>
-                <text class="text-xs text-primary-container font-bold">
+                <view class="text-xs text-primary-container font-bold">
                   {{ formatPriceDisplay(coupon) }}
-                </text>
+                </view>
               </view>
             </view>
           </view>
@@ -413,7 +413,8 @@ onPullDownRefresh(() => {
 .coupon-value-section {
   position: relative;
   border-bottom: 2rpx dashed rgba(189, 200, 209, 0.3);
-  background: #E0F2FF; /* 深一点的蓝色背景 */
+  background: #E0F2FF;
+  /* 深一点的蓝色背景 */
 }
 
 /* 优惠券信息区域 */
@@ -429,19 +430,22 @@ onPullDownRefresh(() => {
 
 /* 倒计时样式 - 已下架 */
 .countdown-expired {
-  color: #EF4444; /* 红色 */
+  color: #EF4444;
+  /* 红色 */
   font-weight: 600;
 }
 
 /* 倒计时样式 - 非常紧迫（<=3天） */
 .countdown-urgent {
-  color: #EF4444; /* 红色 */
+  color: #EF4444;
+  /* 红色 */
   font-weight: 700;
 }
 
 /* 倒计时样式 - 即将下架（4-7天） */
 .countdown-warning {
-  color: #F97316; /* 橙色 */
+  color: #F97316;
+  /* 橙色 */
   font-weight: 600;
 }
 

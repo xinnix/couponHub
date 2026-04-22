@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { onMounted, ref } from 'vue'
+import { onReachBottom } from '@dcloudio/uni-app'
 import { merchantApi } from '@/api/business'
 import CustomTabBar from '@/components/CustomTabBar.vue'
 
@@ -12,6 +13,7 @@ definePage({
 
 const statusBarHeight = ref(0)
 const loading = ref(false)
+const loadingMore = ref(false)
 const loadingCategories = ref(false)
 const merchants = ref<any[]>([])
 const searchKeyword = ref('')
@@ -19,138 +21,64 @@ const activeCategory = ref('all')
 const activeArea = ref('全部')
 
 // 分类数据（从后端获取）
-const categories = ref<Array<{ label: string; value: string; count?: number }>>([
+const categories = ref<Array<{ label: string, value: string, count?: number }>>([
   { label: '全部', value: 'all' },
 ])
 
-// 滚动监听相关
-const scrollTop = ref(0)
-const searchBgOpacity = ref(0) // 搜索栏背景透明度（0=透明，1=白色）
-const filterFixed = ref(false) // 筛选栏（分类+楼层）是否吸顶
-
-// 高度常量（px）- 在 onMounted 中通过 uni.upx2px 转换
-const HEADER_IMAGE_HEIGHT_PX = ref(160) // 背景图高度（默认值，会在 mounted 时更新）
-const SEARCH_BAR_HEIGHT_PX = ref(44) // 搜索栏高度
-
-// 计算筛选栏固定的 top 值（考虑状态栏高度）
-const filterFixedTop = computed(() => {
-  return `${statusBarHeight.value + 44}px` // 状态栏 + 搜索栏高度
-})
-
-// 区域数据（参考小程序首页）
+// 区域数据
 const areas = ['全部', 'A区', 'B区', 'C区']
 
-// 过滤后的商户列表
-const filteredMerchants = computed(() => {
-  let result = merchants.value
-
-  // 搜索过滤
-  if (searchKeyword.value) {
-    const keyword = searchKeyword.value.toLowerCase()
-    result = result.filter(m =>
-      m.name.toLowerCase().includes(keyword)
-      || m.description?.toLowerCase().includes(keyword)
-      || (m.category?.name || m.category)?.toLowerCase().includes(keyword),
-    )
-  }
-
-  // 分类过滤
-  if (activeCategory.value !== 'all') {
-    result = result.filter(m => {
-      // 如果 category 是对象，比较 categoryId
-      if (m.category?.id) {
-        return m.category.id === activeCategory.value
-      }
-      // 如果 category 是字符串，直接比较
-      return m.categoryId === activeCategory.value || m.category === activeCategory.value
-    })
-  }
-
-  // 区域过滤
-  if (activeArea.value !== '全部') {
-    result = result.filter(m => m.area === activeArea.value)
-  }
-
-  return result
-})
+// 分页状态
+const page = ref(1)
+const pageSize = ref(20)
+const hasMore = ref(true)
+const total = ref(0)
 
 onMounted(() => {
   const sysInfo = uni.getSystemInfoSync()
   statusBarHeight.value = sysInfo.statusBarHeight || 0
-
-  // 使用 uni.upx2px 将 rpx 转换为 px，确保单位一致
-  // scrollTop 返回的是 px 值，所以需要统一使用 px
-  HEADER_IMAGE_HEIGHT_PX.value = uni.upx2px(320) // 背景图高度 320rpx
-  SEARCH_BAR_HEIGHT_PX.value = uni.upx2px(88) // 搜索栏高度 88rpx
 
   // 加载分类和商户数据
   loadCategories()
   loadMerchants()
 })
 
-// 滚动监听：控制搜索栏背景透明度和筛选栏吸顶
-function handleScroll(e: any) {
-  const { scrollTop: currentScrollTop } = e.detail
-  scrollTop.value = currentScrollTop
+// 页面滚动到底部触发加载更多
+onReachBottom(() => {
+  console.log('触发页面滚动到底部，当前状态：', {
+    loadingMore: loadingMore.value,
+    hasMore: hasMore.value,
+    currentCount: merchants.value.length,
+    total: total.value,
+  })
+  loadMoreMerchants()
+})
 
-  // 计算搜索栏背景透明度
-  const maxScroll = HEADER_IMAGE_HEIGHT_PX.value - SEARCH_BAR_HEIGHT_PX.value
-  if (currentScrollTop <= 0) {
-    searchBgOpacity.value = 0
-  }
-  else if (currentScrollTop >= maxScroll) {
-    searchBgOpacity.value = 1
-  }
-  else {
-    searchBgOpacity.value = currentScrollTop / maxScroll
-  }
-
-  // 控制筛选栏整体吸顶
-  // 当筛选栏滚动到搜索栏下方时固定
-  // 阈值 = 背景图高度 - 搜索栏高度
-  const filterThreshold = HEADER_IMAGE_HEIGHT_PX.value - SEARCH_BAR_HEIGHT_PX.value
-  filterFixed.value = currentScrollTop >= filterThreshold
-}
-
-async function loadCategories() {
-  loadingCategories.value = true
-  try {
-    const res = await merchantApi.getCategories()
-    if (res.success && res.data) {
-      // 添加"全部"选项
-      categories.value = [
-        { label: '全部', value: 'all' },
-        ...res.data.map((cat: any) => ({
-          label: cat.name,
-          value: cat.id, // 使用分类 ID 作为 value
-        })),
-      ]
-      console.log('✅ 分类数据加载成功:', categories.value)
-    }
-  } catch (error) {
-    console.error('❌ 加载分类失败:', error)
-    // 失败时使用默认分类
-    categories.value = [
-      { label: '全部', value: 'all' },
-    ]
-  } finally {
-    loadingCategories.value = false
-  }
-}
-
+// 加载商户列表（首次加载或重新加载）
 async function loadMerchants() {
   try {
     loading.value = true
-    const res = await merchantApi.getList({ limit: 50, status: 'ACTIVE' })
+    page.value = 1
+    hasMore.value = true
+
+    console.log('开始首次加载商户列表')
+
+    const params = buildQueryParams()
+    const res = await merchantApi.getList(params)
+
+    console.log('API 返回的完整数据:', res)
+    console.log('res.total:', res.total, 'res.page:', res.page, 'res.pageSize:', res.pageSize)
+
     if (res.success && res.data) {
-      // 使用真实的商户数据，不再随机赋值
       merchants.value = res.data.map(m => ({
         ...m,
-        area: m.area || '未分配', // 使用真实的区域数据
+        area: m.area || '未分配',
         location: m.area ? `${m.area.replace('区', '馆')}-${m.shopNumber || Math.floor(Math.random() * 200 + 1)}号` : '位置待定',
-        // 添加活动标签（参考图片的"花现珠""赚现珠"）
-        tags: Math.random() > 0.5 ? ['花现珠', '赚现珠'].slice(0, Math.floor(Math.random() * 2 + 1)) : [],
       }))
+      total.value = res.total || 0
+      hasMore.value = merchants.value.length < total.value
+
+      console.log('首次加载完成，当前数量：', merchants.value.length, '，总数：', total.value, '，还有更多：', hasMore.value)
     }
   }
   catch (error) {
@@ -162,16 +90,134 @@ async function loadMerchants() {
   }
 }
 
+// 加载更多商户
+async function loadMoreMerchants() {
+  console.log('loadMoreMerchants 被调用，当前状态：', {
+    loadingMore: loadingMore.value,
+    hasMore: hasMore.value,
+    page: page.value,
+    currentCount: merchants.value.length,
+    total: total.value,
+  })
+
+  if (loadingMore.value || !hasMore.value) {
+    console.log('阻止加载：', loadingMore.value ? '正在加载' : '没有更多数据')
+    return
+  }
+
+  try {
+    loadingMore.value = true
+    page.value += 1
+
+    console.log('开始加载第', page.value, '页')
+
+    const params = buildQueryParams()
+    const res = await merchantApi.getList(params)
+
+    if (res.success && res.data) {
+      const newMerchants = res.data.map(m => ({
+        ...m,
+        area: m.area || '未分配',
+        location: m.area ? `${m.area.replace('区', '馆')}-${m.shopNumber || Math.floor(Math.random() * 200 + 1)}号` : '位置待定',
+      }))
+      merchants.value = [...merchants.value, ...newMerchants]
+      total.value = res.total || 0
+      hasMore.value = merchants.value.length < total.value
+
+      console.log('加载成功，当前总数：', merchants.value.length, '，是否还有更多：', hasMore.value)
+    }
+  }
+  catch (error) {
+    console.error('加载更多商户失败:', error)
+    page.value -= 1 // 失败时回退页码
+  }
+  finally {
+    loadingMore.value = false
+  }
+}
+
+// 构建查询参数
+function buildQueryParams() {
+  const params: any = {
+    page: page.value,
+    limit: pageSize.value,
+    status: 'ACTIVE',
+  }
+
+  // 分类筛选（非"全部"时才传）
+  if (activeCategory.value !== 'all') {
+    params.category = activeCategory.value
+  }
+
+  // 区域筛选（非"全部"时才传）
+  if (activeArea.value !== '全部') {
+    params.area = activeArea.value
+  }
+
+  // 搜索关键词
+  if (searchKeyword.value) {
+    params.search = searchKeyword.value
+  }
+
+  return params
+}
+
+async function loadCategories() {
+  loadingCategories.value = true
+  try {
+    const res = await merchantApi.getCategories()
+    if (res.success && res.data) {
+      categories.value = [
+        { label: '全部', value: 'all' },
+        ...res.data.map((cat: any) => ({
+          label: cat.name,
+          value: cat.id,
+        })),
+      ]
+    }
+  }
+  catch (error) {
+    console.error('❌ 加载分类失败:', error)
+    categories.value = [
+      { label: '全部', value: 'all' },
+    ]
+  }
+  finally {
+    loadingCategories.value = false
+  }
+}
+
 function goBack() {
   uni.navigateBack()
 }
 
+// 分类切换
 function handleCategoryChange(value: string) {
+  if (activeCategory.value === value)
+    return
   activeCategory.value = value
+  loadMerchants()
 }
 
+// 区域切换
 function handleAreaChange(area: string) {
+  if (activeArea.value === area)
+    return
   activeArea.value = area
+  loadMerchants()
+}
+
+// 搜索
+function handleSearch() {
+  loadMerchants()
+}
+
+// 清空搜索
+function clearSearch() {
+  if (!searchKeyword.value)
+    return
+  searchKeyword.value = ''
+  loadMerchants()
 }
 
 function handleMerchantClick(merchant: any) {
@@ -188,10 +234,10 @@ function handleImageError(e: any) {
   e.target.src = 'https://picsum.photos/seed/default/400/300'
 }
 
-// 清理商户介绍中的换行符，确保只显示一行
+// 清理商户介绍中的换行符
 function cleanDescription(text: string | undefined | null): string {
-  if (!text) return ''
-  // 移除所有换行符（包括 \n, \r, \r\n）并替换为空格
+  if (!text)
+    return ''
   return text.replace(/[\r\n]+/g, ' ').trim()
 }
 </script>
@@ -200,67 +246,50 @@ function cleanDescription(text: string | undefined | null): string {
   <view class="merchant-list-page">
     <!-- 固定搜索栏（顶部） -->
     <view class="fixed-search-bar" :style="{ paddingTop: `${statusBarHeight}px` }">
-      <!-- 动态背景 -->
-      <view class="search-bar-bg" :style="{
-        opacity: searchBgOpacity,
-        backgroundColor: '#F5FAFF',
-
-      }" />
-
       <!-- 搜索框（左对齐） -->
       <view class="search-box-wrapper">
-        <view class="search-box" :style="{
-          backgroundColor: searchBgOpacity < 0.3 ? 'rgba(255, 255, 255, 0.9)' : '#FFFFFF',
-          border: searchBgOpacity < 0.3 ? '2rpx solid rgba(255, 255, 255, 0.6)' : '2rpx solid rgba(189, 200, 209, 0.2)',
-        }">
-          <input v-model="searchKeyword" class="search-input" placeholder="请输入" placeholder-class="search-placeholder">
+        <view class="search-box">
+          <input v-model="searchKeyword" class="search-input" placeholder="请输入" placeholder-class="search-placeholder"
+            @confirm="handleSearch">
+          <text v-if="searchKeyword" class="clear-icon" @click="clearSearch">
+            ✕
+          </text>
         </view>
       </view>
     </view>
 
-    <!-- 滚动内容区域 -->
-    <scroll-view class="scroll-content" scroll-y enable-back-to-top :scroll-top="scrollTop" @scroll="handleScroll">
-      <!-- 头部背景图区域 -->
-      <view class="header-image-section">
-        <image class="header-bg" src="/static/merchant/list-bg.png" mode="aspectFill" />
-        <view class="header-mask" />
+    <!-- 固定筛选栏区域（分类+区域） -->
+    <view class="fixed-filter-container" :style="{ top: `${statusBarHeight + 44}px` }">
+      <!-- 分类导航栏 -->
+      <view class="category-nav">
+        <scroll-view scroll-x class="category-scroll" :show-scrollbar="false">
+          <view v-for="cat in categories" :key="cat.value"
+            :class="[activeCategory === cat.value ? 'category-item-active' : 'category-item-inactive']"
+            @click="handleCategoryChange(cat.value)">
+            <text class="category-text">
+              {{ cat.label }}
+            </text>
+          </view>
+        </scroll-view>
       </view>
 
-      <!-- 筛选栏区域（分类+区域，整体吸顶） -->
-      <view class="filter-container" :class="{ 'is-fixed': filterFixed }"
-        :style="filterFixed ? { top: filterFixedTop } : {}">
-        <!-- 分类导航栏 -->
-        <view class="category-nav">
-          <scroll-view scroll-x class="category-scroll" :show-scrollbar="false">
-            <view v-for="cat in categories" :key="cat.value"
-              :class="[activeCategory === cat.value ? 'category-item-active' : 'category-item-inactive']"
-              @click="handleCategoryChange(cat.value)">
-              <text class="category-text">
-                {{ cat.label }}
-              </text>
-            </view>
-          </scroll-view>
-        </view>
-
-        <!-- 区域选择栏 -->
-        <view class="area-nav">
-          <scroll-view scroll-x class="area-scroll" :show-scrollbar="false">
-            <view v-for="area in areas" :key="area"
-              :class="[activeArea === area ? 'area-item-active' : 'area-item-inactive']"
-              @click="handleAreaChange(area)">
-              <text class="area-text">
-                {{ area }}
-              </text>
-            </view>
-          </scroll-view>
-        </view>
+      <!-- 区域选择栏 -->
+      <view class="area-nav">
+        <scroll-view scroll-x class="area-scroll" :show-scrollbar="false">
+          <view v-for="area in areas" :key="area"
+            :class="[activeArea === area ? 'area-item-active' : 'area-item-inactive']" @click="handleAreaChange(area)">
+            <text class="area-text">
+              {{ area }}
+            </text>
+          </view>
+        </scroll-view>
       </view>
+    </view>
 
-      <!-- 筛选栏占位元素 -->
-      <view v-if="filterFixed" class="filter-placeholder" />
-
+    <!-- 页面内容区域 -->
+    <view class="page-content" :style="{ paddingTop: `${statusBarHeight + 180}px` }">
       <!-- 加载状态 -->
-      <view v-if="loading" class="loading-state">
+      <view v-if="loading && merchants.length === 0" class="loading-state">
         <text class="loading-text">
           加载中...
         </text>
@@ -268,7 +297,7 @@ function cleanDescription(text: string | undefined | null): string {
 
       <!-- 商户列表 -->
       <view v-else class="merchant-list">
-        <view v-for="merchant in filteredMerchants" :key="merchant.id" class="merchant-card"
+        <view v-for="merchant in merchants" :key="merchant.id" class="merchant-card"
           @click="handleMerchantClick(merchant)">
           <!-- 左侧图片区域 -->
           <view class="card-image-wrapper">
@@ -292,27 +321,32 @@ function cleanDescription(text: string | undefined | null): string {
             <text class="merchant-address">
               {{ merchant.location }}
             </text>
-
-            <!-- 活动标签（如果有） -->
-            <!-- <view v-if="merchant.tags && merchant.tags.length > 0" class="tags-row">
-              <view v-for="tag in merchant.tags" :key="tag" class="activity-tag">
-                <text class="tag-text">
-                  {{ tag }}
-                </text>
-              </view>
-            </view> -->
           </view>
         </view>
 
+        <!-- 加载更多状态 -->
+        <view v-if="loadingMore" class="loading-more-state">
+          <text class="loading-more-text">
+            加载更多...
+          </text>
+        </view>
+
+        <!-- 没有更多数据 -->
+        <view v-if="!loadingMore && !hasMore && merchants.length > 0" class="no-more-state">
+          <text class="no-more-text">
+            没有更多商户了
+          </text>
+        </view>
+
         <!-- 空状态 -->
-        <view v-if="!loading && filteredMerchants.length === 0" class="empty-state">
+        <view v-if="!loading && merchants.length === 0" class="empty-state">
           <text class="iconfont icon-zanwuzichan empty-icon" />
           <text class="empty-text">
             暂无商户
           </text>
         </view>
       </view>
-    </scroll-view>
+    </view>
 
     <!-- 自定义底部导航栏 -->
     <CustomTabBar :current="1" />
@@ -326,8 +360,8 @@ function cleanDescription(text: string | undefined | null): string {
   width: 100vw;
   background: #F5FAFF;
   font-family: 'Plus Jakarta Sans', sans-serif;
-  overflow-x: hidden; /* 强制禁止横向滚动 */
-  overflow-y: hidden; /* 页面级别禁止纵向滚动，只允许 scroll-view 滚动 */
+  overflow-x: hidden;
+  /* 强制禁止横向滚动 */
 }
 
 /* ===== 固定搜索栏 ===== */
@@ -340,24 +374,9 @@ function cleanDescription(text: string | undefined | null): string {
   max-width: 100vw;
   z-index: 999;
   height: 88rpx;
-  /* 固定高度 */
-  background: transparent;
-  /* 确保容器背景透明 */
-  pointer-events: none;
-  /* 允许点击穿透到下层 */
-  overflow-x: hidden; /* 强制禁止横向滚动 */
-}
-
-.search-bar-bg {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 0;
-  transition: all 0.3s ease;
-  pointer-events: none;
-  /* 移除默认背景色，完全依赖 opacity */
+  background: #F5FAFF;
+  overflow-x: hidden;
+  /* 强制禁止横向滚动 */
 }
 
 .search-box-wrapper {
@@ -368,18 +387,19 @@ function cleanDescription(text: string | undefined | null): string {
   align-items: center;
   padding: 0 24rpx 0 48rpx;
   /* 左侧padding 48rpx 与小程序控制按钮对齐 */
-  pointer-events: auto;
-  /* 恢复搜索框区域的点击 */
 }
 
 .search-box {
+  position: relative;
   width: 380rpx;
   height: 64rpx;
   border-radius: 48rpx;
-  padding: 0 32rpx;
+  padding: 0 60rpx 0 32rpx;
+  /* 右侧padding增加，为清除按钮留空间 */
   display: flex;
   align-items: center;
-  transition: all 0.3s ease;
+  background: #FFFFFF;
+  border: 2rpx solid rgba(189, 200, 209, 0.2);
 }
 
 .search-input {
@@ -394,94 +414,37 @@ function cleanDescription(text: string | undefined | null): string {
   font-size: 26rpx;
 }
 
-/* 功能按钮（右上角） */
-.header-actions {
-  display: flex;
-  gap: 16rpx;
-  align-items: center;
-}
-
-.action-btn {
-  width: 48rpx;
-  height: 48rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(255, 255, 255, 0.8);
-  border-radius: 50%;
-}
-
-.action-icon {
-  font-size: 20rpx;
-  color: rgba(23, 28, 32, 0.8);
-}
-
-/* ===== 滚动内容区域 ===== */
-.scroll-content {
-  width: 100vw;
-  max-width: 100vw;
-  height: 100vh;
-  overflow-x: hidden; /* 强制禁止横向滚动 */
-  overflow-y: auto; /* 只允许纵向滚动 */
-  padding-top: 0 !important;
-}
-
-/* ===== 头部背景图区域 ===== */
-.header-image-section {
-  position: relative;
-  width: 100vw;
-  max-width: 100vw;
-  height: 320rpx;
-  overflow-x: hidden; /* 强制禁止横向溢出 */
-  /* 负margin，让背景图延伸到搜索栏下方 */
-  margin-top: -88rpx;
-  /* 搜索栏高度 */
-  padding-top: 88rpx;
-  /* 补偿padding，保持内容位置 */
-}
-
-.header-bg {
+.clear-icon {
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+  right: 20rpx;
+  font-size: 32rpx;
+  color: #6e7881;
+  cursor: pointer;
 }
 
-.header-mask {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(23, 28, 32, 0.4);
-}
-
-/* ===== 筛选栏容器（分类+楼层） ===== */
-.filter-container {
-  width: 100%;
-  max-width: 100vw;
-  position: relative;
-  background: rgba(245, 250, 255, 1);
-  backdrop-filter: blur(20rpx);
-  transition: all 0.1s ease;
-  overflow-x: hidden; /* 强制禁止横向滚动 */
-}
-
-/* 筛选栏固定状态 */
-.filter-container.is-fixed {
+/* ===== 固定筛选栏容器（分类+区域） ===== */
+.fixed-filter-container {
   position: fixed;
   left: 0;
   right: 0;
   z-index: 100;
+  width: 100%;
+  max-width: 100vw;
+  background: rgba(245, 250, 255, 1);
+  backdrop-filter: blur(20rpx);
   box-shadow: 0 2rpx 12rpx rgba(23, 28, 32, 0.08);
+  overflow-x: hidden;
+  /* 强制禁止横向滚动 */
 }
 
-/* 筛选栏占位元素（防止固定时内容跳动） */
-.filter-placeholder {
-  height: 152rpx;
-  /* 分类栏72rpx + 楼层栏80rpx */
+/* ===== 页面内容区域 ===== */
+.page-content {
+  width: 100%;
+  max-width: 100vw;
+  min-height: 100vh;
+  padding-bottom: 140rpx; /* 底部留出 TabBar 空间 */
+  box-sizing: border-box;
+  /* padding-top 通过内联样式动态设置 */
 }
 
 /* ===== 区域选择栏 ===== */
@@ -489,14 +452,16 @@ function cleanDescription(text: string | undefined | null): string {
   width: 100%;
   max-width: 100vw;
   padding: 24rpx 24rpx 32rpx;
-  overflow-x: hidden; /* 禁止容器横向滚动 */
+  overflow-x: hidden;
+  /* 禁止容器横向滚动 */
 }
 
 .area-scroll {
   width: 100%;
   max-width: 100vw;
   white-space: nowrap;
-  overflow-x: auto; /* 只允许 scroll-view 内部横向滚动 */
+  overflow-x: auto;
+  /* 只允许 scroll-view 内部横向滚动 */
   overflow-y: hidden;
 }
 
@@ -551,14 +516,16 @@ function cleanDescription(text: string | undefined | null): string {
   max-width: 100vw;
   padding: 32rpx 24rpx;
   border-bottom: 1rpx solid rgba(189, 200, 209, 0.15);
-  overflow-x: hidden; /* 禁止容器横向滚动 */
+  overflow-x: hidden;
+  /* 禁止容器横向滚动 */
 }
 
 .category-scroll {
   width: 100%;
   max-width: 100vw;
   white-space: nowrap;
-  overflow-x: auto; /* 只允许 scroll-view 内部横向滚动 */
+  overflow-x: auto;
+  /* 只允许 scroll-view 内部横向滚动 */
   overflow-y: hidden;
 }
 
@@ -604,7 +571,8 @@ function cleanDescription(text: string | undefined | null): string {
   gap: 24rpx;
   padding-bottom: 140rpx;
   /* 底部留出 TabBar 空间 */
-  box-sizing: border-box; /* 确保 padding 不增加总宽度 */
+  box-sizing: border-box;
+  /* 确保 padding 不增加总宽度 */
 }
 
 /* ===== 商户卡片 ===== */
@@ -622,7 +590,8 @@ function cleanDescription(text: string | undefined | null): string {
   transition: all 0.3s ease;
   border: 2rpx solid rgba(189, 200, 209, 0.3);
   /* 使用首页边框色 */
-  box-sizing: border-box; /* 确保 padding 和 border 不增加宽度 */
+  box-sizing: border-box;
+  /* 确保 padding 和 border 不增加宽度 */
 }
 
 .merchant-card:active {
@@ -647,7 +616,8 @@ function cleanDescription(text: string | undefined | null): string {
 /* 信息区域 */
 .card-info {
   flex: 1;
-  min-width: 0; /* 确保文本截断正常工作 */
+  min-width: 0;
+  /* 确保文本截断正常工作 */
   display: flex;
   flex-direction: column;
   gap: 8rpx;
@@ -718,6 +688,32 @@ function cleanDescription(text: string | undefined | null): string {
   font-size: 28rpx;
   color: #6e7881;
   /* 使用首页次要文字色 */
+}
+
+/* ===== 加载更多状态 ===== */
+.loading-more-state {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 40rpx 0;
+}
+
+.loading-more-text {
+  font-size: 26rpx;
+  color: #6e7881;
+}
+
+/* ===== 没有更多数据 ===== */
+.no-more-state {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 40rpx 0;
+}
+
+.no-more-text {
+  font-size: 26rpx;
+  color: rgba(110, 120, 129, 0.6);
 }
 
 /* ===== 空状态 ===== */
