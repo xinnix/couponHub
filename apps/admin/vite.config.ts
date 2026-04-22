@@ -21,7 +21,7 @@ export default defineConfig({
   },
   build: {
     commonjsOptions: {
-      include: [/quill/, /node_modules/],
+      include: [/quill/, /node_modules/, /infra\/shared/],
     },
     rollupOptions: {
       output: {
