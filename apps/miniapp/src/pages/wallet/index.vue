@@ -419,6 +419,8 @@ async function handlePay(item: any) {
   background: #f5faff;
   display: flex;
   flex-direction: column;
+  overflow-x: hidden;
+  width: 100%;
 }
 
 /* ========== 顶部栏背景 ========== */
@@ -617,6 +619,9 @@ async function handlePay(item: any) {
   padding: 32rpx 32rpx 200rpx;
   max-width: 900rpx;
   margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
+  overflow-x: hidden;
 }
 
 /* ========== 汇总卡片 ========== */
