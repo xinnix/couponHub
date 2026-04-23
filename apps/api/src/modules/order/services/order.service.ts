@@ -139,13 +139,24 @@ export class OrderService extends BaseService<'Order'> {
       // ✅ 9. 免费券自动支付
       const buyPrice = Number(template.buyPrice);
       if (buyPrice === 0) {
-        // 免费券：自动标记为 PAID
+        // 计算过期时间：expireAt = 有 validDays ? min(useUntil, paidAt + validDays) : useUntil
+        const paidAt = new Date();
+        let expireAt: Date;
+
+        if (template.validDays && template.validDays > 0) {
+          const relativeExpireAt = new Date(paidAt.getTime() + template.validDays * 24 * 60 * 60 * 1000);
+          expireAt = relativeExpireAt < template.useUntil ? relativeExpireAt : template.useUntil;
+        } else {
+          expireAt = template.useUntil;
+        }
+
         const paidOrder = await this.prisma.order.update({
           where: { id: order.id },
           data: {
             status: 'PAID',
-            paidAt: new Date(),
+            paidAt,
             isFreeOrder: true,
+            expireAt,
           },
           include: {
             template: true,
