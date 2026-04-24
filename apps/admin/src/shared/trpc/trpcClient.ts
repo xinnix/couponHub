@@ -117,6 +117,18 @@ export const createTrpcClient = () => {
             console.log('[tRPC] 请求:', inputUrl, '状态:', response.status);
 
             if (response.status === 401) {
+              // 🔥 如果是登录相关的请求返回 401，不要触发全局处理
+              // 登录失败应该由 authProvider.login 处理，显示错误信息而不是跳转
+              const isLoginRequest = inputUrl.includes('auth.adminLogin') ||
+                                     inputUrl.includes('auth.login') ||
+                                     inputUrl.includes('auth.register') ||
+                                     inputUrl.includes('auth.wechatLogin');
+
+              if (isLoginRequest) {
+                console.log('[tRPC] 登录请求返回 401，不触发全局处理');
+                return response;
+              }
+
               console.log('[tRPC] 收到 401，尝试刷新 token');
 
               const refreshed = await refreshAccessToken();

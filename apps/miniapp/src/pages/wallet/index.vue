@@ -813,6 +813,9 @@ async function handlePay(item: any) {
   flex-shrink: 0;
   padding: 4rpx 16rpx;
   border-radius: 999rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .status-text {

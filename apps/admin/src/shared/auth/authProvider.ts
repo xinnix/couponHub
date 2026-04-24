@@ -88,6 +88,18 @@ export const authProvider: AuthProvider = {
     // Also check standard HTTP error structure
     const status = error?.status || error?.statusCode;
 
+    // 如果是登录相关的错误，不要触发 logout，让 login 函数自己处理
+    // 登录错误应该在 login 函数中返回 success: false
+    const isLoginError = error?.name === 'Login Error' ||
+                         error?.message?.includes('登录失败') ||
+                         error?.message?.includes('用户名不存在') ||
+                         error?.message?.includes('密码错误');
+
+    if (isLoginError) {
+      // 登录错误不触发 logout，让登录页面显示错误信息
+      return Promise.resolve({});
+    }
+
     if (trpcCode === "UNAUTHORIZED" || httpStatus === 401 || status === 401) {
       return Promise.resolve({
         logout: true,
