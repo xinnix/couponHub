@@ -1,5 +1,5 @@
 // apps/admin/src/modules/news/components/NewsForm.tsx
-import { Form, Input, Select, Switch, Alert, Tag } from "antd";
+import { Form, Input, InputNumber, Select, Switch, Alert, Tag } from "antd";
 import { useList } from "@refinedev/core";
 import { RichTextEditor } from "../../../shared/components/RichTextEditor";
 import { OSSUpload } from "../../../shared/components/OSSUpload";
@@ -111,6 +111,20 @@ export const NewsForm: React.FC<NewsFormProps> = ({ form, isEdit }) => {
         initialValue={false}
       >
         <Switch />
+      </Form.Item>
+
+      <Form.Item
+        name="sortOrder"
+        label="排序权重"
+        extra="数字越大越靠前（降序排列）。默认为 0，建议范围 0-100"
+        initialValue={0}
+      >
+        <InputNumber
+          min={0}
+          max={100}
+          precision={0}
+          placeholder="输入排序权重（如：50）"
+        />
       </Form.Item>
 
       <Form.Item name="status" label="状态" initialValue="DRAFT">

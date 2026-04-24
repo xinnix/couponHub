@@ -520,6 +520,7 @@ export const NewsSchema = z.object({
   title: z.string(),
   bannerUrl: z.string().url().optional().nullable(),
   content: z.string(),
+  sortOrder: z.number().int().nonnegative(), // 排序权重（数字越大越靠前）
   viewCount: z.number().int(),
   status: z.enum(["DRAFT", "PUBLISHED"]),
   isHero: z.boolean(),
@@ -534,6 +535,7 @@ export const CreateNewsSchema = z.object({
   bannerUrl: z.string().url("Banner URL格式无效").optional().nullable(),
   content: z.string().min(1, "内容不能为空"),
   couponIds: z.array(z.string()).optional(), // 新增：优惠券ID数组
+  sortOrder: z.number().int().nonnegative("排序必须为非负整数").optional().default(0), // 排序权重（数字越大越靠前）
   status: z.enum(["DRAFT", "PUBLISHED"]).default("DRAFT"),
   isHero: z.boolean().default(false),
   isPopup: z.boolean().default(false), // 新增字段：是否为首页弹窗新闻

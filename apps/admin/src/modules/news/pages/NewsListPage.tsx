@@ -41,6 +41,7 @@ interface News {
   title: string;
   bannerUrl?: string;
   content: string;
+  sortOrder: number;
   viewCount: number;
   status: 'DRAFT' | 'PUBLISHED';
   isHero: boolean;
@@ -376,6 +377,17 @@ export const NewsListPage = () => {
       ),
     },
     {
+      title: "排序",
+      dataIndex: "sortOrder",
+      width: 100,
+      sorter: true,
+      render: (sortOrder: number) => (
+        <Tag color={sortOrder > 50 ? 'red' : sortOrder > 0 ? 'orange' : 'default'}>
+          {sortOrder}
+        </Tag>
+      ),
+    },
+    {
       title: "创建时间",
       dataIndex: "createdAt",
       width: 160,
@@ -538,7 +550,7 @@ export const NewsListPage = () => {
             rowKey="id"
             dataSource={news}
             loading={query.isLoading}
-            scroll={{ x: 1300 }}
+            scroll={{ x: 1400 }}
             pagination={{
               current: currentPage,
               pageSize: pageSize,

@@ -33,7 +33,10 @@ export class NewsController {
       skip: (Number(page) - 1) * Number(limit),
       take: Number(limit),
       where,
-      orderBy: { createdAt: 'desc' },
+      orderBy: [
+        { sortOrder: 'desc' },  // 首先按排序权重降序
+        { createdAt: 'desc' }   // 其次按创建时间降序（同权重时新新闻在前）
+      ],
     });
   }
 
