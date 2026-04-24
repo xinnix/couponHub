@@ -298,46 +298,49 @@ export class OrderService extends BaseService<'Order'> {
       throw new BadRequestException('订单不存在');
     }
 
-    // 1. 更新订单状态
-    const updatedOrder = await this.prisma.order.update({
-      where: { id: orderId },
-      data: {
-        status: 'REFUNDED',
-        refundId,
-        refundedAt: new Date(),
-      },
+    // 使用数据库事务保证订单状态更新和库存恢复的一致性
+    const { updatedOrder, updatedTemplate } = await this.prisma.$transaction(async (tx) => {
+      // 1. 更新订单状态
+      const updatedOrder = await tx.order.update({
+        where: { id: orderId },
+        data: {
+          status: 'REFUNDED',
+          refundId,
+          refundedAt: new Date(),
+        },
+      });
+
+      // 2. 查询当前券模板状态（判断是否需要重新上架）
+      const currentTemplate = await tx.couponTemplate.findUnique({
+        where: { id: order.templateId },
+      });
+
+      if (!currentTemplate) {
+        throw new BadRequestException('券模板不存在');
+      }
+
+      const shouldReactivate = currentTemplate.stock === 0 && currentTemplate.status === 'DISABLED';
+
+      // 3. 恢复库存并更新券模板状态
+      const updatedTemplate = await tx.couponTemplate.update({
+        where: { id: order.templateId },
+        data: {
+          stock: { increment: 1 },
+          ...(shouldReactivate && { status: 'ACTIVE' }),
+        },
+      });
+
+      return { updatedOrder, updatedTemplate };
     });
 
-    // 2. 恢复库存并更新券模板状态
-    const currentTemplate = await this.prisma.couponTemplate.findUnique({
-      where: { id: order.templateId },
-    });
-
-    if (!currentTemplate) {
-      throw new BadRequestException('券模板不存在');
-    }
-
-    // 如果之前库存为0（状态为 DISABLED），退款后恢复为 ACTIVE
-    const shouldReactivate = currentTemplate.stock === 0 && currentTemplate.status === 'DISABLED';
-
-    const updatedTemplate = await this.prisma.couponTemplate.update({
-      where: { id: order.templateId },
-      data: {
-        stock: { increment: 1 },
-        // 如果之前是售罄状态，退款后恢复为上架
-        ...(shouldReactivate && { status: 'ACTIVE' }),
-      },
-    });
-
-    // ✅ 3. 记录库存变更日志
-    // 根据订单状态判断退款原因
+    // 4. 记录库存变更日志（事务外，不影响核心业务）
     const refundReason = order.status === 'EXPIRED'
       ? StockChangeReason.EXPIRED_REFUND
       : StockChangeReason.REFUND;
 
     await this.stockLogService.log(
       order.templateId,
-      1, // 恢复库存
+      1,
       updatedTemplate.stock,
       refundReason,
       order.id,
@@ -349,7 +352,7 @@ export class OrderService extends BaseService<'Order'> {
       `订单退款成功: ${order.orderNo}, 库存已恢复 (当前库存: ${updatedTemplate.stock})`,
     );
 
-    if (shouldReactivate) {
+    if (updatedTemplate.stock > 0 && order.template.status === 'DISABLED') {
       this.logger.log(
         `券模板已重新上架: ${order.template.title} (ID: ${order.templateId})`,
       );

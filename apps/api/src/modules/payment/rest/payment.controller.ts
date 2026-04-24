@@ -26,6 +26,7 @@ import { CurrentUser } from '../../auth/decorators/decorators';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { WechatPayService } from '../services/wechat-pay.service';
 import { OrderService } from '../../order/services/order.service';
+import { RedisService } from '../../../shared/services/redis.service';
 
 const CreatePaymentSchema = z.object({
   orderId: z.string().min(1, '订单ID不能为空'),
@@ -40,6 +41,7 @@ export class PaymentController {
     private readonly prisma: PrismaService,
     private readonly wechatPayService: WechatPayService,
     private readonly orderService: OrderService,
+    private readonly redisService: RedisService,
   ) {}
 
   /**
@@ -61,50 +63,61 @@ export class PaymentController {
   ) {
     const { orderId } = CreatePaymentSchema.parse(body);
 
-    const order = await this.prisma.order.findUnique({
-      where: { id: orderId },
-      include: { template: true },
-    });
-
-    if (!order) {
-      throw new BadRequestException('订单不存在');
+    // 获取分布式锁，防止并发支付请求
+    const lockKey = `payment:create:${orderId}`;
+    const lock = await this.redisService.acquireLock(lockKey, 5000);
+    if (!lock) {
+      throw new BadRequestException('订单正在处理中，请勿重复支付');
     }
 
-    if (user?.type === 'user' && order.userId !== user.id) {
-      throw new ForbiddenException('无权操作该订单');
+    try {
+      const order = await this.prisma.order.findUnique({
+        where: { id: orderId },
+        include: { template: true },
+      });
+
+      if (!order) {
+        throw new BadRequestException('订单不存在');
+      }
+
+      if (user?.type === 'user' && order.userId !== user.id) {
+        throw new ForbiddenException('无权操作该订单');
+      }
+
+      if (order.status !== 'UNPAID') {
+        throw new BadRequestException('订单状态异常，可能已支付或已取消');
+      }
+
+      // 获取用户 openid
+      const userInfo = await this.prisma.user.findUnique({
+        where: { id: order.userId },
+        select: { openid: true },
+      });
+
+      if (!userInfo?.openid) {
+        throw new BadRequestException('用户未绑定微信，无法支付');
+      }
+
+      // 调用微信支付下单
+      const prepayId = await this.wechatPayService.createOrder({
+        orderId: order.id,
+        orderNo: order.orderNo,
+        amount: Number(order.price),
+        description: order.template.title,
+        openid: userInfo.openid,
+      });
+
+      // 生成小程序支付参数
+      const payParams = this.wechatPayService.getPayParams(prepayId);
+
+      return {
+        success: true,
+        prepayId,
+        payParams,
+      };
+    } finally {
+      await this.redisService.releaseLock(lockKey, lock);
     }
-
-    if (order.status !== 'UNPAID') {
-      throw new BadRequestException('订单状态异常');
-    }
-
-    // 获取用户 openid
-    const userInfo = await this.prisma.user.findUnique({
-      where: { id: order.userId },
-      select: { openid: true },
-    });
-
-    if (!userInfo?.openid) {
-      throw new BadRequestException('用户未绑定微信，无法支付');
-    }
-
-    // 调用微信支付下单
-    const prepayId = await this.wechatPayService.createOrder({
-      orderId: order.id,
-      orderNo: order.orderNo,
-      amount: Number(order.price),
-      description: order.template.title,
-      openid: userInfo.openid,
-    });
-
-    // 生成小程序支付参数
-    const payParams = this.wechatPayService.getPayParams(prepayId);
-
-    return {
-      success: true,
-      prepayId,
-      payParams,
-    };
   }
 
   /**
@@ -147,58 +160,73 @@ export class PaymentController {
       // 验签成功，先应答 200（微信要求立即应答，避免超时）
       res.status(200).send();
 
-      // 异步处理业务逻辑（订单更新）
-      const order = await this.prisma.order.findUnique({
-        where: { id: payment.orderId },
-      });
-
-      if (!order) {
-        this.logger.error(`回调对应的订单不存在: ${payment.orderId}`);
-        return; // 已应答，记录日志后续人工处理
+      // 获取分布式锁，防止并发回调重复处理
+      const lockKey = `payment:callback:${payment.orderId}`;
+      const lock = await this.redisService.acquireLock(lockKey, 5000);
+      if (!lock) {
+        this.logger.warn(`订单 ${payment.orderId} 回调正在处理中，跳过`);
+        return;
       }
 
-      if (order.status !== 'UNPAID') {
-        this.logger.warn(
-          `订单状态已变更，跳过更新: ${payment.orderNo}, 当前状态: ${order.status}`,
+      try {
+        // 查询订单和模板信息
+        const order = await this.prisma.order.findUnique({
+          where: { id: payment.orderId },
+        });
+
+        if (!order) {
+          this.logger.error(`回调对应的订单不存在: ${payment.orderId}`);
+          return;
+        }
+
+        if (order.status !== 'UNPAID') {
+          this.logger.warn(
+            `订单状态已变更，跳过更新: ${payment.orderNo}, 当前状态: ${order.status}`,
+          );
+          return;
+        }
+
+        const template = await this.prisma.couponTemplate.findUnique({
+          where: { id: order.templateId },
+        });
+
+        if (!template) {
+          this.logger.error(`订单关联的券模板不存在: ${order.templateId}`);
+          return;
+        }
+
+        // 计算过期时间：min(useUntil, paidAt + validDays)
+        const paidAt = payment.paidAt || new Date();
+        let expireAt: Date;
+
+        if (template.validDays && template.validDays > 0) {
+          const relativeExpireAt = new Date(paidAt);
+          relativeExpireAt.setDate(relativeExpireAt.getDate() + template.validDays);
+          expireAt = relativeExpireAt < template.useUntil ? relativeExpireAt : template.useUntil;
+        } else {
+          expireAt = template.useUntil;
+        }
+
+        // 使用数据库事务更新订单状态，保证一致性
+        await this.prisma.$transaction(async (tx) => {
+          await tx.order.update({
+            where: { id: payment.orderId },
+            data: {
+              status: 'PAID',
+              payId: payment.transactionId,
+              paidAt: paidAt,
+              expireAt: expireAt,
+            },
+          });
+          // 未来可在此事务中添加优惠券发放、库存扣减等逻辑
+        });
+
+        this.logger.log(
+          `支付回调处理成功: ${payment.orderNo} → ${payment.transactionId}, 过期时间: ${expireAt.toISOString()}`,
         );
-        return; // 幂等性保护
+      } finally {
+        await this.redisService.releaseLock(lockKey, lock);
       }
-
-      // 获取券模板信息以计算过期时间
-      const template = await this.prisma.couponTemplate.findUnique({
-        where: { id: order.templateId },
-      });
-
-      if (!template) {
-        this.logger.error(`订单关联的券模板不存在: ${order.templateId}`);
-        return; // 已应答，记录日志后续人工处理
-      }
-
-      // 计算过期时间：min(useUntil, paidAt + validDays)
-      const paidAt = payment.paidAt || new Date();
-      let expireAt: Date;
-
-      if (template.validDays && template.validDays > 0) {
-        const relativeExpireAt = new Date(paidAt);
-        relativeExpireAt.setDate(relativeExpireAt.getDate() + template.validDays);
-        expireAt = relativeExpireAt < template.useUntil ? relativeExpireAt : template.useUntil;
-      } else {
-        expireAt = template.useUntil;
-      }
-
-      await this.prisma.order.update({
-        where: { id: payment.orderId },
-        data: {
-          status: 'PAID',
-          payId: payment.transactionId,
-          paidAt: paidAt,
-          expireAt: expireAt,
-        },
-      });
-
-      this.logger.log(
-        `支付回调处理成功: ${payment.orderNo} → ${payment.transactionId}, 过期时间: ${expireAt.toISOString()}`,
-      );
     } catch (error: any) {
       this.logger.error('支付回调处理失败', error);
       // 验签失败或处理异常，返回 500 + 失败信息

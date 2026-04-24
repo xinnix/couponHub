@@ -71,7 +71,12 @@ export class OrderController {
       throw new BadRequestException('订单状态异常，无法生成核销二维码');
     }
 
-    // 4. 生成带签名的核销码
+    // 4. 验证订单是否过期
+    if (order.expireAt && new Date(order.expireAt) < new Date()) {
+      throw new BadRequestException('该券已过期，无法生成核销二维码');
+    }
+
+    // 5. 生成带签名的核销码
     const code = generateRedeemCode(order.id);
 
     return {

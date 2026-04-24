@@ -9,6 +9,7 @@ import dayjs from "dayjs";
 import { StockAdjustModal } from "../components/StockAdjustModal";
 import { StockLogList } from "../components/StockLogList";
 import { StockStatistics } from "../components/StockStatistics";
+import { OrderListForTemplate } from "../components/OrderListForTemplate";
 import { PermissionGuard } from "../../../shared/components/PermissionGuard";
 import { getTrpcClient } from "../../../shared/trpc/trpcClient";
 
@@ -396,9 +397,10 @@ export const TemplateDetailPage = () => {
       label: `订单列表 (${template._count?.orders || 0})`,
       children: (
         <div style={{ padding: '24px 0' }}>
-          <Card>
-            <Empty description="订单列表功能待完善" />
-          </Card>
+          <OrderListForTemplate
+            templateId={template.id}
+            templateTitle={template.title}
+          />
         </div>
       ),
     },
