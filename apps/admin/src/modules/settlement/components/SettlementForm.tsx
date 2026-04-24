@@ -34,7 +34,7 @@ export const SettlementForm: React.FC<SettlementFormProps> = ({ form, merchants 
         >
           {merchants.map((m) => (
             <Select.Option key={m.id} value={m.id}>
-              {m.name} ({m.category})
+              {m.category ? `${m.name} (${m.category.name})` : m.name}
             </Select.Option>
           ))}
         </Select>
