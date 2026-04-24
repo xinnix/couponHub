@@ -29,7 +29,7 @@ const tabs: TabItem[] = [
   },
   {
     pagePath: '/pages/wallet/index',
-    text: '钱包',
+    text: '我的',
     icon: 'icon-qianbao',
   },
 ]
