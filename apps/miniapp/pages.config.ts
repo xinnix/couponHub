@@ -39,6 +39,7 @@ export default defineUniPages({
         navigationBarBackgroundColor: "#F5FAFF",
         navigationBarTextStyle: "black",
         navigationBarTitleText: "核销员工作台",
+        enablePullDownRefresh: true,
       },
     },
     {
@@ -50,6 +51,7 @@ export default defineUniPages({
         navigationBarBackgroundColor: "#F5FAFF",
         navigationBarTextStyle: "black",
         navigationBarTitleText: "核销记录",
+        enablePullDownRefresh: true,
       },
     },
     {

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onShow } from '@dcloudio/uni-app'
+import { onPullDownRefresh, onShow } from '@dcloudio/uni-app'
 import { onMounted, ref } from 'vue'
 import { authApi } from '@/api/auth'
 import { redemptionApi } from '@/api/business'
@@ -32,6 +32,7 @@ const stats = ref({
 
 const recentRecords = ref<RedemptionRecord[]>([])
 const loading = ref(false)
+const refreshing = ref(false)
 
 onMounted(async () => {
   await loadHandlerData()
@@ -157,12 +158,22 @@ async function loadHandlerData() {
   }
   catch (error) {
     console.error('加载核销员数据失败:', error)
-    uni.showToast({ title: '加载失败，请稍后重试', icon: 'none' })
+    uni.showToast({ title: '加载失败,请稍后重试', icon: 'none' })
   }
   finally {
     loading.value = false
+    if (refreshing.value) {
+      refreshing.value = false
+      uni.stopPullDownRefresh()
+    }
   }
 }
+
+// 下拉刷新
+onPullDownRefresh(() => {
+  refreshing.value = true
+  loadHandlerData()
+})
 
 function goScan() {
   uni.navigateTo({ url: '/pages/scan/index' })
