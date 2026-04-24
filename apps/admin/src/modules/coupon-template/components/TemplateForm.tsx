@@ -4,7 +4,7 @@ import { Form, Input, InputNumber, Select, DatePicker, Row, Col, Tooltip, Checkb
 import { QuestionCircleOutlined, InfoCircleOutlined } from '@ant-design/icons';
 import { MerchantScopeSelector } from './MerchantScopeSelector';
 import { CouponRulesForm } from './CouponRulesForm';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useMemo } from 'react';
 
 const { TextArea } = Input;
 const { RangePicker } = DatePicker;
@@ -30,7 +30,7 @@ export const TemplateForm: React.FC<TemplateFormProps> = ({ form, isEdit }) => {
   // 监听 categoryId 变化
   const categoryId = Form.useWatch('categoryId', form);
 
-  // 获取该类别下的所有商户
+  // 获取该类别下的所有商户（仅在 categoryId 有值时查询）
   const { result: categoryMerchantsResult } = useList({
     resource: "merchant",
     pagination: { pageSize: 1000 },
@@ -43,21 +43,31 @@ export const TemplateForm: React.FC<TemplateFormProps> = ({ form, isEdit }) => {
         category: true,
       },
     },
+    // 关键优化：只在 categoryId 有值时才启用查询，避免不必要的数据加载
+    queryOptions: {
+      enabled: !!categoryId,
+    },
   });
 
   const categoryMerchants = categoryMerchantsResult?.data || [];
 
+  // 使用 useMemo 缓存商户 ID 数组，避免每次渲染重新计算
+  const categoryMerchantIds = useMemo(() => {
+    if (!categoryId || !categoryMerchants || categoryMerchants.length === 0) {
+      return [];
+    }
+    return categoryMerchants.map((m: any) => m.id);
+  }, [categoryId, categoryMerchants]);
+
   // 监听 categoryId 变化，只在用户选择/修改类别时才自动填充 merchantScope
   useEffect(() => {
-    // 核心逻辑：只在有 categoryId 时才自动填充
-    // 没有 categoryId 时，不做任何操作（保留原始值或让用户手动选择）
-    if (categoryId && categoryMerchants.length > 0) {
-      const merchantIds = categoryMerchants.map((m: any) => m.id);
-      formRef.current.setFieldValue('merchantScope', merchantIds);
+    // 核心逻辑：只在有 categoryId 且有商户时才自动填充
+    // 使用缓存的 merchantIds，避免循环引用
+    if (categoryMerchantIds.length > 0) {
+      formRef.current.setFieldValue('merchantScope', categoryMerchantIds);
     }
     // 注意：不处理 categoryId 为空的情况，避免覆盖编辑模式下的原始值
-    // 使用 merchantIds 而非整个数组，避免循环引用警告
-  }, [categoryId, categoryMerchants?.length]);
+  }, [categoryMerchantIds]); // 只依赖稳定的 merchantIds 数组
 
   return (
     <Form form={form} layout="vertical">

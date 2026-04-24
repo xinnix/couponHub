@@ -159,11 +159,11 @@ export const TemplateListPage = () => {
       faceValue: Number(record.faceValue),
       settlementAmount: record.settlementAmount ? Number(record.settlementAmount) : undefined,
       claimLimit: record.claimLimit || 1,
-      validDays: record.validDays || undefined, // 不设置默认值，保持可选
-      categoryId: record.categoryId || undefined,
+      validDays: record.validDays || undefined,
+      // 保留数据库中的原始值（null 或 string），不转换为 undefined
+      categoryId: record.categoryId,
       featuredOnHome: record.featuredOnHome || false,
       sortOrder: record.sortOrder || 0,
-      // 使用正确的字段名：saleFrom/saleUntil/useFrom/useUntil
       saleFrom: dayjs(record.saleFrom),
       saleUntil: dayjs(record.saleUntil),
       useFrom: dayjs(record.useFrom),
@@ -188,18 +188,22 @@ export const TemplateListPage = () => {
       const values = await form.validateFields();
       const action = editingRecord ? "更新" : "创建";
 
+      // 处理 categoryId：如果为 undefined，显式设置为 null，确保 Prisma 正确更新数据库
+      const processedValues = {
+        ...values,
+        categoryId: values.categoryId === undefined ? null : values.categoryId,
+        saleFrom: values.saleFrom.toISOString(),
+        saleUntil: values.saleUntil.toISOString(),
+        useFrom: values.useFrom.toISOString(),
+        useUntil: values.useUntil.toISOString(),
+      };
+
       if (editingRecord) {
         update(
           {
             resource: "couponTemplate",
             id: editingRecord.id,
-            values: {
-              ...values,
-              saleFrom: values.saleFrom.toISOString(),
-              saleUntil: values.saleUntil.toISOString(),
-              useFrom: values.useFrom.toISOString(),
-              useUntil: values.useUntil.toISOString(),
-            },
+            values: processedValues,
           },
           createMutationCallbacks(action, query, () => setIsModalVisible(false), message)
         );
@@ -207,13 +211,7 @@ export const TemplateListPage = () => {
         create(
           {
             resource: "couponTemplate",
-            values: {
-              ...values,
-              saleFrom: values.saleFrom.toISOString(),
-              saleUntil: values.saleUntil.toISOString(),
-              useFrom: values.useFrom.toISOString(),
-              useUntil: values.useUntil.toISOString(),
-            },
+            values: processedValues,
           },
           createMutationCallbacks(action, query, () => setIsModalVisible(false), message)
         );
