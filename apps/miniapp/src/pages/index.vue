@@ -459,14 +459,6 @@ function getDefaultImage(type: string, id: string) {
           <swiper-item v-for="(news, index) in heroNews" :key="news.id">
             <view class="relative h-full w-full overflow-hidden rounded-lg shadow-lg" @click="goToNewsDetail(news)">
               <image class="h-full w-full" :src="news.image" mode="aspectFill" />
-              <view class="banner-overlay-bg absolute inset-0 flex flex-col justify-end p-6">
-                <text class="banner-tag-text mb-1 text-xs font-bold tracking-widest uppercase">
-                  {{ news.tag || 'Featured Event' }}
-                </text>
-                <text class="text-2xl text-white font-extrabold leading-tight line-clamp-2">
-                  {{ news.title }}
-                </text>
-              </view>
             </view>
           </swiper-item>
         </swiper>
@@ -474,14 +466,6 @@ function getDefaultImage(type: string, id: string) {
           <image class="h-full w-full"
             src="https://lh3.googleusercontent.com/aida-public/AB6AXuA7mJHuMWILTiyDVLj7hPfpemu_JwcxVMMIdJPiLn-fXWWoaB0jeEfPjPpckVoq8DGuUTMLmEW1sioMf5rF-Alszf7ueqCfBxbtZxktQOeg-fwlsly-BExX0WTaarT0zLBET3PTgZiS-0j-Igp8I3UCnScIAxeKd5q1a2x7qe_wJTbeVFPnOt0Pi0g3KvZBU91dA7wbvksDHTzP_XAukTEgFVPdai_G6ZLZcSB1FieEbEn5XkAij_r5lghZ_XoijlTZ38ubk-XNVnU"
             mode="aspectFill" />
-          <view class="banner-overlay-bg absolute inset-0 flex flex-col justify-end p-6">
-            <text class="banner-tag-text mb-1 text-xs font-bold tracking-widest uppercase">
-              Featured Event
-            </text>
-            <text class="text-2xl text-white font-extrabold leading-tight">
-              悦享邻里味 · 汉都初冬美食季
-            </text>
-          </view>
         </view>
       </view>
 
