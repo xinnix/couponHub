@@ -39,13 +39,6 @@ export class MerchantController {
       // 不指定 orderBy，使用 service 默认的 sortOrder 升序排序
     });
 
-    console.log('商户列表查询结果:', {
-      dataCount: result.data.length,
-      total: result.total,
-      page: result.page,
-      pageSize: result.pageSize,
-    });
-
     return {
       success: true,
       data: result.data,
