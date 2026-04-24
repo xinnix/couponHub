@@ -22,7 +22,7 @@ const currentTab = ref('PAID')
 const loading = ref(false)
 const orderList = ref<any[]>([])
 
-// 可用券数量
+// 可用券数量（PAID 状态且非退款中）
 const availableCount = computed(() => {
   return orderList.value.filter(o => o.status === 'PAID').length
 })
@@ -99,7 +99,7 @@ function getStatusClass(status: string): string {
   return map[status] || ''
 }
 
-// 卡片是否可点击使用
+// 卡片是否可点击使用（只有 PAID 状态可以）
 function canUse(status: string): boolean {
   return status === 'PAID'
 }
@@ -138,7 +138,7 @@ onMounted(async () => {
 })
 
 onShow(async () => {
-  // 每次页面显示时刷新用户信息
+  // 每次页面显示时刷新用户信息和订单列表
   if (isLoggedIn.value) {
     try {
       const res = await authApi.getProfile()
@@ -152,6 +152,9 @@ onShow(async () => {
       // 如果失败，使用本地存储的信息
       userInfo.value = uni.getStorageSync('userInfo')
     }
+
+    // 刷新订单列表（从其他页面返回时自动刷新）
+    await loadOrders()
   }
 })
 
@@ -162,13 +165,27 @@ watch(currentTab, async () => {
 async function loadOrders() {
   try {
     loading.value = true
-    const params = currentTab.value === 'ALL' ? {} : { status: currentTab.value }
-    const res = await orderApi.getMyOrders(params)
-    if (Array.isArray(res.data)) {
-      orderList.value = res.data
+    // "待使用"标签显示 PAID 和 REFUNDING 状态的订单
+    if (currentTab.value === 'PAID') {
+      const res = await orderApi.getMyOrders({})
+      if (Array.isArray(res.data)) {
+        // 过滤出 PAID 和 REFUNDING 状态的订单
+        orderList.value = res.data.filter(o => o.status === 'PAID' || o.status === 'REFUNDING')
+      }
+      else {
+        orderList.value = []
+      }
     }
     else {
-      orderList.value = []
+      // 其他标签正常按状态筛选
+      const params = currentTab.value === 'ALL' ? {} : { status: currentTab.value }
+      const res = await orderApi.getMyOrders(params)
+      if (Array.isArray(res.data)) {
+        orderList.value = res.data
+      }
+      else {
+        orderList.value = []
+      }
     }
   }
   catch (error) {
@@ -385,6 +402,11 @@ async function handlePay(item: any) {
                 <view v-if="item.status === 'PAID'" class="use-btn" @click.stop="handleUse(item)">
                   <text class="use-btn-text">
                     立即使用
+                  </text>
+                </view>
+                <view v-if="item.status === 'REFUNDING'" class="refund-tip">
+                  <text class="refund-tip-text">
+                    退款处理中，暂时无法使用
                   </text>
                 </view>
                 <view v-if="item.status === 'UNPAID'" class="use-btn use-btn-outline" @click.stop="handlePay(item)">
@@ -889,6 +911,23 @@ async function handlePay(item: any) {
 
 .use-btn-text-outline {
   color: #00AEEF;
+}
+
+.refund-tip {
+  padding: 14rpx 36rpx;
+  background: rgba(186, 26, 26, 0.1);
+  border-radius: 12rpx;
+  border: 2rpx solid rgba(186, 26, 26, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.refund-tip-text {
+  font-size: 22rpx;
+  font-weight: 700;
+  color: #ba1a1a;
+  letter-spacing: 1rpx;
 }
 
 /* ========== 空状态 ========== */

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onShow } from '@dcloudio/uni-app'
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { authApi } from '@/api/auth'
 import { couponApi, merchantApi, newsApi } from '@/api/business'
 import CustomTabBar from '@/components/CustomTabBar.vue'
@@ -368,6 +368,11 @@ onPullDownRefresh(() => {
   loadHomeData().finally(() => {
     uni.stopPullDownRefresh()
   })
+})
+
+// 页面卸载时清理定时器
+onUnmounted(() => {
+  stopAutoPlay()
 })
 
 // 启动自动轮播

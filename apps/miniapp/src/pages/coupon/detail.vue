@@ -749,14 +749,6 @@ onUnmounted(() => {
               </text>
             </view>
           </view>
-
-          <!-- 使用期 -->
-          <view class="deadline-row">
-            <text class="iconfont icon-youhuiquan deadline-icon-font" />
-            <text class="deadline-text">
-              可在 {{ formatDate(coupon?.useFrom) }} 至 {{ formatDate(coupon?.useUntil) }} 之间使用
-            </text>
-          </view>
         </view>
 
         <!-- 购买须知 -->
@@ -779,9 +771,11 @@ onUnmounted(() => {
                   有效期
                 </text>
                 <text class="rule-desc">
-                  {{ coupon?.validDays
-                    ? `购买后${coupon.validDays}天内有效（不超过使用截止时间）`
-                    : `在规定使用期内有效`
+                  {{ coupon?.useFrom && coupon?.useUntil
+                    ? `可在 ${formatDate(coupon.useFrom)} 至 ${formatDate(coupon.useUntil)} 之间使用`
+                    : coupon?.validDays
+                      ? `购买后${coupon.validDays}天内有效`
+                      : '长期有效'
                   }}
                 </text>
               </view>

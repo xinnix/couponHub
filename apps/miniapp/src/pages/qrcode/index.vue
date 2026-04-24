@@ -264,7 +264,7 @@ async function handleRefund() {
       duration: 2000,
     })
 
-    // 延迟后返回上一页
+    // 延迟后返回钱包页（订单会自动出现在"待使用"列表中，标记为退款中）
     setTimeout(() => {
       uni.navigateBack({ delta: 1 })
     }, 2000)
