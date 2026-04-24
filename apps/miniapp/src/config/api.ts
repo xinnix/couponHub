@@ -24,6 +24,7 @@ export const API_ENDPOINTS = {
   logout: '/auth/logout',
   register: '/auth/register',
   profile: '/auth/me',
+  refresh: '/auth/refresh', // Token 刷新接口
   wechatLogin: '/auth/wechat/login',
   getPhoneNumber: '/auth/getPhoneNumber',
   checkHandlerStatus: '/auth/checkHandlerStatus',
