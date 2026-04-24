@@ -62,7 +62,7 @@ model Handler {
 model User {
   id           String @id @default(cuid())
   username     String @unique
-  email        String @unique
+  email        String? // 可选字段（微信用户不需要）
   passwordHash String
 
   // 微信相关字段

@@ -146,8 +146,8 @@ export class AuthService {
           openid,
           sessionKey,
           unionid,
-          username: `wx_${openid.slice(0, 8)}`, // 临时用户名
-          email: `wx_${openid.slice(0, 8)}@placeholder.com`, // 临时邮箱
+          username: `wx_${openid}`, // 使用完整 openid 确保唯一
+          // email 字段不设置（微信用户不需要）
           passwordHash: '', // 微信用户不需要密码
         },
       });
