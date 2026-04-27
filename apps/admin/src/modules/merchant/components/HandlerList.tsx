@@ -27,7 +27,7 @@ interface HandlerListProps {
 export const HandlerList = ({ merchantId }: HandlerListProps) => {
   const [modalVisible, setModalVisible] = useState(false);
   const [editingHandler, setEditingHandler] = useState<Handler | null>(null);
-  const { message } = App.useApp();
+  const { message, modal } = App.useApp();
   const queryClient = useQueryClient();
 
   const { data: handlers = [], isLoading } = useQuery({
@@ -140,7 +140,7 @@ export const HandlerList = ({ merchantId }: HandlerListProps) => {
             danger
             icon={<DeleteOutlined />}
             onClick={() => {
-              Modal.confirm({
+              modal.confirm({
                 title: "确认删除",
                 content: (
                   <div>

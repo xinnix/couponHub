@@ -40,7 +40,7 @@ model Admin {
 model Handler {
   id         String   @id @default(cuid())
   name       String // 核销员姓名
-  phone      String   @unique // 手机号（用于匹配 User）
+  phone      String // 手机号（用于匹配 User）- 业务层保证活跃核销员唯一性，允许软删除后重新注册
   merchantId String // 所属商户 ID
   isActive   Boolean  @default(true)
   createdAt  DateTime @default(now())
@@ -53,6 +53,7 @@ model Handler {
 
   @@index([phone])
   @@index([merchantId])
+  @@index([phone, isActive]) // 复合索引，用于快速查询活跃核销员的手机号
   @@map("handlers")
 }
 
