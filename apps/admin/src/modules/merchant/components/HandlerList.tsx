@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Table, Button, Tag, Space, Modal, App } from "antd";
-import { EditOutlined, DeleteOutlined, CheckOutlined, StopOutlined } from "@ant-design/icons";
+import { EditOutlined, DeleteOutlined } from "@ant-design/icons";
 import { useState } from "react";
 import { HandlerForm } from "./HandlerForm";
 import { trpcClient } from "../../../shared/dataProvider";
@@ -35,14 +35,6 @@ export const HandlerList = ({ merchantId }: HandlerListProps) => {
     queryFn: () => (trpcClient as any).handler.getByMerchant.query({ merchantId }),
     refetchOnMount: true,
     staleTime: 0,
-  });
-
-  const toggleActive = useMutation({
-    mutationFn: (id: string) => (trpcClient as any).handler.toggleActive.mutate({ id }),
-    onSuccess: () => {
-      message.success("操作成功");
-      queryClient.invalidateQueries({ queryKey: ["handler"] });
-    },
   });
 
   const deleteHandler = useMutation({
@@ -125,14 +117,6 @@ export const HandlerList = ({ merchantId }: HandlerListProps) => {
             }}
           >
             编辑
-          </Button>
-          <Button
-            type="link"
-            size="small"
-            icon={record.isActive ? <StopOutlined /> : <CheckOutlined />}
-            onClick={() => toggleActive.mutate(record.id)}
-          >
-            {record.isActive ? "禁用" : "启用"}
           </Button>
           <Button
             type="link"
