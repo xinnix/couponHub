@@ -1,5 +1,5 @@
 // apps/admin/src/modules/order/pages/OrderListPage.tsx
-import { useState } from "react";
+import React, { useState } from "react";
 import { useTable, useUpdate } from "@refinedev/core";
 import { List } from "@refinedev/antd";
 import {
@@ -78,22 +78,13 @@ export const OrderListPage = () => {
     setCurrentPage,
     pageSize,
     setPageSize,
+    setFilters,
   } = useTable<Order>({
     resource: "order",
     pagination: {
       currentPage: 1,
       pageSize: 10,
       mode: "server",
-    },
-    filters: {
-      initial: [
-        ...(searchText ? [{ field: "orderNo", operator: "contains", value: searchText }] as any : []),
-        ...(statusFilter ? [{ field: "status", operator: "eq", value: statusFilter }] as any : []),
-        ...(dateRange && dateRange[0] && dateRange[1] ? [
-          { field: "createdAt", operator: "gte", value: dateRange[0].startOf('day').toISOString() },
-          { field: "createdAt", operator: "lte", value: dateRange[1].endOf('day').toISOString() },
-        ] as any : []),
-      ],
     },
     meta: {
       include: {
@@ -103,6 +94,32 @@ export const OrderListPage = () => {
       },
     },
   });
+
+  // 当筛选条件变化时，更新 filters
+  const handleFilterChange = () => {
+    const filters: any[] = [];
+
+    if (searchText) {
+      filters.push({ field: "orderNo", operator: "contains", value: searchText });
+    }
+
+    if (statusFilter) {
+      filters.push({ field: "status", operator: "eq", value: statusFilter });
+    }
+
+    if (dateRange && dateRange[0] && dateRange[1]) {
+      filters.push({ field: "createdAt", operator: "gte", value: dateRange[0].startOf('day').toISOString() });
+      filters.push({ field: "createdAt", operator: "lte", value: dateRange[1].endOf('day').toISOString() });
+    }
+
+    // 使用 "replace" 模式确保空数组也会触发请求
+    setFilters(filters, "replace");
+  };
+
+  // 监听筛选条件变化
+  React.useEffect(() => {
+    handleFilterChange();
+  }, [searchText, statusFilter, dateRange]);
 
   const result = tableQuery.data;
   const query = tableQuery;

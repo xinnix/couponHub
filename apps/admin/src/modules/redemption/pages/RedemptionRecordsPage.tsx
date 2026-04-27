@@ -1,5 +1,5 @@
 // apps/admin/src/modules/redemption/pages/RedemptionRecordsPage.tsx
-import { useState } from "react";
+import React, { useState } from "react";
 import { useTable, useList } from "@refinedev/core";
 import { List } from "@refinedev/antd";
 import {
@@ -65,21 +65,35 @@ export const RedemptionRecordsPage = () => {
     setCurrentPage,
     pageSize,
     setPageSize,
+    setFilters,
   } = useTable<RedemptionRecord>({
     resource: "redemption",
     pagination: {
       pageSize: 20,
     },
-    filters: {
-      initial: [
-        ...(merchantFilter ? [{ field: "redeemMerchantId", operator: "eq", value: merchantFilter }] as any : []),
-        ...(dateRange && dateRange[0] && dateRange[1] ? [
-          { field: "redeemedAt", operator: "gte", value: dateRange[0].startOf('day').toISOString() },
-          { field: "redeemedAt", operator: "lte", value: dateRange[1].endOf('day').toISOString() },
-        ] as any : []),
-      ],
-    },
   });
+
+  // 当筛选条件变化时，更新 filters
+  const handleFilterChange = () => {
+    const filters: any[] = [];
+
+    if (merchantFilter) {
+      filters.push({ field: "redeemMerchantId", operator: "eq", value: merchantFilter });
+    }
+
+    if (dateRange && dateRange[0] && dateRange[1]) {
+      filters.push({ field: "redeemedAt", operator: "gte", value: dateRange[0].startOf('day').toISOString() });
+      filters.push({ field: "redeemedAt", operator: "lte", value: dateRange[1].endOf('day').toISOString() });
+    }
+
+    // 使用 "replace" 模式确保空数组也会触发请求
+    setFilters(filters, "replace");
+  };
+
+  // 监听筛选条件变化
+  React.useEffect(() => {
+    handleFilterChange();
+  }, [merchantFilter, dateRange]);
 
   const result = tableQuery.data;
   const query = tableQuery;
