@@ -13,7 +13,7 @@ export class HandlerService extends BaseService<'Handler'> {
    * 根据手机号查找核销员（包括已删除的）
    */
   async findByPhone(phone: string) {
-    return this.prisma.handler.findUnique({
+    return this.prisma.handler.findFirst({
       where: { phone },
       include: { merchant: true },
     });

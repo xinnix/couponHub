@@ -479,8 +479,8 @@ export class AuthService {
       data: { phone: phoneNumber },
     });
 
-    // 3. 匹配核销员身份
-    const handler = await this.prisma.handler.findUnique({
+    // 3. 匹配核销员身份（phone 不是 unique 字段，用 findFirst）
+    const handler = await this.prisma.handler.findFirst({
       where: { phone: phoneNumber },
       include: { merchant: true },
     });
