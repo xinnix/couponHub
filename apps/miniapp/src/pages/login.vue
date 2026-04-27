@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
+import { onMounted, ref } from 'vue'
 import { authApi } from '@/api/auth'
 
 definePage({
@@ -129,6 +129,17 @@ async function navigateAfterLogin() {
   }
 }
 
+// 返回上一页（允许用户不登录）
+function goBack() {
+  const pages = getCurrentPages()
+  if (pages.length > 1) {
+    uni.navigateBack({ delta: 1 })
+  }
+  else {
+    uni.reLaunch({ url: '/pages/index' })
+  }
+}
+
 // 跳转到用户协议页面
 function navigateToUserAgreement() {
   uni.navigateTo({ url: '/pages/agreement/user-agreement' })
@@ -169,20 +180,34 @@ function navigateToPrivacyPolicy() {
           <view class="btn-content">
             <text class="btn-icon iconfont icon-weixin" />
             <text class="btn-text">
-              微信一键登录
+              快捷登录
             </text>
           </view>
         </view>
 
+        <view class="back-btn" @tap="goBack">
+          <text class="back-text">暂不登录</text>
+        </view>
+
         <view class="agreement" @tap.stop="agreed = !agreed">
           <view class="checkbox" :class="{ checked: agreed }">
-            <text v-if="agreed" class="check-icon">✓</text>
+            <text v-if="agreed" class="check-icon">
+              ✓
+            </text>
           </view>
           <view class="agreement-text">
-            <text class="tip">我已阅读并同意</text>
-            <text class="link" @tap.stop="navigateToUserAgreement">《用户协议》</text>
-            <text class="tip">和</text>
-            <text class="link" @tap.stop="navigateToPrivacyPolicy">《隐私政策》</text>
+            <text class="tip">
+              我已阅读并同意
+            </text>
+            <text class="link" @tap.stop="navigateToUserAgreement">
+              《用户协议》
+            </text>
+            <text class="tip">
+              和
+            </text>
+            <text class="link" @tap.stop="navigateToPrivacyPolicy">
+              《隐私政策》
+            </text>
           </view>
         </view>
       </template>
@@ -191,7 +216,9 @@ function navigateToPrivacyPolicy() {
       <template v-if="step === 2">
         <view class="login-header">
           <view class="phone-icon-wrap">
-            <text class="phone-icon">📱</text>
+            <text class="phone-icon">
+              📱
+            </text>
           </view>
           <text class="title text-on-surface font-extrabold">
             绑定手机号
@@ -201,12 +228,8 @@ function navigateToPrivacyPolicy() {
           </text>
         </view>
 
-        <button
-          class="wechat-login-btn phone-btn"
-          open-type="getPhoneNumber"
-          :loading="loading"
-          @getphonenumber="handleGetPhoneNumber"
-        >
+        <button class="wechat-login-btn phone-btn" open-type="getPhoneNumber" :loading="loading"
+          @getphonenumber="handleGetPhoneNumber">
           <view class="btn-content">
             <text class="btn-text">
               授权手机号
@@ -215,7 +238,9 @@ function navigateToPrivacyPolicy() {
         </button>
 
         <view class="skip-btn" @tap="skipPhoneNumber">
-          <text class="skip-text">暂不绑定，先去看看</text>
+          <text class="skip-text">
+            暂不绑定，先去看看
+          </text>
         </view>
       </template>
     </view>
@@ -259,6 +284,31 @@ function navigateToPrivacyPolicy() {
   align-items: center;
   justify-content: center;
   padding: 40rpx 60rpx;
+  position: relative;
+}
+
+/* 返回按钮 */
+.back-btn {
+  width: 100%;
+  height: 96rpx;
+  background: transparent;
+  border: 2rpx solid #00AEEF;
+  border-radius: 48rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 40rpx;
+  transition: all 0.3s ease;
+
+  &:active {
+    transform: scale(0.98);
+  }
+}
+
+.back-text {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #00AEEF;
 }
 
 /* 登录头部 */

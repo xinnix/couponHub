@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { computed, ref } from 'vue'
 
 interface Props {
   news: {
@@ -29,7 +29,7 @@ function handleClose() {
   // 增加关闭次数
   closedPopups[props.news.id] = {
     count: record.count + 1,
-    lastClosed: new Date().toISOString()
+    lastClosed: new Date().toISOString(),
   }
 
   uni.setStorageSync('closedPopups', closedPopups)
@@ -44,10 +44,11 @@ function handleViewDetail() {
 
 // 格式化内容摘要
 const contentSummary = computed(() => {
-  if (!props.news.content) return ''
+  if (!props.news.content)
+    return ''
   // 移除 HTML 标签，提取纯文本
   const text = props.news.content.replace(/<[^>]*>/g, '')
-  return text.length > 100 ? text.substring(0, 100) + '...' : text
+  return text.length > 100 ? `${text.substring(0, 100)}...` : text
 })
 </script>
 
@@ -58,36 +59,33 @@ const contentSummary = computed(() => {
       <view class="popup-container">
         <!-- Banner 图片 -->
         <view v-if="news.bannerUrl" class="popup-banner">
-          <image
-            :src="news.bannerUrl"
-            mode="aspectFill"
-            class="banner-image"
-          />
+          <image :src="news.bannerUrl" mode="aspectFill" class="banner-image" />
         </view>
 
         <!-- 标题 -->
         <view class="popup-title">
-          <text class="title-text">{{ news.title }}</text>
+          <text class="title-text">
+            {{ news.title }}
+          </text>
         </view>
 
         <!-- 内容摘要 -->
-        <view v-if="contentSummary" class="popup-content">
+        <!-- <view v-if="contentSummary" class="popup-content">
           <text class="content-text">{{ contentSummary }}</text>
-        </view>
+        </view> -->
 
         <!-- 操作按钮 -->
         <view class="popup-actions">
-          <button
-            class="action-button primary"
-            @click="handleViewDetail"
-          >
+          <button class="action-button primary" @click="handleViewDetail">
             查看详情
           </button>
         </view>
 
         <!-- 关闭按钮 -->
         <view class="close-button" @click="handleClose">
-          <text class="close-icon">✕</text>
+          <text class="close-icon">
+            ✕
+          </text>
         </view>
       </view>
     </view>
