@@ -309,12 +309,13 @@ export const orderRouter = createCrudRouterWithCustom(
           throw new BadRequestException(`订单状态异常: ${order.status}`);
         }
 
-        // 4. 返回订单信息
+        // 4. 返回订单信息（包含更多关键信息）
         return {
           orderId: order.id,
           code: code,
           orderNo: order.orderNo,
           faceValue: Number(order.faceValue),
+          price: Number(order.price), // 用户实际支付金额
           title: order.template?.title || '优惠券',
           merchantName: order.merchant?.name || '商户',
           couponType: '全场通用', // 可以从 template 中获取
@@ -322,6 +323,13 @@ export const orderRouter = createCrudRouterWithCustom(
             ? new Date(order.expireAt).toLocaleDateString('zh-CN')
             : '长期有效',
           status: order.status,
+          // 新增字段（添加空值保护）
+          userNickname: order.user?.nickname || '未知用户',
+          userPhone: order.user?.phone || '未绑定手机',
+          paidAt: order.paidAt
+            ? new Date(order.paidAt).toLocaleDateString('zh-CN')
+            : new Date(order.createdAt).toLocaleDateString('zh-CN'),
+          isFree: order.isFreeOrder, // 是否免费券
         };
       }),
   }),
