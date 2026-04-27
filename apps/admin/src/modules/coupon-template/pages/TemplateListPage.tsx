@@ -158,7 +158,7 @@ export const TemplateListPage = () => {
       buyPrice: Number(record.buyPrice),
       faceValue: Number(record.faceValue),
       settlementAmount: record.settlementAmount ? Number(record.settlementAmount) : undefined,
-      claimLimit: record.claimLimit || 1,
+      claimLimit: record.claimLimit, // 直接使用数据库值，null 表示不限制
       validDays: record.validDays || undefined,
       // 保留数据库中的原始值（null 或 string），不转换为 undefined
       categoryId: record.categoryId,
