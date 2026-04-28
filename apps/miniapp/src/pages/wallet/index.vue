@@ -311,7 +311,7 @@ async function handlePay(item: any) {
             <image class="user-avatar" :src="userInfo?.avatar || '/static/default-avatar.png'" mode="aspectFill" />
             <view class="user-details">
               <text class="user-name">
-                {{ userInfo?.nickname || userInfo?.username || '用户' }}
+                {{ userInfo?.nickname || '微信用户' }}
               </text>
               <text v-if="userInfo?.phone" class="user-phone">
                 {{ userInfo.phone }}
@@ -490,6 +490,8 @@ async function handlePay(item: any) {
   display: flex;
   align-items: center;
   gap: 24rpx;
+  min-width: 0;
+  flex: 1;
 }
 
 .user-avatar {
@@ -504,12 +506,17 @@ async function handlePay(item: any) {
   display: flex;
   flex-direction: column;
   gap: 8rpx;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .user-name {
   font-size: 32rpx;
   font-weight: 700;
   color: #171c20;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .user-phone {
@@ -526,6 +533,7 @@ async function handlePay(item: any) {
   display: flex;
   align-items: center;
   gap: 16rpx;
+  flex-shrink: 0;
 }
 
 .handler-btn {
