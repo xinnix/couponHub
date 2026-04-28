@@ -705,7 +705,11 @@ export const UpdateCouponTemplateSchema = z.object({
   buyPrice: z.number().nonnegative("购买价格不能为负").min(0, "购买价格不能为负").optional(),
   faceValue: z.number().positive("面值必须大于0").optional(),
   settlementAmount: z.number().nonnegative("结算金额不能为负").optional().nullable(),
+
+  // ⚠️ 注意：stock 字段在 update 接口中会被过滤
+  // 库存调整必须使用专门的 adjustStock 接口
   stock: z.number().int().nonnegative("库存不能为负").min(0, "库存不能为负").optional(),
+
   claimLimit: z.number().int().positive("每人限领数量必须为正整数").optional().nullable(),
   validDays: z.number().int().positive("有效天数必须为正整数").optional().nullable(),
   featuredOnHome: z.boolean().optional(),

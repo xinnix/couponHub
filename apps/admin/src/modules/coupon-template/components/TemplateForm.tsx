@@ -154,23 +154,37 @@ export const TemplateForm: React.FC<TemplateFormProps> = ({ form, isEdit }) => {
         </Col>
       </Row>
 
+      {/* 编辑模式下显示库存调整提示 */}
+      {isEdit && (
+        <Alert
+          message="库存调整请使用详情页的库存调整按钮"
+          type="info"
+          showIcon
+          style={{ marginBottom: 16 }}
+        />
+      )}
+
+      {/* 库存、每人限领、有效天数 */}
       <Row gutter={16}>
-        <Col span={8}>
-          <Form.Item
-            name="stock"
-            label="库存"
-            rules={[
-              { required: true, message: "请输入库存" },
-              { type: 'number', min: 0, message: "库存不能为负数" },
-            ]}
-          >
-            <InputNumber
-              placeholder="请输入库存"
-              style={{ width: '100%' }}
-              min={0}
-            />
-          </Form.Item>
-        </Col>
+        {/* 新建模式才显示库存输入框 */}
+        {!isEdit && (
+          <Col span={8}>
+            <Form.Item
+              name="stock"
+              label="库存"
+              rules={[
+                { required: true, message: "请输入库存" },
+                { type: 'number', min: 0, message: "库存不能为负数" },
+              ]}
+            >
+              <InputNumber
+                placeholder="请输入库存"
+                style={{ width: '100%' }}
+                min={0}
+              />
+            </Form.Item>
+          </Col>
+        )}
         <Col span={8}>
           {/* 新增：每人限领数量 */}
           <Form.Item

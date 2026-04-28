@@ -100,6 +100,13 @@ export const templateRouter = createCrudRouterWithCustom(
       }))
       .mutation(async ({ ctx, input }) => {
         const updateData = input.data as any;
+
+        // 过滤掉 stock 字段，防止通过编辑接口修改库存
+        // 库存调整必须使用 adjustStock 接口
+        if ('stock' in updateData) {
+          delete updateData.stock;
+        }
+
         if ((ctx as any).user?.id) {
           updateData.updatedById = (ctx as any).user.id;
         }
