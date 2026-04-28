@@ -17,7 +17,7 @@ export class CouponTemplateExpirationTask {
     private readonly expirationService: CouponTemplateExpirationService,
   ) {}
 
-  @Cron('0 0 2 * * *') // 每天凌晨 2 点执行
+  @Cron('0 0 2 * * *', { timeZone: 'Asia/Shanghai' })
   async handleCron() {
     // 检查定时任务是否启用
     const schedulerEnabled =

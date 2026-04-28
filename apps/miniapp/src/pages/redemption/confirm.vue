@@ -15,7 +15,7 @@ interface CouponInfo {
   status: string
   userNickname: string // 用户昵称
   userPhone: string // 用户手机号
-  paidAt: string // 购买时间
+  paidAt: string // 购买时间（ISO 字符串）
   isFree: boolean // 是否免费券
 }
 
@@ -30,7 +30,18 @@ const merchantName = computed(() => couponInfo.value?.merchantName || '商户')
 const expireDate = computed(() => couponInfo.value?.expireDate || '长期有效')
 const userNickname = computed(() => couponInfo.value?.userNickname || '未知用户')
 const userPhone = computed(() => couponInfo.value?.userPhone || '未绑定')
-const paidAt = computed(() => couponInfo.value?.paidAt || '未知时间')
+const paidAt = computed(() => {
+  const raw = couponInfo.value?.paidAt
+  if (!raw) return '未知时间'
+  const d = new Date(raw)
+  if (isNaN(d.getTime())) return '未知时间'
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  const h = String(d.getHours()).padStart(2, '0')
+  const min = String(d.getMinutes()).padStart(2, '0')
+  return `${y}-${m}-${day} ${h}:${min}`
+})
 const orderNo = computed(() => couponInfo.value?.orderNo || '未知订单号')
 const isFree = computed(() => couponInfo.value?.isFree || false)
 // 券码只显示后4位，其余用掩码

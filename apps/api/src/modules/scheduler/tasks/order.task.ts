@@ -18,7 +18,7 @@ export class OrderExpirationTask {
     private readonly expirationService: OrderExpirationService,
   ) {}
 
-  @Cron('0 0 * * * *') // 每小时执行一次（提升用户体验）
+  @Cron('0 0 * * * *', { timeZone: 'Asia/Shanghai' })
   async handleCron() {
     // 检查定时任务是否启用
     const schedulerEnabled =

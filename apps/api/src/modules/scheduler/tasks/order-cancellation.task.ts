@@ -19,7 +19,7 @@ export class OrderCancellationTask {
     private readonly cancellationService: OrderCancellationService,
   ) {}
 
-  @Cron('0 */15 * * * *') // 每15分钟执行一次
+  @Cron('0 */15 * * * *', { timeZone: 'Asia/Shanghai' })
   async handleCron() {
     // 检查定时任务是否启用
     const schedulerEnabled =

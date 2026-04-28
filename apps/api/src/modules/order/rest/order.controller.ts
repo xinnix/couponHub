@@ -139,9 +139,7 @@ export class OrderController {
       // 新增字段（添加空值保护）
       userNickname: order.user?.nickname || '未知用户',
       userPhone: order.user?.phone || '未绑定手机',
-      paidAt: order.paidAt
-        ? new Date(order.paidAt).toLocaleDateString('zh-CN')
-        : new Date(order.createdAt).toLocaleDateString('zh-CN'),
+      paidAt: order.paidAt || order.createdAt,
       isFree: order.isFreeOrder, // 是否免费券
     };
   }
