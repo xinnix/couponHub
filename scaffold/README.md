@@ -213,111 +213,63 @@ import { OSSUpload } from '@scaffold/frontend/oss-upload';
 
 ---
 
-## 🚀 Phase 2: genModule Skill 智能化升级（下一步）
+## ✅ Phase 2 已完成 - genModule Skill 智能化升级
 
-### 目标：将 genModule skill 从 777 行升级到 1000+ 行
+### 智能字段推断（10 种模式）
 
-### 核心功能增强（待实现）
+| 字段模式 | UI 组件 | Zod 验证 |
+|---------|--------|---------|
+| price, amount, cost | InputNumber (¥ formatter) | `z.number().min(0)` |
+| email, mail | Input (email) | `z.string().email()` |
+| phone, mobile | Input (tel, maxLength=11) | `z.string().regex(/^1[3-9]\d{9}$/)` |
+| url, website | Input (url) | `z.string().url()` |
+| slug, code | Input (auto-gen) | `z.string().regex(/^[a-z0-9-]+$/)` |
+| avatar, cover, logo | OSSUpload | `z.string().optional()` |
+| *At, *Date | DatePicker (showTime) | `z.date()` |
+| rate, percent | InputNumber (% formatter) | `z.number().min(0).max(100)` |
+| sortOrder, priority | InputNumber (min:0) | `z.number().int().min(0)` |
+| *Id | Select/TreeSelect | 自动关联检测 |
 
-1. **智能字段推断** ⭐
-   - 货币字段：price、amount、cost → 自动使用 currency UI + min:0 验证
-   - 日期范围：startDate、endDate → DatePicker + 范围验证
-   - Slug 字段：slug、code → 自动生成唯一标识符
-   - 邮箱字段：email → email 验证 + unique
-   - 手机号字段：phone → phone 验证
-   - 审计字段：createdById、updatedById → 自动注入用户 ID
+### 关系字段自动检测
 
-2. **关系字段自动生成** ⭐
-   - categoryId → Category relation + Select UI
-   - userId → User relation + UserSelect UI
-   - parentId → self relation + TreeSelect UI（树形结构）
+- `categoryId` → Category Select
+- `userId` → User Select
+- `parentId` → TreeSelect（自关联树形）
+- `merchantId` → Merchant Select
+- 等更多...
 
-3. **UI 模式智能选择** ⭐
-   - 富文本字段 → 分离式页面（CreatePage + EditPage）
-   - 状态机字段 → 详情页强化（状态流转图 + Timeline）
-   - 树形结构 → 树形选择器 + drag-sort
-   - 默认 → Modal 模式（最简洁）
+### UI 模式智能选择
 
-4. **验证规则智能生成** ⭐
-   - 从配置生成 Zod Schema
-   - 支持自定义验证规则
+- 富文本 → 分离式页面
+- 状态机 → 详情页强化
+- 树形结构 → Modal + TreeSelect
+- 默认 → Modal 模式
 
-### 新增 Agent Skills（待开发）
+### 新增 Agent Skills
 
-- `/analyze` - 分析现有模块，提取可复用模式
-- `/refactor` - 重构为使用脚手架抽象层
-- `/test-gen` - 自动生成测试（单元测试 + E2E）
-- `/docs-gen` - 自动生成文档（OpenAPI + 组件文档）
-- `/migrate` - 从旧项目迁移到新脚手架
-
-### 配置化系统（待实现）
-
-- `patterns.json` - 业务模式配置（字段推断规则）
-- `scaffold.config.json` - 脚手架主配置（技术栈 + 功能开关）
-- `tech-stack.json` - 技术栈配置（支持替换）
-- `plugins.json` - 插件配置
+- ✅ `/analyze` - 分析模块，识别重构机会
+- ✅ `/refactor` - 自动重构为脚手架抽象层
 
 ---
 
-## 📅 Phase 3-7（后续计划）
+## 📅 Phase 3+（后续计划）
 
-### 待提炼后端抽象层（2 个）
+### 待提炼后端抽象层
 
-- State Machine（2636行）- 状态机（订单状态流转、券模板状态管理）
-- Wechat Integration（217行）- 微信集成（支付、登录、订阅消息）
+- State Machine - 状态机（订单状态流转、券模板状态管理）
+- Wechat Integration - 微信集成（支付、登录、订阅消息）
 
-### 待提炼前端抽象层（2 个）
+### 待开发功能
 
-- OSS Upload（141行）- OSS 上传组件（前端直传）
-- RichTextEditor - 富文本编辑器组件
-
-### Phase 2-7 功能（待开发）
-
-- genModule Skill 智能化升级（字段推断、关系生成、UI 模式选择）
-- Standard 组件开发（StandardListPage、StandardDetailPage、StandardForm）
+- Standard 组件完善（StandardListPage、StandardDetailPage、StandardForm 生产级）
 - 配置化系统（patterns.json、scaffold.config.json）
 - 插件系统（Payment、Notification、Export、Chart）
-- 新增 Skills（analyze、refactor、test-gen、docs-gen、migrate）
+- 新增 Skills（test-gen、docs-gen、migrate）
 - 文档体系完善
 - 示例项目验证
 
-## 🚀 快速开始
-
-### 安装依赖
-
-```bash
-pnpm install
-```
-
-### 使用核心抽象层
-
-```typescript
-// 后端
-import { BaseService } from './scaffold/backend/base.service';
-import { createCrudRouter } from './scaffold/backend/router-generator';
-import { permissionProcedure } from './scaffold/backend/permission-guard';
-
-// 前端
-import { createDataProvider } from './scaffold/frontend/data-provider';
-import { PermissionGuard } from './scaffold/frontend/permission-guard';
-```
-
-## 📝 文档
-
-详细使用文档将在 Phase 6 完成：
-
-- README.md - 脚手架总览
-- QUICK_START.md - 快速开始
-- AI_DEVELOPMENT.md - AI 开发指南
-- ARCHITECTURE.md - 架构设计
-- CONFIGURATION.md - 配置指南
-- PLUGINS.md - 插件开发指南
-
 ---
 
-**当前进度**: ✅ **Phase 1 已完成**（提炼 8 个核心抽象层，1840+ 行代码）
+**当前进度**: ✅ **Phase 2 已完成**
 
-**下一步**: 🚀 **Phase 2 - genModule Skill 智能化升级**
-- 智能字段推断、关系自动生成、UI 模式智能选择
-- 新增 Agent Skills：analyze、refactor、test-gen、docs-gen、migrate
-- 配置化系统：patterns.json、scaffold.config.json、tech-stack.json
+**下一步**: 🚀 **Phase 3 - Standard 组件生产级完善 + 插件系统**

@@ -1,6 +1,6 @@
 ---
 name: genModule
-description: Rapidly generates full-stack CRUD modules from database schema to frontend management pages. Use when creating new modules with standard CRUD operations for: (1) Business entities like products, orders, articles, todos, users, categories, (2) Any resource requiring list, create, edit, delete functionality, (3) Quick prototyping and MVP development. Supports smart field analysis for 10+ business patterns, file upload capabilities, and complete CRUD functionality.
+description: Rapidly generates full-stack CRUD modules with smart field inference, auto relation detection, and intelligent UI pattern selection. Phase 2 enhanced with currency/email/phone/slug/image validation, belongsTo/TreeSelect relation generation, and modal/separate page auto-selection.
 allowed-tools:
   - Bash(node:*)
   - Bash(cd:*)
@@ -13,24 +13,33 @@ allowed-tools:
 
 # Quick Start (Automated)
 
-For rapid development, use the automated generator script:
-
 ```bash
-# Smart analysis (recommended - detects business patterns automatically)
+# Smart analysis (recommended - detects patterns + infers fields)
 node .claude/skills/genModule/scripts/generate-module.ts product
 
-# Preview mode (no changes made)
-node .claude/skills/genModule/scripts/generate-module.ts todo --dry-run
+# Preview mode with smart inference report
+node .claude/skills/genModule/scripts/generate-module.ts article --dry-run
 
-# With file upload support
-node .claude/skills/genModule/scripts/generate-module.ts article --file-upload
+# Category (auto-detects parentId → TreeSelect)
+node .claude/skills/genModule/scripts/generate-module.ts category
 ```
 
 **What it generates:**
-- Database: Prisma schema with migration
+- Database: Prisma schema with relations
 - Backend: tRPC router with factory function
-- Frontend: List and Create pages
+- Frontend: List page with smart UI components
 - Auto-registration: Updates App.tsx and app.router.ts
+
+**Phase 2 Smart Features:**
+- Currency fields (price, amount) → InputNumber with ¥ formatter + min:0
+- Email fields → email validation
+- Phone fields → regex validation
+- Slug fields → auto-generate + regex
+- Image fields (avatar, cover) → OSSUpload
+- Date fields → DatePicker with showTime
+- Percent fields → InputNumber with % formatter
+- Relation fields (*Id) → Select/TreeSelect auto-detection
+- UI pattern → auto-select modal vs separate pages
 
 **Supported Business Patterns:**
 - E-commerce: `product`, `item`, `goods`, `order`, `purchase`
@@ -45,6 +54,54 @@ node .claude/skills/genModule/scripts/generate-module.ts article --file-upload
 cd infra/database && npx prisma migrate dev --name add_<module>
 npx prisma generate
 ```
+
+---
+
+# Smart Field Inference (Phase 2)
+
+The generator automatically detects field types and applies smart configurations:
+
+| Field Pattern | UI Component | Validation | Example |
+|--------------|-------------|------------|---------|
+| `price`, `amount`, `cost` | InputNumber (¥ formatter) | `z.number().min(0)` | price: Float → ¥1,234.56 |
+| `email`, `mail` | Input (email) | `z.string().email()` | email: String → validation |
+| `phone`, `mobile` | Input (tel) | `z.string().regex(/^1[3-9]\d{9}$/)` | phone: String → validation |
+| `url`, `website` | Input (url) | `z.string().url()` | website: String → validation |
+| `slug`, `code` | Input (auto-gen) | `z.string().regex(/^[a-z0-9-]+$/)` | slug: String → auto |
+| `avatar`, `cover`, `logo` | OSSUpload | `z.string().optional()` | cover: String → upload |
+| `*At`, `*Date` | DatePicker (showTime) | `z.date()` | publishedAt: DateTime |
+| `rate`, `percent` | InputNumber (% formatter) | `z.number().min(0).max(100)` | discount: Float |
+| `sortOrder`, `priority` | InputNumber (min:0) | `z.number().int().min(0)` | sortOrder: Int |
+| `*Id` fields | Select/TreeSelect | `z.string().optional()` | categoryId → Category |
+
+---
+
+# Relation Auto-Detection (Phase 2)
+
+The generator automatically detects foreign key fields and generates:
+
+| Field Name | Detected Relation | UI Component |
+|-----------|-----------------|-------------|
+| `categoryId` | Category.belongsTo | Select (searchable) |
+| `userId` | User.belongsTo | Select (searchable) |
+| `parentId` | Self.belongsTo | TreeSelect |
+| `authorId` | User.belongsTo | Select (searchable) |
+| `merchantId` | Merchant.belongsTo | Select (searchable) |
+| `templateId` | CouponTemplate.belongsTo | Select (searchable) |
+
+---
+
+# UI Pattern Selection (Phase 2)
+
+The generator automatically selects the best UI pattern:
+
+| Condition | Pattern | Pages Generated |
+|-----------|---------|----------------|
+| Has rich text (content, body) | Separate | List + Create + Edit + Detail |
+| Has state machine (4+ enum values) | Separate | List + Detail |
+| Has tree structure (parentId) | Modal | List only |
+| Has multiple images | Modal | List only |
+| Default | Modal | List only |
 
 ---
 
