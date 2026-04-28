@@ -117,7 +117,22 @@ export const redemptionRouter = router({
         throw new BadRequestException(`订单状态异常: ${order.status}`);
       }
 
-      // 4. 检查是否已核销（幂等性）
+      // 4. 检查是否在使用期内
+      const now = new Date();
+      const fmt = (d: Date) => d.toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' });
+      if (order.template.useFrom > now) {
+        throw new BadRequestException(`该券尚未开始使用，使用开始时间: ${fmt(order.template.useFrom)}`);
+      }
+      if (order.template.useUntil < now) {
+        throw new BadRequestException('该券已超过使用截止时间，无法核销');
+      }
+
+      // 5. 检查订单是否过期（相对有效期）
+      if (order.expireAt && new Date(order.expireAt) < now) {
+        throw new BadRequestException('该券已过期，无法核销');
+      }
+
+      // 6. 检查是否已核销（幂等性）
       if (order.redeemedAt) {
         throw new BadRequestException('该订单已核销');
       }

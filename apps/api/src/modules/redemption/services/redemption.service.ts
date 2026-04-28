@@ -65,8 +65,9 @@ export class RedemptionService {
 
     // 5. 检查是否在使用期内
     const now = new Date();
+    const fmt = (d: Date) => d.toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' });
     if (order.template.useFrom > now) {
-      throw new BadRequestException(`该券尚未开始使用，使用开始时间: ${order.template.useFrom.toLocaleString()}`);
+      throw new BadRequestException(`该券尚未开始使用，使用开始时间: ${fmt(order.template.useFrom)}`);
     }
     if (order.template.useUntil < now) {
       throw new BadRequestException('该券已超过使用截止时间，无法核销');
