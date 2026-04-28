@@ -33,16 +33,19 @@ export const statisticsRouter = router({
         // 活跃商户数
         ctx.prisma.merchant.count({ where: { status: 'ACTIVE' } }),
 
-        // 全部订单统计
+        // 全部订单统计（仅有效订单：已支付、已核销）
         ctx.prisma.order.aggregate({
+          where: {
+            status: { in: ['PAID', 'REDEEMED'] },
+          },
           _count: true,
           _sum: { price: true, faceValue: true },
         }),
 
-        // 近 N 天有效订单统计
+        // 近 N 天有效订单统计（仅已支付、已核销）
         ctx.prisma.order.aggregate({
           where: {
-            status: { in: ['PAID', 'REDEEMED', 'REFUNDING', 'REFUNDED'] },
+            status: { in: ['PAID', 'REDEEMED'] },
             paidAt: { gte: since },
           },
           _count: true,
@@ -131,7 +134,7 @@ export const statisticsRouter = router({
 
       const orders = await ctx.prisma.order.findMany({
         where: {
-          status: { in: ['PAID', 'REDEEMED', 'REFUNDING', 'REFUNDED'] },
+          status: { in: ['PAID', 'REDEEMED'] },
           createdAt: { gte: since },
         },
         select: {
