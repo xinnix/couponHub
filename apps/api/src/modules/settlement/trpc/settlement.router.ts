@@ -238,35 +238,40 @@ export const settlementRouter = createCrudRouterWithCustom(
         return updated;
       }),
 
-    // 结算统计 - 需要权限
+    // 结算统计 - 需要权限（支持筛选条件）
     getStats: permissionProcedure('settlement', 'read')
-      .query(async ({ ctx }) => {
-        const [pendingStats, confirmedStats, paidStats, totalCount] = await Promise.all([
-          ctx.prisma.settlement.aggregate({
+      .input(z.object({
+        status: z.string().optional(),
+        merchantId: z.string().optional(),
+        period: z.string().optional(),
+      }).optional().default({}))
+      .query(async ({ ctx, input }) => {
+        const where: any = {};
+        if (input.status) where.status = input.status;
+        if (input.merchantId) where.merchantId = input.merchantId;
+        if (input.period) where.period = { contains: input.period };
+
+        const [statusGroup, paidStats, totalCount] = await Promise.all([
+          ctx.prisma.settlement.groupBy({
+            by: ['status'],
+            where,
             _count: true,
             _sum: { totalAmount: true },
-            where: { status: 'PENDING' },
           }),
           ctx.prisma.settlement.aggregate({
-            _count: true,
+            where: { ...where, status: 'PAID' },
             _sum: { totalAmount: true },
-            where: { status: 'CONFIRMED' },
           }),
-          ctx.prisma.settlement.aggregate({
-            _count: true,
-            _sum: { totalAmount: true },
-            where: { status: 'PAID' },
-          }),
-          ctx.prisma.settlement.count(),
+          ctx.prisma.settlement.count({ where }),
         ]);
 
         return {
-          pendingCount: pendingStats._count,
-          confirmedCount: confirmedStats._count,
-          paidCount: paidStats._count,
+          statusDistribution: statusGroup.map((g) => ({
+            status: g.status,
+            count: g._count,
+            amount: Number(g._sum.totalAmount ?? 0),
+          })),
           totalPaidAmount: Number(paidStats._sum.totalAmount ?? 0),
-          totalPendingAmount: Number(pendingStats._sum.totalAmount ?? 0),
-          totalConfirmedAmount: Number(confirmedStats._sum.totalAmount ?? 0),
           totalCount,
         };
       }),
@@ -453,6 +458,61 @@ export const settlementRouter = createCrudRouterWithCustom(
           fileContent: base64,
           mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         };
+      }),
+
+    // 删除结算单 - 需要权限（同时解锁关联订单）
+    delete: permissionProcedure('settlement', 'delete')
+      .input(z.object({ id: z.string() }))
+      .mutation(async ({ ctx, input }) => {
+        const settlement = await ctx.prisma.settlement.findUnique({
+          where: { id: input.id },
+        });
+        if (!settlement) {
+          throw new TRPCError({ code: 'NOT_FOUND', message: '结算单不存在' });
+        }
+
+        const snapshot = settlement.snapshotData as any;
+        const orderIds: string[] = snapshot?.orders?.map((o: any) => o.orderId) || [];
+
+        await ctx.prisma.$transaction(async (tx) => {
+          if (orderIds.length > 0) {
+            await tx.order.updateMany({
+              where: { id: { in: orderIds } },
+              data: { isLocked: false },
+            });
+          }
+          await tx.settlement.delete({ where: { id: input.id } });
+        });
+
+        return { success: true };
+      }),
+
+    // 批量删除结算单 - 需要权限（同时解锁关联订单）
+    deleteMany: permissionProcedure('settlement', 'delete')
+      .input(z.object({ ids: z.array(z.string()) }))
+      .mutation(async ({ ctx, input }) => {
+        const settlements = await ctx.prisma.settlement.findMany({
+          where: { id: { in: input.ids } },
+        });
+
+        const allOrderIds = settlements.flatMap((s) => {
+          const snapshot = s.snapshotData as any;
+          return snapshot?.orders?.map((o: any) => o.orderId) || [];
+        });
+
+        await ctx.prisma.$transaction(async (tx) => {
+          if (allOrderIds.length > 0) {
+            await tx.order.updateMany({
+              where: { id: { in: allOrderIds } },
+              data: { isLocked: false },
+            });
+          }
+          await tx.settlement.deleteMany({
+            where: { id: { in: input.ids } },
+          });
+        });
+
+        return { success: true, count: input.ids.length };
       }),
   }),
   {

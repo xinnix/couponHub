@@ -36,6 +36,39 @@ export const orderRouter = createCrudRouterWithCustom(
     getMany: OrderListQuerySchema,
   },
   (t) => ({
+    // 订单统计（支持筛选条件）
+    getStats: permissionProcedure('order', 'read')
+      .input(z.object({
+        orderNo: z.string().optional(),
+        status: z.string().optional(),
+        dateFrom: z.string().optional(),
+        dateTo: z.string().optional(),
+      }).optional().default({}))
+      .query(async ({ ctx, input }) => {
+        const where: any = {};
+        if (input.orderNo) where.orderNo = { contains: input.orderNo };
+        if (input.status) where.status = input.status;
+        if (input.dateFrom || input.dateTo) {
+          where.createdAt = {
+            ...(input.dateFrom ? { gte: new Date(input.dateFrom) } : {}),
+            ...(input.dateTo ? { lte: new Date(input.dateTo) } : {}),
+          };
+        }
+
+        const statusGroup = await ctx.prisma.order.groupBy({
+          by: ['status'],
+          where,
+          _count: true,
+          _sum: { price: true },
+        });
+
+        return statusGroup.map((g) => ({
+          status: g.status,
+          count: g._count,
+          amount: Number(g._sum.price ?? 0),
+        }));
+      }),
+
     // 管理端查询订单列表 - 需要权限
     getMany: permissionProcedure('order', 'read')
       .input(OrderListQuerySchema)

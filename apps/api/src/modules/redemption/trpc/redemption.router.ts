@@ -36,6 +36,77 @@ const GetManySchema = z.object({
  */
 export const redemptionRouter = router({
   /**
+   * 核销统计（支持筛选条件，聚合所有页）
+   */
+  getStats: protectedProcedure
+    .input(z.object({
+      merchantId: z.string().optional(),
+      dateFrom: z.string().optional(),
+      dateTo: z.string().optional(),
+    }).optional().default({}))
+    .query(async ({ input, ctx }) => {
+      const where: any = {
+        status: 'REDEEMED',
+        redeemedAt: { not: null },
+      };
+
+      if (input.merchantId) where.redeemMerchantId = input.merchantId;
+      if (input.dateFrom || input.dateTo) {
+        where.redeemedAt = {
+          ...(input.dateFrom ? { gte: new Date(input.dateFrom) } : {}),
+          ...(input.dateTo ? { lte: new Date(input.dateTo) } : {}),
+        };
+      }
+
+      const [agg, merchantAgg] = await Promise.all([
+        ctx.prisma.order.aggregate({
+          where,
+          _count: true,
+          _sum: { price: true, faceValue: true },
+        }),
+        ctx.prisma.order.findMany({
+          where,
+          select: { redeemMerchantId: true, templateId: true },
+        }),
+      ]);
+
+      // 商户去重
+      const merchantCount = new Set(merchantAgg.map((r) => r.redeemMerchantId).filter(Boolean)).size;
+
+      // 结算总额需要查 template.settlementAmount
+      const templateIds = [...new Set(merchantAgg.map((r) => r.templateId))];
+      const templates = await ctx.prisma.couponTemplate.findMany({
+        where: { id: { in: templateIds } },
+        select: { id: true, settlementAmount: true, faceValue: true },
+      });
+      const templateMap = new Map<string, { settlementAmount: any; faceValue: any }>(
+        templates.map((t: any) => [t.id, { settlementAmount: t.settlementAmount, faceValue: t.faceValue }]),
+      );
+
+      // 按 templateId 分组统计订单数，用于计算结算总额
+      const ordersByTemplate = new Map<string, number>();
+      for (const r of merchantAgg) {
+        ordersByTemplate.set(r.templateId, (ordersByTemplate.get(r.templateId) || 0) + 1);
+      }
+      let totalSettlement = 0;
+      for (const [templateId, count] of ordersByTemplate) {
+        const tpl = templateMap.get(templateId);
+        if (tpl) {
+          const perSettlement = tpl.settlementAmount ? Number(tpl.settlementAmount) : Number(tpl.faceValue);
+          totalSettlement += perSettlement * count;
+        }
+      }
+
+      return {
+        count: agg._count,
+        totalPrice: Number(agg._sum.price ?? 0),
+        totalFaceValue: Number(agg._sum.faceValue ?? 0),
+        totalSettlement,
+        merchantCount,
+      };
+    }),
+
+  /**
    * 标准列表查询（兼容 Refine dataProvider）
    * 默认查询已核销订单
    */

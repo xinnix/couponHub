@@ -20,6 +20,7 @@ import {
   UserOutlined,
 } from "@ant-design/icons";
 import { toNumber, formatCurrency } from "../../../shared/utils/decimal";
+import { useTrpcQuery } from "../../../shared/hooks/useTrpcQuery";
 import dayjs from "dayjs";
 
 const { RangePicker } = DatePicker;
@@ -99,6 +100,21 @@ export const RedemptionRecordsPage = () => {
   const query = tableQuery;
   const records = (result as any)?.data || [];
 
+  // 统计数据（跟随筛选条件，聚合所有页）
+  const { data: stats } = useTrpcQuery<any>(
+    "redemption.getStats",
+    {
+      merchantId: merchantFilter || undefined,
+      dateFrom: dateRange?.[0]?.startOf('day').toISOString(),
+      dateTo: dateRange?.[1]?.endOf('day').toISOString(),
+    },
+  );
+  const redeemCount = stats?.count || 0;
+  const totalAmount = stats?.totalPrice || 0;
+  const totalFaceValue = stats?.totalFaceValue || 0;
+  const totalSettlementAmount = stats?.totalSettlement || 0;
+  const merchantCount = stats?.merchantCount || 0;
+
   // 获取商户列表用于筛选
   const { result: merchantsResult } = useList({
     resource: "merchant",
@@ -106,15 +122,6 @@ export const RedemptionRecordsPage = () => {
   });
 
   const merchants = (merchantsResult as any)?.data || [];
-
-  // 统计数据
-  const totalAmount = records.reduce((sum: number, r: RedemptionRecord) => sum + toNumber(r.price), 0);
-  const totalFaceValue = records.reduce((sum: number, r: RedemptionRecord) => sum + toNumber(r.faceValue), 0);
-  const totalSettlementAmount = records.reduce((sum: number, r: RedemptionRecord) => {
-    const settlement = r.template?.settlementAmount ? toNumber(r.template.settlementAmount) : toNumber(r.faceValue);
-    return sum + settlement;
-  }, 0);
-  const merchantCount = new Set(records.map((r: RedemptionRecord) => r.merchantId)).size;
 
   const columns = [
     {
@@ -216,7 +223,7 @@ export const RedemptionRecordsPage = () => {
               <Card>
                 <Statistic
                   title="核销订单数"
-                  value={records.length}
+                  value={redeemCount}
                   prefix={<CheckCircleOutlined />}
                   valueStyle={{ color: '#52c41a' }}
                 />

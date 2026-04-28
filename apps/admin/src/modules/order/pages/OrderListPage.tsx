@@ -28,6 +28,7 @@ import { OrderStatusTag } from "../components/OrderStatusTag";
 import { exportOrders } from "../../../shared/utils/export";
 import { getTrpcClient } from "../../../shared/trpc/trpcClient";
 import { toNumber, formatCurrency } from "../../../shared/utils/decimal";
+import { useTrpcQuery } from "../../../shared/hooks/useTrpcQuery";
 import dayjs from "dayjs";
 
 const { RangePicker } = DatePicker;
@@ -125,13 +126,29 @@ export const OrderListPage = () => {
   const query = tableQuery;
   const orders = (result as any)?.data || [];
 
-  // 统计数据
-  const unpaidCount = orders.filter((o: Order) => o.status === 'UNPAID').length;
-  const paidCount = orders.filter((o: Order) => o.status === 'PAID').length;
-  const refundingCount = orders.filter((o: Order) => o.status === 'REFUNDING').length;
-  const totalAmount = orders
-    .filter((o: Order) => o.status !== 'UNPAID' && o.status !== 'EXPIRED')
-    .reduce((sum: number, o: Order) => sum + toNumber(o.price), 0);
+  // 统计数据（跟随筛选条件，聚合所有页）
+  const { data: stats } = useTrpcQuery<any[]>(
+    "order.getStats",
+    {
+      orderNo: searchText || undefined,
+      status: statusFilter || undefined,
+      dateFrom: dateRange?.[0]?.startOf('day').toISOString(),
+      dateTo: dateRange?.[1]?.endOf('day').toISOString(),
+    },
+  );
+  const unpaidCount = stats?.find((s: any) => s.status === 'UNPAID')?.count || 0;
+  const paidCount = stats?.find((s: any) => s.status === 'PAID')?.count || 0;
+  const refundingCount = stats?.find((s: any) => s.status === 'REFUNDING')?.count || 0;
+  const totalAmount = (stats || [])
+    .filter((s: any) => s.status !== 'UNPAID' && s.status !== 'EXPIRED')
+    .reduce((sum: number, s: any) => sum + (s.amount || 0), 0);
+
+  const totalCount = (stats || []).reduce((sum: number, s: any) => sum + (s.count || 0), 0);
+  const redeemedCount = stats?.find((s: any) => s.status === 'REDEEMED')?.count || 0;
+  const refundedCount = stats?.find((s: any) => s.status === 'REFUNDED')?.count || 0;
+  const refundAmount = (stats || [])
+    .filter((s: any) => s.status === 'REFUNDING' || s.status === 'REFUNDED')
+    .reduce((sum: number, s: any) => sum + (s.amount || 0), 0);
 
   const handleExport = async () => {
     try {
@@ -269,17 +286,17 @@ export const OrderListPage = () => {
 
           {/* Statistics */}
           <Row gutter={16} style={{ marginBottom: 24 }}>
-            <Col span={6}>
+            <Col span={4}>
               <Card>
                 <Statistic
-                  title="待支付订单"
-                  value={unpaidCount}
-                  prefix={<ClockCircleOutlined />}
+                  title="订单总数"
+                  value={totalCount}
+                  prefix={<ShoppingCartOutlined />}
                   valueStyle={{ color: '#8c8c8c' }}
                 />
               </Card>
             </Col>
-            <Col span={6}>
+            <Col span={4}>
               <Card>
                 <Statistic
                   title="待核销订单"
@@ -289,17 +306,27 @@ export const OrderListPage = () => {
                 />
               </Card>
             </Col>
-            <Col span={6}>
+            <Col span={4}>
               <Card>
                 <Statistic
-                  title="退款中订单"
-                  value={refundingCount}
+                  title="已核销订单"
+                  value={redeemedCount}
+                  prefix={<CheckCircleOutlined />}
+                  valueStyle={{ color: '#1890ff' }}
+                />
+              </Card>
+            </Col>
+            <Col span={4}>
+              <Card>
+                <Statistic
+                  title="已退款订单"
+                  value={refundedCount}
                   prefix={<DollarOutlined />}
                   valueStyle={{ color: '#faad14' }}
                 />
               </Card>
             </Col>
-            <Col span={6}>
+            <Col span={4}>
               <Card>
                 <Statistic
                   title="总销售额"
@@ -307,6 +334,17 @@ export const OrderListPage = () => {
                   prefix={<DollarOutlined />}
                   precision={2}
                   valueStyle={{ color: '#3f8600' }}
+                />
+              </Card>
+            </Col>
+            <Col span={4}>
+              <Card>
+                <Statistic
+                  title="退款总额"
+                  value={refundAmount}
+                  prefix={<DollarOutlined />}
+                  precision={2}
+                  valueStyle={{ color: '#ff4d4f' }}
                 />
               </Card>
             </Col>

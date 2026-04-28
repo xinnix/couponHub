@@ -1,8 +1,6 @@
 // apps/admin/src/modules/settlement/pages/SettlementListPage.tsx
 import { useState } from "react";
 import { useTable, useList, useCreate, useUpdate, useDelete, useDeleteMany } from "@refinedev/core";
-import { useQuery } from "@tanstack/react-query";
-import { trpcClient } from "../../../shared/dataProvider/dataProvider";
 import { List } from "@refinedev/antd";
 import {
   Table,
@@ -33,6 +31,7 @@ import {
 import { SettlementForm } from "../components/SettlementForm";
 import { useNavigate } from "react-router-dom";
 import { formatCurrency, toNumber } from "../../../shared/utils/decimal";
+import { useTrpcQuery } from "../../../shared/hooks/useTrpcQuery";
 import dayjs from "dayjs";
 
 const { MonthPicker } = DatePicker;
@@ -167,17 +166,20 @@ export const SettlementListPage = () => {
 
   const merchants = (merchantsResult as any)?.data || [];
 
-  // 从后端获取全量统计数据（不受分页影响）
-  const { data: stats } = useQuery({
-    queryKey: ['settlement', 'stats'],
-    queryFn: () => (trpcClient as any).settlement.getStats.query(),
-  });
-  const settlementStats = stats ?? {
-    pendingCount: 0,
-    confirmedCount: 0,
-    totalPaidAmount: 0,
-    totalCount: 0,
-  };
+  // 统计数据（跟随筛选条件，聚合所有页）
+  const { data: stats } = useTrpcQuery<any>(
+    "settlement.getStats",
+    {
+      status: statusFilter || undefined,
+      merchantId: merchantFilter || undefined,
+      period: searchText || undefined,
+    },
+  );
+  const statusDist = stats?.statusDistribution || [];
+  const pendingCount = statusDist.find((s: any) => s.status === 'PENDING')?.count || 0;
+  const confirmedCount = statusDist.find((s: any) => s.status === 'CONFIRMED')?.count || 0;
+  const totalPaidAmount = stats?.totalPaidAmount || 0;
+  const totalCount = stats?.totalCount || 0;
 
   const handleCreate = () => {
     form.resetFields();
@@ -392,7 +394,7 @@ export const SettlementListPage = () => {
               <Card>
                 <Statistic
                   title="待确认结算单"
-                  value={settlementStats.pendingCount}
+                  value={pendingCount}
                   prefix={<ClockCircleOutlined />}
                   valueStyle={{ color: '#8c8c8c' }}
                 />
@@ -402,7 +404,7 @@ export const SettlementListPage = () => {
               <Card>
                 <Statistic
                   title="已确认结算单"
-                  value={settlementStats.confirmedCount}
+                  value={confirmedCount}
                   prefix={<CheckCircleOutlined />}
                   valueStyle={{ color: '#1890ff' }}
                 />
@@ -412,7 +414,7 @@ export const SettlementListPage = () => {
               <Card>
                 <Statistic
                   title="已支付总额"
-                  value={settlementStats.totalPaidAmount}
+                  value={totalPaidAmount}
                   prefix={<DollarOutlined />}
                   precision={2}
                   valueStyle={{ color: '#52c41a' }}
@@ -423,7 +425,7 @@ export const SettlementListPage = () => {
               <Card>
                 <Statistic
                   title="总结算单数"
-                  value={settlementStats.totalCount}
+                  value={totalCount}
                 />
               </Card>
             </Col>
