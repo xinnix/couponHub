@@ -1,5 +1,5 @@
 // apps/admin/src/modules/coupon-template/pages/TemplateListPage.tsx
-import { useState } from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTable, useCreate, useUpdate, useDelete, useDeleteMany } from "@refinedev/core";
 import { useMutation } from "@tanstack/react-query";
@@ -18,7 +18,6 @@ import {
   Input,
   Select,
   DatePicker,
-  Statistic,
   App,
   Image,
   Tooltip,
@@ -27,8 +26,6 @@ import {
   PlusOutlined,
   SearchOutlined,
   QrcodeOutlined,
-  DollarOutlined,
-  TagOutlined,
 } from "@ant-design/icons";
 import { TemplateForm } from "../components/TemplateForm";
 import dayjs from "dayjs";
@@ -104,20 +101,13 @@ export const TemplateListPage = () => {
     },
   });
 
-  // 处理删除单个券模板
-  const handleDelete = (id: string) => {
-    deleteOne(
-      { resource: "couponTemplate", id },
-      createMutationCallbacks("删除", query, undefined, message)
-    );
-  };
-
   const {
     tableQuery,
     currentPage,
     setCurrentPage,
     pageSize,
     setPageSize,
+    setFilters,
   } = useTable<CouponTemplate>({
     resource: "couponTemplate",
     pagination: {
@@ -125,16 +115,39 @@ export const TemplateListPage = () => {
       pageSize: 10,
       mode: "server",
     },
-    filters: {
-      initial: [
-        ...(searchText ? [{ field: "title", operator: "contains", value: searchText }] as any : []),
-        ...(statusFilter ? [{ field: "status", operator: "eq", value: statusFilter }] as any : []),
-      ],
-    },
   });
 
-  const result = tableQuery.data;
-  const query = tableQuery;
+  const templates = (tableQuery.data as any)?.data || [];
+  const total = (tableQuery.data as any)?.total || 0;
+
+  // 当筛选条件变化时，更新 filters
+  const handleFilterChange = () => {
+    const filters: any[] = [];
+
+    if (searchText) {
+      filters.push({ field: "title", operator: "contains", value: searchText });
+    }
+
+    if (statusFilter) {
+      filters.push({ field: "status", operator: "eq", value: statusFilter });
+    }
+
+    // 使用 "replace" 模式确保空数组也会触发请求
+    setFilters(filters, "replace");
+  };
+
+  // 监听筛选条件变化
+  React.useEffect(() => {
+    handleFilterChange();
+  }, [searchText, statusFilter]);
+
+  // 处理删除单个券模板
+  const handleDelete = (id: string) => {
+    deleteOne(
+      { resource: "couponTemplate", id },
+      createMutationCallbacks("删除", tableQuery, undefined, message)
+    );
+  };
 
   const handleCreate = () => {
     setEditingRecord(null);
@@ -179,7 +192,7 @@ export const TemplateListPage = () => {
 
     update(
       { resource: "couponTemplate", id: record.id, values: { status: newStatus } },
-      createMutationCallbacks(actionText, query, undefined, message)
+      createMutationCallbacks(actionText, tableQuery, undefined, message)
     );
   };
 
@@ -205,7 +218,7 @@ export const TemplateListPage = () => {
             id: editingRecord.id,
             values: processedValues,
           },
-          createMutationCallbacks(action, query, () => setIsModalVisible(false), message)
+          createMutationCallbacks(action, tableQuery, () => setIsModalVisible(false), message)
         );
       } else {
         create(
@@ -213,7 +226,7 @@ export const TemplateListPage = () => {
             resource: "couponTemplate",
             values: processedValues,
           },
-          createMutationCallbacks(action, query, () => setIsModalVisible(false), message)
+          createMutationCallbacks(action, tableQuery, () => setIsModalVisible(false), message)
         );
       }
     } catch (error) {
@@ -229,7 +242,7 @@ export const TemplateListPage = () => {
 
     deleteMany(
       { resource: "couponTemplate", ids: selectedRowKeys },
-      createBatchMutationCallbacks("删除", selectedRowKeys.length, query, () =>
+      createBatchMutationCallbacks("删除", selectedRowKeys.length, tableQuery, () =>
         setSelectedRowKeys([])
       , message)
     );
@@ -257,7 +270,7 @@ export const TemplateListPage = () => {
           qrcodeGeneratedAt: new Date(),
         });
         message.success('小程序码生成成功');
-        query.refetch();
+        tableQuery.refetch();
       },
       onError: (error: any) => {
         message.error('生成失败: ' + error.message);
@@ -424,11 +437,6 @@ export const TemplateListPage = () => {
     },
   ];
 
-  // 统计数据
-  const templates = (result as any)?.data || [];
-  const activeCount = templates.filter((t: CouponTemplate) => t.status === 'ACTIVE' && new Date(t.useUntil) > new Date()).length;
-  const totalStock = templates.reduce((sum: number, t: CouponTemplate) => sum + t.stock, 0);
-
   return (
     <div style={{ maxWidth: 1600, margin: "0 auto", padding: "24px" }}>
       <List>
@@ -441,47 +449,6 @@ export const TemplateListPage = () => {
               <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
                 新建券模板
               </Button>
-            </Col>
-          </Row>
-
-          {/* Statistics */}
-          <Row gutter={16} style={{ marginBottom: 24 }}>
-            <Col span={6}>
-              <Card>
-                <Statistic
-                  title="上架券模板"
-                  value={activeCount}
-                  prefix={<TagOutlined />}
-                  valueStyle={{ color: '#3f8600' }}
-                />
-              </Card>
-            </Col>
-            <Col span={6}>
-              <Card>
-                <Statistic
-                  title="总库存"
-                  value={totalStock}
-                  prefix={<TagOutlined />}
-                />
-              </Card>
-            </Col>
-            <Col span={6}>
-              <Card>
-                <Statistic
-                  title="总销售额"
-                  value={templates.reduce((sum: number, t: CouponTemplate) => sum + (t._count?.orders || 0) * Number(t.buyPrice), 0)}
-                  prefix={<DollarOutlined />}
-                  precision={2}
-                />
-              </Card>
-            </Col>
-            <Col span={6}>
-              <Card>
-                <Statistic
-                  title="已售数量"
-                  value={templates.reduce((sum: number, t: CouponTemplate) => sum + (t._count?.orders || 0), 0)}
-                />
-              </Card>
             </Col>
           </Row>
 
@@ -535,12 +502,12 @@ export const TemplateListPage = () => {
             columns={columns}
             rowKey="id"
             dataSource={templates}
-            loading={query.isLoading}
+            loading={tableQuery.isLoading}
             scroll={{ x: 1500 }}
             pagination={{
               current: currentPage,
               pageSize: pageSize,
-              total: (result as any)?.total || 0,
+              total: total,
               showSizeChanger: true,
               showTotal: (total) => `共 ${total} 条`,
               onChange: (page, newPageSize) => {

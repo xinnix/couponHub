@@ -751,9 +751,13 @@ export const UpdateCouponTemplateSchema = z.object({
 
 export const CouponTemplateListQuerySchema = z.object({
   page: z.number().int().positive().optional(),
-  pageSize: z.number().int().positive().optional(),
-  status: z.enum(["ACTIVE", "EXPIRED", "DISABLED"]).optional(),
-  search: z.string().optional(),
+  limit: z.number().int().positive().optional(),
+  skip: z.number().int().optional(),
+  take: z.number().int().optional(),
+  where: z.any().optional(), // 接受 Prisma where 条件
+  orderBy: z.any().optional(), // 接受 Prisma orderBy 条件
+  include: z.any().optional(), // 接受 Prisma include 条件
+  select: z.any().optional(), // 接受 Prisma select 条件
 });
 
 export type CouponTemplateInput = z.infer<typeof CouponTemplateSchema>;

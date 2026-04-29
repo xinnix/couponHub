@@ -35,12 +35,15 @@ export const templateRouter = createCrudRouterWithCustom(
         const model = ctx.prisma.couponTemplate;
         const [items, total] = await Promise.all([
           model.findMany({
-            skip: data.skip ?? (data.page ? (data.page - 1) * (data.pageSize || 10) : 0),
-            take: data.pageSize,
+            skip: data.skip ?? (data.page ? (data.page - 1) * (data.limit || 10) : 0),
+            take: data.take ?? data.limit,
             where: data.where,
             orderBy: data.orderBy ?? { createdAt: 'desc' },
-            include: data.include,
-            select: data.select,
+            include: {
+              _count: {
+                select: { orders: true },
+              },
+            },
           }),
           model.count({ where: data.where }),
         ]);
@@ -49,8 +52,8 @@ export const templateRouter = createCrudRouterWithCustom(
           items,
           total,
           page: data.page || 1,
-          pageSize: data.pageSize || 10,
-          totalPages: Math.ceil(total / (data.pageSize || 10)),
+          pageSize: data.limit || 10,
+          totalPages: Math.ceil(total / (data.limit || 10)),
         };
       }),
 
