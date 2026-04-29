@@ -19,6 +19,7 @@ import { JwtAuthGuard } from '../../../core/guards/jwt.guard';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { verifyRedeemCode } from '../../../shared/utils/qrcode.util';
 import { CurrentUser } from '../../auth/decorators/decorators';
+import { RedemptionService } from '../services/redemption.service';
 
 const RedeemSchema = z.object({
   code: z.string().min(1, '二维码内容不能为空'),
@@ -37,60 +38,22 @@ const GetRecordsSchema = z.object({
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class RedemptionController {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly redemptionService: RedemptionService,
+  ) {}
 
   @Post('redeem')
   @ApiOperation({ summary: '扫码核销' })
   @ApiResponse({ status: 200, description: '核销成功' })
   async redeem(@Body() body: any, @CurrentUser() user: any) {
     const { code } = RedeemSchema.parse(body);
-    const { orderId, valid, reason } = verifyRedeemCode(code);
-
-    if (!valid) {
-      throw new BadRequestException(reason || '二维码无效');
-    }
-
-    const order = await this.prisma.order.findUnique({
-      where: { id: orderId },
-      include: { template: true },
-    });
-
-    if (!order) {
-      throw new BadRequestException('订单不存在');
-    }
-
-    if (order.status !== 'PAID') {
-      throw new BadRequestException(`订单状态异常: ${order.status}`);
-    }
-
-    // 检查是否在使用期内
-    const now = new Date();
-    const fmt = (d: Date) => d.toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' });
-    if (order.template.useFrom > now) {
-      throw new BadRequestException(`该券尚未开始使用，使用开始时间: ${fmt(order.template.useFrom)}`);
-    }
-    if (order.template.useUntil < now) {
-      throw new BadRequestException('该券已超过使用截止时间，无法核销');
-    }
-
-    // 检查订单是否过期（相对有效期）
-    if (order.expireAt && new Date(order.expireAt) < now) {
-      throw new BadRequestException('该券已过期，无法核销');
-    }
-
-    if (order.redeemedAt) {
-      throw new BadRequestException('该订单已核销');
-    }
 
     // 获取核销员信息
     const userWithHandler = await this.prisma.user.findUnique({
       where: { id: user.id },
       include: {
-        handler: {
-          include: {
-            merchant: true,
-          },
-        },
+        handler: true,
       },
     });
 
@@ -98,44 +61,10 @@ export class RedemptionController {
       throw new ForbiddenException('您不是核销员，无法执行核销操作');
     }
 
-    const handler = userWithHandler.handler;
+    const handlerId = userWithHandler.handler.id;
 
-    // 验证商户范围
-    const merchantScope = order.template.merchantScope;
-    if (merchantScope && Array.isArray(merchantScope)) {
-      if (!merchantScope.includes(handler.merchantId)) {
-        throw new ForbiddenException('该券不适用于当前商户');
-      }
-    }
-
-    // 更新订单状态，设置核销员和商户信息
-    return this.prisma.order.update({
-      where: { id: orderId },
-      data: {
-        status: 'REDEEMED',
-        redeemMerchantId: handler.merchantId,
-        handlerId: handler.id,
-        redeemedAt: new Date(),
-      },
-      include: {
-        template: true,
-        merchant: true,
-        handler: {
-          select: {
-            id: true,
-            name: true,
-            phone: true,
-          },
-        },
-        user: {
-          select: {
-            id: true,
-            nickname: true,
-            phone: true,
-          },
-        },
-      },
-    });
+    // 调用 RedemptionService 执行核销（包含分布式锁保护）
+    return this.redemptionService.redeemOrder(handlerId, code);
   }
 
   @Get('records')

@@ -1,5 +1,6 @@
 import { Injectable, Logger, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
+import { RedisService } from '../../../shared/services/redis.service';
 import { verifyRedeemCode } from '../../../shared/utils/qrcode.util';
 
 /**
@@ -8,13 +9,16 @@ import { verifyRedeemCode } from '../../../shared/utils/qrcode.util';
  * 处理商户扫码核销逻辑：
  * - 解析二维码
  * - 验证权限
- * - 更新订单状态
+ * - 更新订单状态（使用分布式锁防止并发核销）
  */
 @Injectable()
 export class RedemptionService {
   private readonly logger = new Logger(RedemptionService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly redisService: RedisService,
+  ) {}
 
   /**
    * 扫码核销
@@ -25,7 +29,8 @@ export class RedemptionService {
    * 3. 获取订单信息
    * 4. 验证订单状态
    * 5. 验证核销员权限
-   * 6. 更新订单状态
+   * 6. 使用分布式锁保护核销操作（防止并发核销）
+   * 7. 更新订单状态
    *
    * @param handlerId 核销员 ID
    * @param code 二维码内容
@@ -85,33 +90,61 @@ export class RedemptionService {
       throw new ForbiddenException('该券不适用于当前商户');
     }
 
-    // 6. 检查是否已核销（幂等性）
-    if (order.redeemedAt) {
-      throw new BadRequestException('该订单已核销');
-    }
+    // 🔒 8. 使用分布式锁保护核销操作（防止并发核销）
+    this.logger.log(`核销开始: 订单 ${order.orderNo}, 核销员 ${handler.name}`);
 
-    // 7. 更新订单状态
-    const updated = await this.prisma.order.update({
-      where: { id: orderId },
-      data: {
-        status: 'REDEEMED',
-        redeemMerchantId: handler.merchantId,
-        handlerId: handler.id, // 记录核销员 ID
-        redeemedAt: new Date(),
-      },
-      include: {
-        template: true,
-        merchant: true,
-        user: true,
-        handler: true, // 包含核销员信息
-      },
-    });
-
-    this.logger.log(
-      `核销成功: 订单 ${order.orderNo}, 商户 ${handler.merchant.name}, 核销员 ${handler.name}`,
+    const lock = await this.redisService.acquireLock(
+      `redemption:${orderId}`,
+      10000, // 10秒锁超时
+      3,     // 重试3次
+      100    // 重试间隔100ms
     );
 
-    return updated;
+    if (!lock) {
+      this.logger.warn(`核销锁获取失败: 订单 ${order.orderNo}, 核销员 ${handler.name} - 可能正在被其他核销员处理`);
+      throw new BadRequestException('订单正在被其他核销员处理，请稍后重试');
+    }
+
+    try {
+      // 🔒 在锁内重新检查是否已核销（防止并发攻击）
+      const lockedOrder = await this.prisma.order.findUnique({
+        where: { id: orderId },
+      });
+
+      if (lockedOrder.redeemedAt) {
+        this.logger.warn(
+          `重复核销拦截: 订单 ${order.orderNo}, 核销员 ${handler.name} (${handler.id})`,
+        );
+        throw new BadRequestException('该订单已核销');
+      }
+
+      // 9. 更新订单状态
+      const updated = await this.prisma.order.update({
+        where: { id: orderId },
+        data: {
+          status: 'REDEEMED',
+          redeemMerchantId: handler.merchantId,
+          handlerId: handler.id, // 记录核销员 ID
+          redeemedAt: new Date(),
+        },
+        include: {
+          template: true,
+          merchant: true,
+          user: true,
+          handler: true, // 包含核销员信息
+        },
+      });
+
+      this.logger.log(
+        `核销成功: 订单 ${order.orderNo}, 商户 ${handler.merchant.name}, 核销员 ${handler.name}`,
+      );
+
+      return updated;
+    } finally {
+      // 🔓 释放锁
+      await this.redisService.releaseLock(`redemption:${orderId}`, lock);
+      this.logger.log(`核销完成: 订单 ${order.orderNo}, 核销员 ${handler.name}`);
+    }
   }
 
   /**
