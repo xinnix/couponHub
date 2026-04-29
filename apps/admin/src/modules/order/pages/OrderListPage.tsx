@@ -136,11 +136,11 @@ export const OrderListPage = () => {
       dateTo: dateRange?.[1]?.endOf('day').toISOString(),
     },
   );
-  const unpaidCount = stats?.find((s: any) => s.status === 'UNPAID')?.count || 0;
   const paidCount = stats?.find((s: any) => s.status === 'PAID')?.count || 0;
-  const refundingCount = stats?.find((s: any) => s.status === 'REFUNDING')?.count || 0;
+  // 总销售额：统计所有曾经支付过的订单（只排除未支付和已取消）
+  // 注意：EXPIRED 状态是已支付但过期，钱已进入账户，应该计入销售额
   const totalAmount = (stats || [])
-    .filter((s: any) => s.status !== 'UNPAID' && s.status !== 'EXPIRED')
+    .filter((s: any) => s.status !== 'UNPAID' && s.status !== 'CANCELLED')
     .reduce((sum: number, s: any) => sum + (s.amount || 0), 0);
 
   const totalCount = (stats || []).reduce((sum: number, s: any) => sum + (s.count || 0), 0);
@@ -373,6 +373,7 @@ export const OrderListPage = () => {
               <Select.Option value="REFUNDING">退款中</Select.Option>
               <Select.Option value="REFUNDED">已退款</Select.Option>
               <Select.Option value="EXPIRED">已过期</Select.Option>
+              <Select.Option value="CANCELLED">已取消</Select.Option>
             </Select>
             <RangePicker
               placeholder={['创建开始日期', '创建结束日期']}

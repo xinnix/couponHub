@@ -9,6 +9,7 @@ const STATUS_COLORS: Record<string, string> = {
   REFUNDING: '#faad14',
   REFUNDED: '#ff4d4f',
   EXPIRED: '#8c8c8c',
+  CANCELLED: '#595959',
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -18,6 +19,7 @@ const STATUS_LABELS: Record<string, string> = {
   REFUNDING: '退款中',
   REFUNDED: '已退款',
   EXPIRED: '已过期',
+  CANCELLED: '已取消',
 };
 
 export function OrderStatusChart() {

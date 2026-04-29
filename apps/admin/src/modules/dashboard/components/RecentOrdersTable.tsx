@@ -10,6 +10,7 @@ const STATUS_MAP: Record<string, { label: string; color: string }> = {
   REFUNDING: { label: '退款中', color: 'orange' },
   REFUNDED: { label: '已退款', color: 'red' },
   EXPIRED: { label: '已过期', color: 'default' },
+  CANCELLED: { label: '已取消', color: 'default' },
 };
 
 export function RecentOrdersTable() {
