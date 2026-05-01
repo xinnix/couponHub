@@ -58,6 +58,7 @@ interface RedemptionRecord {
 
 export const RedemptionRecordsPage = () => {
   const [merchantFilter, setMerchantFilter] = useState<string | undefined>(undefined);
+  const [templateFilter, setTemplateFilter] = useState<string | undefined>(undefined);
   const [dateRange, setDateRange] = useState<[dayjs.Dayjs, dayjs.Dayjs] | null>(null);
 
   const {
@@ -82,6 +83,10 @@ export const RedemptionRecordsPage = () => {
       filters.push({ field: "redeemMerchantId", operator: "eq", value: merchantFilter });
     }
 
+    if (templateFilter) {
+      filters.push({ field: "templateId", operator: "eq", value: templateFilter });
+    }
+
     if (dateRange && dateRange[0] && dateRange[1]) {
       filters.push({ field: "redeemedAt", operator: "gte", value: dateRange[0].startOf('day').toISOString() });
       filters.push({ field: "redeemedAt", operator: "lte", value: dateRange[1].endOf('day').toISOString() });
@@ -94,7 +99,7 @@ export const RedemptionRecordsPage = () => {
   // 监听筛选条件变化
   React.useEffect(() => {
     handleFilterChange();
-  }, [merchantFilter, dateRange]);
+  }, [merchantFilter, templateFilter, dateRange]);
 
   const result = tableQuery.data;
   const query = tableQuery;
@@ -105,6 +110,7 @@ export const RedemptionRecordsPage = () => {
     "redemption.getStats",
     {
       merchantId: merchantFilter || undefined,
+      templateId: templateFilter || undefined,
       dateFrom: dateRange?.[0]?.startOf('day').toISOString(),
       dateTo: dateRange?.[1]?.endOf('day').toISOString(),
     },
@@ -122,6 +128,14 @@ export const RedemptionRecordsPage = () => {
   });
 
   const merchants = (merchantsResult as any)?.data || [];
+
+  // 获取优惠券模板列表用于筛选
+  const { result: templatesResult } = useList({
+    resource: "couponTemplate",
+    pagination: { pageSize: 1000 },
+  });
+
+  const templates = (templatesResult as any)?.data || [];
 
   const columns = [
     {
@@ -275,6 +289,24 @@ export const RedemptionRecordsPage = () => {
 
           {/* Filters */}
           <Space style={{ marginBottom: 16 }} wrap>
+            <Select
+              placeholder="筛选优惠券"
+              value={templateFilter}
+              onChange={setTemplateFilter}
+              style={{ width: 240 }}
+              allowClear
+              showSearch
+              optionFilterProp="label"
+              filterOption={(input, option) =>
+                (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+              }
+            >
+              {templates.map((t: any) => (
+                <Select.Option key={t.id} value={t.id} label={t.title}>
+                  {t.title}
+                </Select.Option>
+              ))}
+            </Select>
             <Select
               placeholder="筛选商户"
               value={merchantFilter}

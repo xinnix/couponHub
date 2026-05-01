@@ -14,6 +14,7 @@ const GetRecordsSchema = z.object({
   startDate: z.string().optional(),
   endDate: z.string().optional(),
   merchantId: z.string().optional(), // 新增：支持按商户筛选
+  templateId: z.string().optional(), // 新增：支持按优惠券筛选
   page: z.number().int().positive().optional(),
   pageSize: z.number().int().positive().optional(),
 });
@@ -41,6 +42,7 @@ export const redemptionRouter = router({
   getStats: protectedProcedure
     .input(z.object({
       merchantId: z.string().optional(),
+      templateId: z.string().optional(), // 新增：支持按优惠券筛选
       dateFrom: z.string().optional(),
       dateTo: z.string().optional(),
     }).optional().default({}))
@@ -51,6 +53,7 @@ export const redemptionRouter = router({
       };
 
       if (input.merchantId) where.redeemMerchantId = input.merchantId;
+      if (input.templateId) where.templateId = input.templateId; // 新增：支持按优惠券筛选
       if (input.dateFrom || input.dateTo) {
         where.redeemedAt = {
           ...(input.dateFrom ? { gte: new Date(input.dateFrom) } : {}),
@@ -272,7 +275,7 @@ export const redemptionRouter = router({
   getRecords: protectedProcedure
     .input(GetRecordsSchema)
     .query(async ({ input, ctx }) => {
-      const { startDate, endDate, merchantId, page = 1, pageSize = 20 } = input;
+      const { startDate, endDate, merchantId, templateId, page = 1, pageSize = 20 } = input;
 
       const where: any = {
         status: 'REDEEMED',
@@ -301,6 +304,11 @@ export const redemptionRouter = router({
           // 如果传入了 merchantId 参数，也支持筛选（兼容性）
           where.redeemMerchantId = merchantId;
         }
+      }
+
+      // 新增：按优惠券筛选
+      if (templateId) {
+        where.templateId = templateId;
       }
 
       // 日期范围筛选
