@@ -7,6 +7,8 @@ import {
   DollarOutlined,
   RiseOutlined,
   ThunderboltOutlined,
+  CalendarOutlined,
+  TrophyOutlined,
 } from '@ant-design/icons';
 import { formatCurrency } from '../../../shared/utils/decimal';
 
@@ -19,6 +21,12 @@ export function OverviewStats() {
       value: data?.userCount ?? 0,
       icon: <UserOutlined />,
       color: '#1890ff',
+    },
+    {
+      title: '当日新增人数',
+      value: data?.todayNewUsers ?? 0,
+      icon: <CalendarOutlined />,
+      color: '#95de64',
     },
     {
       title: '活跃商户',
@@ -39,6 +47,12 @@ export function OverviewStats() {
       color: '#fa8c16',
     },
     {
+      title: '当日新增收入',
+      value: formatCurrency(data?.todayNewRevenue ?? 0),
+      icon: <TrophyOutlined />,
+      color: '#ff7a45',
+    },
+    {
       title: '近30天订单',
       value: data?.recentOrders ?? 0,
       icon: <RiseOutlined />,
@@ -55,8 +69,25 @@ export function OverviewStats() {
   return (
     <Spin spinning={isLoading}>
       <Row gutter={[16, 16]} className="stats-row">
-        {stats.map((item) => (
-          <Col xs={12} sm={8} lg={4} key={item.title}>
+        {/* 第一行：用户总数、当日新增人数、活跃商户、总订单 */}
+        {stats.slice(0, 4).map((item) => (
+          <Col xs={12} sm={6} lg={6} key={item.title}>
+            <Card size="small">
+              <Statistic
+                title={item.title}
+                value={item.value}
+                prefix={
+                  <span style={{ color: item.color, marginRight: 4 }}>{item.icon}</span>
+                }
+              />
+            </Card>
+          </Col>
+        ))}
+      </Row>
+      <Row gutter={[16, 16]} className="stats-row" style={{ marginTop: 16 }}>
+        {/* 第二行：总交易额、当日新增收入、近30天订单、近30天收入 */}
+        {stats.slice(4, 8).map((item) => (
+          <Col xs={12} sm={6} lg={6} key={item.title}>
             <Card size="small">
               <Statistic
                 title={item.title}

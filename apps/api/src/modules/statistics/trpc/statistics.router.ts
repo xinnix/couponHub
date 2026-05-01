@@ -16,11 +16,17 @@ export const statisticsRouter = router({
       const since = new Date();
       since.setDate(since.getDate() - days);
 
+      // 当日时间范围（从今天 00:00:00 到现在）
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+
       const [
         userCount,
         merchantCount,
         orderStats,
         recentOrderStats,
+        todayNewUsers,
+        todayNewRevenue,
         orderStatusGroup,
         couponStats,
         settlementStats,
@@ -49,6 +55,22 @@ export const statisticsRouter = router({
             paidAt: { gte: since },
           },
           _count: true,
+          _sum: { price: true },
+        }),
+
+        // 当日新增用户数
+        ctx.prisma.user.count({
+          where: {
+            createdAt: { gte: todayStart },
+          },
+        }),
+
+        // 当日新增收入（当日支付的有效订单）
+        ctx.prisma.order.aggregate({
+          where: {
+            status: { in: ['PAID', 'REDEEMED'] },
+            paidAt: { gte: todayStart },
+          },
           _sum: { price: true },
         }),
 
@@ -99,6 +121,8 @@ export const statisticsRouter = router({
         totalRevenue: Number(orderStats._sum.price ?? 0),
         recentOrders: recentOrderStats._count,
         recentRevenue: Number(recentOrderStats._sum.price ?? 0),
+        todayNewUsers,
+        todayNewRevenue: Number(todayNewRevenue._sum.price ?? 0),
         activeCouponTemplates: couponStats._count,
         totalStock: Number(couponStats._sum.stock ?? 0),
         pendingSettlements: settlementStats._count,
