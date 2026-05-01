@@ -46,10 +46,9 @@ export class TemplateService extends BaseService<'CouponTemplate'> {
       where: { id: templateId },
       data: {
         stock: newStock,
-        // 如果之前是售罄状态（DISABLED），库存恢复后改为 ACTIVE
+        // 如果之前是售罄状态（DISABLED）且是手动下架，库存恢复后改为 ACTIVE
+        // 注意：库存为 0 时不再自动下架，保持上架状态，前端显示"已售罄"
         ...(template.status === 'DISABLED' && newStock > 0 && { status: 'ACTIVE' }),
-        // 如果库存调整为 0，自动标记为售罄
-        ...(newStock === 0 && { status: 'DISABLED' }),
       },
     });
 

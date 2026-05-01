@@ -109,15 +109,17 @@ export class OrderService extends BaseService<'Order'> {
         },
       });
 
-      // 8. 预扣库存，如果库存为0则自动标记为售罄
+      // 8. 预扣库存（库存为 0 时保持上架状态，前端显示"已售罄"）
       const updatedTemplate = await this.prisma.couponTemplate.update({
         where: { id: templateId },
         data: {
           stock: { decrement: 1 },
-          // 如果扣减后库存为0，自动标记为 DISABLED
-          ...(template.stock === 1 && { status: 'DISABLED' }),
         },
       });
+
+      if (updatedTemplate.stock === 0) {
+        this.logger.log(`券模板库存已耗尽: ${template.title} (ID: ${templateId}) - 保持上架状态，前端显示"已售罄"`);
+      }
 
       if (updatedTemplate.stock === 0) {
         this.logger.log(`券模板已售罄: ${template.title} (ID: ${templateId})`);
@@ -286,7 +288,7 @@ export class OrderService extends BaseService<'Order'> {
    * 流程：
    * 1. 更新订单状态为 REFUNDED
    * 2. 恢复库存
-   * 3. 如果之前状态为 DISABLED 且库存恢复后 > 0，则恢复为 ACTIVE
+   * 3. 如果券模板被手动下架且库存恢复后 > 0，则恢复为 ACTIVE
    */
   async confirmRefund(orderId: string, refundId: string) {
     const order = await this.prisma.order.findUnique({
@@ -319,7 +321,8 @@ export class OrderService extends BaseService<'Order'> {
         throw new BadRequestException('券模板不存在');
       }
 
-      const shouldReactivate = currentTemplate.stock === 0 && currentTemplate.status === 'DISABLED';
+      // 只有手动下架的券模板（status === 'DISABLED' 且不是因为过期）才会在退款恢复库存后重新上架
+      const shouldReactivate = currentTemplate.status === 'DISABLED' && currentTemplate.stock === 0;
 
       // 3. 恢复库存并更新券模板状态
       const updatedTemplate = await tx.couponTemplate.update({
@@ -352,7 +355,7 @@ export class OrderService extends BaseService<'Order'> {
       `订单退款成功: ${order.orderNo}, 库存已恢复 (当前库存: ${updatedTemplate.stock})`,
     );
 
-    if (updatedTemplate.stock > 0 && order.template.status === 'DISABLED') {
+    if (updatedTemplate.status === 'ACTIVE' && order.template.status === 'DISABLED') {
       this.logger.log(
         `券模板已重新上架: ${order.template.title} (ID: ${order.templateId})`,
       );
