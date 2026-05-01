@@ -115,10 +115,10 @@ export const RedemptionRecordsPage = () => {
   const totalSettlementAmount = stats?.totalSettlement || 0;
   const merchantCount = stats?.merchantCount || 0;
 
-  // 获取商户列表用于筛选
+  // 获取商户列表用于筛选（加载全部商户以支持搜索）
   const { result: merchantsResult } = useList({
     resource: "merchant",
-    pagination: { pageSize: 100 },
+    pagination: { pageSize: 1000 }, // 加载更多商户以支持完整搜索
   });
 
   const merchants = (merchantsResult as any)?.data || [];
@@ -282,12 +282,13 @@ export const RedemptionRecordsPage = () => {
               style={{ width: 200 }}
               allowClear
               showSearch
+              optionFilterProp="label"
               filterOption={(input, option) =>
-                (option?.children as string)?.toLowerCase().includes(input.toLowerCase())
+                (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
               }
             >
               {merchants.map((m: any) => (
-                <Select.Option key={m.id} value={m.id}>
+                <Select.Option key={m.id} value={m.id} label={m.name}>
                   {m.name}
                 </Select.Option>
               ))}
