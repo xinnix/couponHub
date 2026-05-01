@@ -69,41 +69,33 @@ async function loadHandlerData() {
     uni.setStorageSync('handlerInfo', handlerInfo.value)
     uni.setStorageSync('isHandler', true)
 
-    // 2. 获取核销记录（按商户筛选）
+    // 2. 获取核销统计数据
     const today = new Date()
     const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate())
     const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1)
 
-    const [todayRecords, monthRecords] = await Promise.all([
-      redemptionApi.getRecords({
+    const [todayStats, monthStats] = await Promise.all([
+      redemptionApi.getStats({
         merchantId: handlerInfo.value.merchantId,
-        startDate: startOfDay.toISOString(),
-        pageSize: 100,
+        dateFrom: startOfDay.toISOString(),
       }),
-      redemptionApi.getRecords({
+      redemptionApi.getStats({
         merchantId: handlerInfo.value.merchantId,
-        startDate: startOfMonth.toISOString(),
-        pageSize: 100,
+        dateFrom: startOfMonth.toISOString(),
       }),
     ])
 
-    // 3. 计算统计数据
-    console.log('今日核销记录返回:', todayRecords)
-    console.log('今日核销记录数据:', todayRecords.data)
+    // 3. 更新统计数据
+    console.log('今日核销统计返回:', todayStats)
+    console.log('本月核销统计返回:', monthStats)
 
-    if (todayRecords.data && Array.isArray(todayRecords.data)) {
-      stats.value.todayRedemptions = todayRecords.data.length
+    if (todayStats.data) {
+      stats.value.todayRedemptions = todayStats.data.count
       console.log('今日核销数量:', stats.value.todayRedemptions)
     }
 
-    if (monthRecords.data && Array.isArray(monthRecords.data)) {
-      stats.value.monthEstimate = monthRecords.data.reduce((sum: number, order: any) => {
-        // 使用 settlementAmount，为空时 fallback 到 faceValue
-        const amount = order.template?.settlementAmount
-          ? Number(order.template.settlementAmount)
-          : Number(order.faceValue || 0)
-        return sum + amount
-      }, 0)
+    if (monthStats.data) {
+      stats.value.monthEstimate = monthStats.data.totalSettlement
       console.log('本月预估结算:', stats.value.monthEstimate)
     }
 
@@ -210,6 +202,12 @@ function goHome() {
               {{ merchantName }}店员，你好
             </text>
           </view>
+          <!-- 返回用户首页按钮 -->
+          <!-- <view class="home-button" hover-class="home-button-active" @click="goHome">
+            <text class="home-button-text">
+              返回首页
+            </text>
+          </view> -->
         </view>
       </view>
 

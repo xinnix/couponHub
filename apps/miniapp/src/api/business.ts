@@ -147,4 +147,15 @@ export const redemptionApi = {
   getRecords: (params?: any) => {
     return http.get('/redemptions/records', params);
   },
+
+  /**
+   * 获取核销统计
+   */
+  getStats: (params?: {
+    merchantId?: string;
+    dateFrom?: string;
+    dateTo?: string;
+  }) => {
+    return http.get('/redemptions/stats', params);
+  },
 };
