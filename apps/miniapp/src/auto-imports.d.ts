@@ -9,6 +9,7 @@ declare global {
   const EffectScope: typeof import('vue')['EffectScope']
   const asyncComputed: typeof import('@vueuse/core')['asyncComputed']
   const autoResetRef: typeof import('@vueuse/core')['autoResetRef']
+  const clearAuth: typeof import('./utils/storage')['clearAuth']
   const computed: typeof import('vue')['computed']
   const computedAsync: typeof import('@vueuse/core')['computedAsync']
   const computedEager: typeof import('@vueuse/core')['computedEager']
@@ -36,6 +37,10 @@ declare global {
   const extendRef: typeof import('@vueuse/core')['extendRef']
   const getCurrentInstance: typeof import('vue')['getCurrentInstance']
   const getCurrentScope: typeof import('vue')['getCurrentScope']
+  const getHandlerInfo: typeof import('./utils/storage')['getHandlerInfo']
+  const getRefreshToken: typeof import('./utils/storage')['getRefreshToken']
+  const getToken: typeof import('./utils/storage')['getToken']
+  const getUserInfo: typeof import('./utils/storage')['getUserInfo']
   const h: typeof import('vue')['h']
   const hideLoading: typeof import('./stores/loading')['hideLoading']
   const http: typeof import('./utils/http')['default']
@@ -43,6 +48,7 @@ declare global {
   const inject: typeof import('vue')['inject']
   const injectLocal: typeof import('@vueuse/core')['injectLocal']
   const isDefined: typeof import('@vueuse/core')['isDefined']
+  const isLoggedIn: typeof import('./utils/storage')['isLoggedIn']
   const isProxy: typeof import('vue')['isProxy']
   const isReactive: typeof import('vue')['isReactive']
   const isReadonly: typeof import('vue')['isReadonly']
@@ -112,6 +118,9 @@ declare global {
   const resolveComponent: typeof import('vue')['resolveComponent']
   const resolveRef: typeof import('@vueuse/core')['resolveRef']
   const resolveUnref: typeof import('@vueuse/core')['resolveUnref']
+  const setHandlerInfo: typeof import('./utils/storage')['setHandlerInfo']
+  const setTokens: typeof import('./utils/storage')['setTokens']
+  const setUserInfo: typeof import('./utils/storage')['setUserInfo']
   const shallowReactive: typeof import('vue')['shallowReactive']
   const shallowReadonly: typeof import('vue')['shallowReadonly']
   const shallowRef: typeof import('vue')['shallowRef']
@@ -335,6 +344,7 @@ declare module 'vue' {
     readonly EffectScope: UnwrapRef<typeof import('vue')['EffectScope']>
     readonly asyncComputed: UnwrapRef<typeof import('@vueuse/core')['asyncComputed']>
     readonly autoResetRef: UnwrapRef<typeof import('@vueuse/core')['autoResetRef']>
+    readonly clearAuth: UnwrapRef<typeof import('./utils/storage')['clearAuth']>
     readonly computed: UnwrapRef<typeof import('vue')['computed']>
     readonly computedAsync: UnwrapRef<typeof import('@vueuse/core')['computedAsync']>
     readonly computedEager: UnwrapRef<typeof import('@vueuse/core')['computedEager']>
@@ -362,6 +372,10 @@ declare module 'vue' {
     readonly extendRef: UnwrapRef<typeof import('@vueuse/core')['extendRef']>
     readonly getCurrentInstance: UnwrapRef<typeof import('vue')['getCurrentInstance']>
     readonly getCurrentScope: UnwrapRef<typeof import('vue')['getCurrentScope']>
+    readonly getHandlerInfo: UnwrapRef<typeof import('./utils/storage')['getHandlerInfo']>
+    readonly getRefreshToken: UnwrapRef<typeof import('./utils/storage')['getRefreshToken']>
+    readonly getToken: UnwrapRef<typeof import('./utils/storage')['getToken']>
+    readonly getUserInfo: UnwrapRef<typeof import('./utils/storage')['getUserInfo']>
     readonly h: UnwrapRef<typeof import('vue')['h']>
     readonly hideLoading: UnwrapRef<typeof import('./stores/loading')['hideLoading']>
     readonly http: UnwrapRef<typeof import('./utils/http')['default']>
@@ -369,6 +383,7 @@ declare module 'vue' {
     readonly inject: UnwrapRef<typeof import('vue')['inject']>
     readonly injectLocal: UnwrapRef<typeof import('@vueuse/core')['injectLocal']>
     readonly isDefined: UnwrapRef<typeof import('@vueuse/core')['isDefined']>
+    readonly isLoggedIn: UnwrapRef<typeof import('./utils/storage')['isLoggedIn']>
     readonly isProxy: UnwrapRef<typeof import('vue')['isProxy']>
     readonly isReactive: UnwrapRef<typeof import('vue')['isReactive']>
     readonly isReadonly: UnwrapRef<typeof import('vue')['isReadonly']>
@@ -438,6 +453,9 @@ declare module 'vue' {
     readonly resolveComponent: UnwrapRef<typeof import('vue')['resolveComponent']>
     readonly resolveRef: UnwrapRef<typeof import('@vueuse/core')['resolveRef']>
     readonly resolveUnref: UnwrapRef<typeof import('@vueuse/core')['resolveUnref']>
+    readonly setHandlerInfo: UnwrapRef<typeof import('./utils/storage')['setHandlerInfo']>
+    readonly setTokens: UnwrapRef<typeof import('./utils/storage')['setTokens']>
+    readonly setUserInfo: UnwrapRef<typeof import('./utils/storage')['setUserInfo']>
     readonly shallowReactive: UnwrapRef<typeof import('vue')['shallowReactive']>
     readonly shallowReadonly: UnwrapRef<typeof import('vue')['shallowReadonly']>
     readonly shallowRef: UnwrapRef<typeof import('vue')['shallowRef']>

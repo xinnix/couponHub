@@ -2,6 +2,7 @@
 import { onLoad } from '@dcloudio/uni-app'
 import { onMounted, ref } from 'vue'
 import { authApi } from '@/api/auth'
+import { setTokens, setUserInfo, setHandlerInfo } from '@/utils/storage'
 
 definePage({
   style: {
@@ -46,9 +47,9 @@ async function onLoginTap() {
 
     const res = await authApi.wechatLogin(code)
 
-    uni.setStorageSync('token', res.data.accessToken)
-    uni.setStorageSync('refreshToken', res.data.refreshToken)
-    uni.setStorageSync('userInfo', res.data.user)
+    // 使用统一存储工具
+    setTokens(res.data.accessToken, res.data.refreshToken)
+    setUserInfo(res.data.user)
 
     // 如果用户已有手机号，跳过第二步直接进入
     if (res.data.user.phone) {
@@ -95,8 +96,7 @@ function skipPhoneNumber() {
 async function navigateAfterLogin() {
   try {
     const handlerRes = await authApi.checkHandlerStatus()
-    uni.setStorageSync('isHandler', handlerRes.data.isHandler)
-    uni.setStorageSync('handlerInfo', handlerRes.data.handler)
+    setHandlerInfo(handlerRes.data.isHandler, handlerRes.data.handler)
 
     uni.showToast({ title: '登录成功', icon: 'success' })
 

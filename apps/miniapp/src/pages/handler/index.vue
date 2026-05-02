@@ -3,6 +3,7 @@ import { onPullDownRefresh, onShow } from '@dcloudio/uni-app'
 import { onMounted, ref } from 'vue'
 import { authApi } from '@/api/auth'
 import { redemptionApi } from '@/api/business'
+import { setHandlerInfo } from '@/utils/storage'
 
 interface HandlerInfo {
   id: string
@@ -54,8 +55,7 @@ async function loadHandlerData() {
 
     if (!handlerStatusRes.data?.isHandler || !handlerStatusRes.data?.handler) {
       // 清除核销员身份标记，防止无限循环跳转
-      uni.removeStorageSync('handlerInfo')
-      uni.removeStorageSync('isHandler')
+      setHandlerInfo(false)
 
       uni.showToast({ title: '您不是核销员或已被禁用', icon: 'none' })
       uni.reLaunch({ url: '/pages/index' })
@@ -66,8 +66,7 @@ async function loadHandlerData() {
     merchantName.value = handlerInfo.value.merchantName
 
     // 保存核销员信息到本地
-    uni.setStorageSync('handlerInfo', handlerInfo.value)
-    uni.setStorageSync('isHandler', true)
+    setHandlerInfo(true, handlerInfo.value)
 
     // 2. 获取核销统计数据
     const today = new Date()

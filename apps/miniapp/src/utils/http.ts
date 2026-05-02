@@ -6,6 +6,7 @@
 import type { ApiConfig } from '@/config/api'
 import { API_CONFIG } from '@/config/api'
 import { showLoading, hideLoading } from '@/stores/loading'
+import { getToken, getRefreshToken, setTokens, clearAuth } from '@/utils/storage'
 
 interface RequestConfig {
   url: string
@@ -39,17 +40,17 @@ class HttpClient {
   }
 
   /**
-   * 获取 token
+   * 获取 token（自动检查本地过期）
    */
   private getToken(): string {
-    return uni.getStorageSync('token') || ''
+    return getToken() || ''
   }
 
   /**
    * 获取 refresh token
    */
   private getRefreshToken(): string {
-    return uni.getStorageSync('refreshToken') || ''
+    return getRefreshToken() || ''
   }
 
   /**
@@ -95,11 +96,8 @@ class HttpClient {
           return false
         }
 
-        // 更新本地存储
-        uni.setStorageSync('token', result.accessToken)
-        if (result.refreshToken) {
-          uni.setStorageSync('refreshToken', result.refreshToken)
-        }
+        // 更新本地存储（使用统一工具）
+        setTokens(result.accessToken, result.refreshToken)
 
         console.log('[HTTP] Token 刷新成功')
         return true
@@ -199,9 +197,7 @@ class HttpClient {
               } else {
                 // Token 刷新失败，清除登录状态
                 console.log('[HTTP] Token 刷新失败，清除登录状态')
-                uni.removeStorageSync('token')
-                uni.removeStorageSync('refreshToken')
-                uni.removeStorageSync('userInfo')
+                clearAuth()
 
                 if (shouldShowLoading) {
                   hideLoading()

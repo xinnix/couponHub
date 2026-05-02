@@ -5,6 +5,7 @@ import { authApi } from '@/api/auth'
 import { couponApi, merchantApi, newsApi } from '@/api/business'
 import CustomTabBar from '@/components/CustomTabBar.vue'
 import NewsPopup from '@/components/NewsPopup.vue'
+import { getToken, setUserInfo, setHandlerInfo } from '@/utils/storage'
 
 definePage({
   type: 'home',
@@ -316,7 +317,7 @@ onShow(async () => {
 
 // 刷新用户信息
 async function refreshUserInfo() {
-  const token = uni.getStorageSync('token')
+  const token = getToken()
 
   // 如果已登录，刷新用户信息
   if (token) {
@@ -324,7 +325,7 @@ async function refreshUserInfo() {
       const res = await authApi.getProfile()
       if (res.data) {
         // 更新本地存储的用户信息
-        uni.setStorageSync('userInfo', res.data)
+        setUserInfo(res.data)
         console.log('用户信息已刷新:', res.data)
       }
     }
@@ -338,7 +339,7 @@ async function refreshUserInfo() {
 
 // 检查核销员身份
 async function checkHandlerIdentity() {
-  const token = uni.getStorageSync('token')
+  const token = getToken()
 
   // 已登录，实时检查核销员身份
   if (token) {
@@ -346,14 +347,12 @@ async function checkHandlerIdentity() {
       const res = await authApi.checkHandlerStatus()
       if (res.data?.isHandler && res.data?.handler) {
         console.log('用户是核销员，跳转到核销员首页')
-        uni.setStorageSync('isHandler', true)
-        uni.setStorageSync('handlerInfo', res.data.handler)
+        setHandlerInfo(true, res.data.handler)
         uni.reLaunch({ url: '/pages/handler/index' })
       }
       else {
         // 清除旧的核销员标记
-        uni.removeStorageSync('isHandler')
-        uni.removeStorageSync('handlerInfo')
+        setHandlerInfo(false)
       }
     }
     catch (error) {
