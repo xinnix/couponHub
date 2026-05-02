@@ -13,6 +13,7 @@ import {
   Statistic,
   Tag,
   Empty,
+  Button,
 } from "antd";
 import {
   CheckCircleOutlined,
@@ -21,6 +22,7 @@ import {
 } from "@ant-design/icons";
 import { toNumber, formatCurrency } from "../../../shared/utils/decimal";
 import { useTrpcQuery } from "../../../shared/hooks/useTrpcQuery";
+import { ManualRedeemModal } from "../components/ManualRedeemModal";
 import dayjs from "dayjs";
 
 const { RangePicker } = DatePicker;
@@ -60,6 +62,7 @@ export const RedemptionRecordsPage = () => {
   const [merchantFilter, setMerchantFilter] = useState<string | undefined>(undefined);
   const [templateFilter, setTemplateFilter] = useState<string | undefined>(undefined);
   const [dateRange, setDateRange] = useState<[dayjs.Dayjs, dayjs.Dayjs] | null>(null);
+  const [modalVisible, setModalVisible] = useState(false); // 手动核销 Modal 状态
 
   const {
     tableQuery,
@@ -136,6 +139,11 @@ export const RedemptionRecordsPage = () => {
   });
 
   const templates = (templatesResult as any)?.data || [];
+
+  // 核销成功后刷新列表
+  const handleRedeemSuccess = () => {
+    tableQuery.refetch();
+  };
 
   const columns = [
     {
@@ -228,6 +236,11 @@ export const RedemptionRecordsPage = () => {
           <Row justify="space-between" align="middle" style={{ marginBottom: 16 }}>
             <Col>
               <h1 style={{ margin: 0, fontSize: 24, fontWeight: "bold" }}>核销记录</h1>
+            </Col>
+            <Col>
+              <Button type="primary" onClick={() => setModalVisible(true)}>
+                手动核销
+              </Button>
             </Col>
           </Row>
 
@@ -356,6 +369,13 @@ export const RedemptionRecordsPage = () => {
           />
         </Card>
       </List>
+
+      {/* 手动核销 Modal */}
+      <ManualRedeemModal
+        visible={modalVisible}
+        onCancel={() => setModalVisible(false)}
+        onSuccess={handleRedeemSuccess}
+      />
     </div>
   );
 };

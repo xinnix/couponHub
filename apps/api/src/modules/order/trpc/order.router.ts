@@ -304,6 +304,54 @@ export const orderRouter = createCrudRouterWithCustom(
         }
       }),
 
+    // 根据订单号查询订单信息（用于管理端核销预览）
+    getOrderInfoByOrderNo: permissionProcedure('order', 'read')
+      .input(z.object({ orderNo: z.string().min(1, '订单号不能为空') }))
+      .query(async ({ input, ctx }) => {
+        const { orderNo } = input;
+
+        // 查询订单
+        const order = await ctx.prisma.order.findUnique({
+          where: { orderNo },
+          include: {
+            template: true,
+            merchant: true,
+            handler: {
+              select: { id: true, name: true, phone: true },
+            },
+            user: {
+              select: { id: true, nickname: true, phone: true },
+            },
+          },
+        });
+
+        if (!order) {
+          throw new BadRequestException('订单不存在');
+        }
+
+        // 返回订单预览信息
+        return {
+          orderId: order.id,
+          orderNo: order.orderNo,
+          status: order.status,
+          title: order.template?.title || '优惠券',
+          faceValue: Number(order.faceValue),
+          price: Number(order.price),
+          userNickname: order.user?.nickname || '未知用户',
+          userPhone: order.user?.phone || '未绑定',
+          expireAt: order.expireAt,
+          useFrom: order.template?.useFrom,
+          useUntil: order.template?.useUntil,
+          merchantScope: order.template?.merchantScope as string[] || [],
+          isRedeemed: !!order.redeemedAt,
+          redeemedAt: order.redeemedAt,
+          redeemMerchantId: order.redeemMerchantId,
+          handlerId: order.handlerId,
+          handlerName: order.handler?.name,
+          merchantName: order.merchant?.name,
+        };
+      }),
+
     // 根据核销码获取订单信息（用于核销前确认）
     getByCode: protectedProcedure
       .input(z.object({ code: z.string() }))

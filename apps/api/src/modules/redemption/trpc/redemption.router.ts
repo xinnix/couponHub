@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { protectedProcedure, router } from '../../../trpc/trpc';
+import { protectedProcedure, permissionProcedure, router } from '../../../trpc/trpc';
 import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { verifyRedeemCode } from '../../../shared/utils/qrcode.util';
 
@@ -270,7 +270,7 @@ export const redemptionRouter = router({
     }),
 
   /**
-   * 查询核销记录
+   * 核销记录查询
    */
   getRecords: protectedProcedure
     .input(GetRecordsSchema)
@@ -361,5 +361,136 @@ export const redemptionRouter = router({
         pageSize,
         totalPages: Math.ceil(total / pageSize),
       };
+    }),
+
+  /**
+   * 订单号核销（管理端）
+   * 管理员手动输入订单号进行核销，需要选择核销门店和核销员
+   */
+  redeemByOrderNo: permissionProcedure('order', 'update')
+    .input(z.object({
+      orderNo: z.string().min(1, '订单号不能为空'),
+      merchantId: z.string().min(1, '请选择核销门店'),
+      handlerId: z.string().min(1, '请选择核销员'),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const { orderNo, merchantId, handlerId } = input;
+
+      // 1. 查询订单
+      const order = await ctx.prisma.order.findUnique({
+        where: { orderNo },
+        include: { template: true },
+      });
+
+      if (!order) {
+        throw new BadRequestException('订单不存在');
+      }
+
+      // 2. 验证订单状态（必须是已支付）
+      if (order.status !== 'PAID') {
+        throw new BadRequestException(`订单状态异常: ${order.status}，无法核销`);
+      }
+
+      // 3. 检查是否已核销（幂等性）
+      if (order.redeemedAt) {
+        throw new BadRequestException('该订单已核销');
+      }
+
+      // 4. 检查使用期限
+      const now = new Date();
+      const fmt = (d: Date) => d.toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' });
+
+      if (order.template.useFrom > now) {
+        throw new BadRequestException(`该券尚未开始使用，使用开始时间: ${fmt(order.template.useFrom)}`);
+      }
+      if (order.template.useUntil < now) {
+        throw new BadRequestException('该券已超过使用截止时间，无法核销');
+      }
+
+      // 5. 检查订单是否过期（相对有效期）
+      if (order.expireAt && new Date(order.expireAt) < now) {
+        throw new BadRequestException('该券已过期，无法核销');
+      }
+
+      // 6. 获取核销员信息并验证
+      const handler = await ctx.prisma.handler.findUnique({
+        where: { id: handlerId },
+        include: { merchant: true },
+      });
+
+      if (!handler) {
+        throw new ForbiddenException('核销员不存在');
+      }
+
+      if (!handler.isActive) {
+        throw new ForbiddenException('核销员已被禁用，无法执行核销操作');
+      }
+
+      if (handler.merchantId !== merchantId) {
+        throw new ForbiddenException('核销员不属于所选商户');
+      }
+
+      // 7. 验证商户范围权限
+      const merchantScope = order.template.merchantScope as string[];
+      if (merchantScope && merchantScope.length > 0 && !merchantScope.includes(merchantId)) {
+        throw new ForbiddenException('该券不适用于当前商户');
+      }
+
+      // 8. 使用分布式锁保护核销操作（防止并发）
+      const lockKey = `redemption:${order.id}`;
+      const lock = await ctx.redisService.acquireLock(lockKey, 10000, 3, 100);
+
+      if (!lock) {
+        throw new BadRequestException('订单正在被处理，请稍后重试');
+      }
+
+      try {
+        // 9. 在锁内重新检查是否已核销（防止并发攻击）
+        const lockedOrder = await ctx.prisma.order.findUnique({
+          where: { id: order.id },
+        });
+
+        if (lockedOrder && lockedOrder.redeemedAt) {
+          throw new BadRequestException('该订单已核销');
+        }
+
+        // 10. 更新订单状态（核销成功）
+        const updated = await ctx.prisma.order.update({
+          where: { id: order.id },
+          data: {
+            status: 'REDEEMED',
+            redeemMerchantId: merchantId,
+            handlerId: handlerId,
+            redeemedAt: new Date(),
+          },
+          include: {
+            template: true,
+            merchant: {
+              include: {
+                category: true,
+              },
+            },
+            handler: {
+              select: {
+                id: true,
+                name: true,
+                phone: true,
+              },
+            },
+            user: {
+              select: {
+                id: true,
+                nickname: true,
+                phone: true,
+              },
+            },
+          },
+        });
+
+        return updated;
+      } finally {
+        // 11. 释放锁
+        await ctx.redisService.releaseLock(lockKey, lock);
+      }
     }),
 });

@@ -2,12 +2,14 @@ import { initTRPC, TRPCError } from "@trpc/server";
 import { ZodError } from "zod";
 import { PrismaService } from "../prisma/prisma.service";
 import { FileStorageService } from "../shared/services/file-storage.service";
+import { RedisService } from "../shared/services/redis.service";
 import jwt from "jsonwebtoken";
 import { INestApplication } from "@nestjs/common";
 
 // Global service references
 let prismaServiceInstance: PrismaService | null = null;
 let fileStorageServiceInstance: FileStorageService | null = null;
+let redisServiceInstance: RedisService | null = null;
 let appInstance: INestApplication | null = null;
 
 export const setPrismaService = (prisma: PrismaService) => {
@@ -16,6 +18,10 @@ export const setPrismaService = (prisma: PrismaService) => {
 
 export const setFileStorageService = (fileStorage: FileStorageService) => {
   fileStorageServiceInstance = fileStorage;
+};
+
+export const setRedisService = (redis: RedisService) => {
+  redisServiceInstance = redis;
 };
 
 export const setAppInstance = (app: INestApplication) => {
@@ -109,6 +115,7 @@ async function verifyJwtToken(req: any, prisma: PrismaService): Promise<User | n
 export const createContext = async (opts: any) => {
   const prisma = prismaServiceInstance || opts?.prisma;
   const fileStorage = fileStorageServiceInstance || opts?.fileStorage;
+  const redisService = redisServiceInstance || opts?.redisService;
   const app = appInstance || opts?.app;
   const req = opts?.req;
 
@@ -121,6 +128,7 @@ export const createContext = async (opts: any) => {
   return {
     prisma,
     fileStorage,
+    redisService,
     app,
     req,
     res: opts?.res,

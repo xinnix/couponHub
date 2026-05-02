@@ -12,8 +12,9 @@ import { AllExceptionsFilter } from "./core/filters/http-exception.filter";
 
 import { PrismaService } from "./prisma/prisma.service";
 import { FileStorageService } from "./shared/services/file-storage.service";
+import { RedisService } from "./shared/services/redis.service";
 import { appRouter } from "./trpc/app.router";
-import { createContext, setPrismaService, setFileStorageService, setAppInstance } from "./trpc/trpc";
+import { createContext, setPrismaService, setFileStorageService, setRedisService, setAppInstance } from "./trpc/trpc";
 import * as trpcExpress from "@trpc/server/adapters/express";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import { ValidationPipe } from "@nestjs/common";
@@ -71,6 +72,9 @@ async function bootstrap() {
 
   const fileStorageService = app.get(FileStorageService);
   setFileStorageService(fileStorageService); // 设置 FileStorageService 实例
+
+  const redisService = app.get(RedisService);
+  setRedisService(redisService); // 设置 RedisService 实例
 
   setAppInstance(app); // 设置 NestJS app 实例
 

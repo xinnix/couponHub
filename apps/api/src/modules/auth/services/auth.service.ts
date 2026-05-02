@@ -519,9 +519,10 @@ export class AuthService {
     // 生成刷新令牌
     const refreshToken = randomBytes(32).toString('hex');
 
-    // 计算过期时间
+    // 计算过期时间（从环境变量读取）
+    const refreshExpiresDays = parseInt(process.env.JWT_REFRESH_EXPIRES_IN?.replace('d', '') || '30', 10);
     const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 30); // 30天
+    expiresAt.setDate(expiresAt.getDate() + refreshExpiresDays);
 
     // 保存刷新令牌
     await this.prisma.userRefreshToken.create({
@@ -549,9 +550,10 @@ export class AuthService {
     // 生成刷新令牌
     const refreshToken = randomBytes(32).toString('hex');
 
-    // 计算过期时间
+    // 计算过期时间（从环境变量读取）
+    const refreshExpiresDays = parseInt(process.env.JWT_REFRESH_EXPIRES_IN?.replace('d', '') || '30', 10);
     const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 30); // 30天
+    expiresAt.setDate(expiresAt.getDate() + refreshExpiresDays);
 
     // 保存刷新令牌
     await this.prisma.adminRefreshToken.create({
