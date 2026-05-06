@@ -468,8 +468,8 @@ function getDefaultImage(type: string, id: string) {
         </view>
       </view>
 
-      <!-- Hot Vouchers -->
-      <view class="py-4">
+      <!-- Hot Vouchers - 仅在有优惠券数据时显示 -->
+      <view v-if="vouchers.length > 0" class="py-4">
         <view class="mb-3 flex items-end justify-between px-4">
           <view class="flex flex-col">
             <text class="text-xl text-on-surface font-extrabold">
@@ -516,8 +516,8 @@ function getDefaultImage(type: string, id: string) {
         </scroll-view>
       </view>
 
-      <!-- Merchant List -->
-      <view class="px-4">
+      <!-- Merchant List - 如果没有优惠券数据，增加上方间距 -->
+      <view class="px-4" :class="{ 'pt-4': vouchers.length === 0 }">
         <view class="mb-3 flex items-end justify-between">
           <view class="flex flex-col">
             <text class="text-xl text-on-surface font-extrabold leading-tight">
