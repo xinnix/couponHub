@@ -213,6 +213,50 @@ function handleUse(item: any) {
   uni.navigateTo({ url: `/pages/qrcode/index?orderId=${item.id}` })
 }
 
+// 申请退款
+async function handleRefund(item: any) {
+  // 弹出确认对话框
+  uni.showModal({
+    title: '申请退款',
+    content: '确认要申请退款吗？退款将在1-3个工作日内处理完成。',
+    success: async (res) => {
+      if (res.confirm) {
+        try {
+          uni.showLoading({ title: '提交退款申请...', mask: true })
+
+          const refundRes = await orderApi.requestRefund({
+            orderId: item.id,
+            reason: '用户申请退款',
+          })
+
+          uni.hideLoading()
+
+          if (refundRes.success) {
+            uni.showToast({
+              title: '退款申请已提交',
+              icon: 'success',
+              duration: 2000,
+            })
+
+            // 刷新订单列表
+            setTimeout(async () => {
+              await loadOrders()
+            }, 2000)
+          }
+        } catch (error: any) {
+          uni.hideLoading()
+          const errMsg = error?.message || error?.data?.message || '退款申请失败'
+          uni.showToast({
+            title: errMsg,
+            icon: 'none',
+            duration: 3000,
+          })
+        }
+      }
+    },
+  })
+}
+
 async function handlePay(item: any) {
   try {
     uni.showLoading({ title: '调起支付...', mask: true })
@@ -412,6 +456,12 @@ async function handlePay(item: any) {
                 <view v-if="item.status === 'UNPAID'" class="use-btn use-btn-outline" @click.stop="handlePay(item)">
                   <text class="use-btn-text use-btn-text-outline">
                     去支付
+                  </text>
+                </view>
+                <!-- 已过期订单显示退款按钮 -->
+                <view v-if="item.status === 'EXPIRED' && !item.isFreeOrder && Number(item.price) > 0" class="use-btn refund-btn" @click.stop="handleRefund(item)">
+                  <text class="use-btn-text">
+                    申请退款
                   </text>
                 </view>
               </view>
@@ -922,6 +972,14 @@ async function handlePay(item: any) {
 
 .use-btn-text-outline {
   color: #00AEEF;
+}
+
+.refund-btn {
+  background: rgba(186, 26, 26, 0.9);
+}
+
+.refund-btn:active {
+  opacity: 0.8;
 }
 
 .refund-tip {

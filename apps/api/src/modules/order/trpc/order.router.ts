@@ -242,7 +242,7 @@ export const orderRouter = createCrudRouterWithCustom(
         return orders;
       }),
 
-    // 申请退款
+    // 申请退款（支持 PAID 和 EXPIRED 状态）
     requestRefund: protectedProcedure
       .input(RefundOrderSchema)
       .mutation(async ({ input, ctx }) => {
@@ -263,14 +263,34 @@ export const orderRouter = createCrudRouterWithCustom(
           throw new ForbiddenException('无权操作此订单');
         }
 
-        // 验证订单状态
-        if (order.status !== 'PAID') {
-          throw new BadRequestException('只有已支付的订单可以退款');
+        // 验证订单状态（支持 PAID 和 EXPIRED）
+        if (order.status !== 'PAID' && order.status !== 'EXPIRED') {
+          throw new BadRequestException('只有待使用或已过期的订单可以申请退款');
         }
 
         // 验证是否已核销（已核销的订单不能退款）
         if (order.redeemedAt) {
           throw new BadRequestException('已核销的订单无法退款');
+        }
+
+        // 验证是否已经退款成功（防止重复退款）
+        if (order.refundId && order.status === 'REFUNDED') {
+          throw new BadRequestException('订单已退款成功，无需重复申请');
+        }
+
+        // 验证订单是否锁定（结算中）
+        if (order.isLocked) {
+          throw new BadRequestException('订单已锁定（结算中），无法退款');
+        }
+
+        // 检查是否为免费订单
+        if (order.isFreeOrder || Number(order.price) === 0) {
+          throw new BadRequestException('免费订单无需退款');
+        }
+
+        // 验证是否已经在退款中
+        if (order.status === 'REFUNDING') {
+          throw new BadRequestException('订单正在退款处理中，请耐心等待');
         }
 
         // 立即调用微信支付退款API（用户申请后直接退款，无需管理员审核）
