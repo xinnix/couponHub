@@ -41,6 +41,7 @@ export const orderRouter = createCrudRouterWithCustom(
       .input(z.object({
         orderNo: z.string().optional(),
         status: z.string().optional(),
+        templateId: z.string().optional(),
         dateFrom: z.string().optional(),
         dateTo: z.string().optional(),
       }).optional().default({}))
@@ -48,6 +49,7 @@ export const orderRouter = createCrudRouterWithCustom(
         const where: any = {};
         if (input.orderNo) where.orderNo = { contains: input.orderNo };
         if (input.status) where.status = input.status;
+        if (input.templateId) where.templateId = input.templateId;
         if (input.dateFrom || input.dateTo) {
           where.createdAt = {
             ...(input.dateFrom ? { gte: new Date(input.dateFrom) } : {}),
@@ -441,6 +443,182 @@ export const orderRouter = createCrudRouterWithCustom(
         });
 
         return result;
+      }),
+
+    // 手动退款（管理员操作）
+    manualRefund: permissionProcedure('order', 'update')
+      .input(z.object({
+        orderId: z.string(),
+        reason: z.string().optional().default('管理员手动退款'),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const { orderId, reason } = input;
+
+        // 查询订单
+        const order = await ctx.prisma.order.findUnique({
+          where: { id: orderId },
+          include: { template: true },
+        });
+
+        if (!order) {
+          throw new BadRequestException('订单不存在');
+        }
+
+        // ⚠️ 验证是否已核销（已核销的订单不能退款）
+        if (order.redeemedAt || order.status === 'REDEEMED') {
+          throw new BadRequestException('已核销的订单无法退款');
+        }
+
+        // 验证订单状态（只有 EXPIRED 状态可以退款）
+        if (order.status !== 'EXPIRED') {
+          throw new BadRequestException(
+            `只有已过期的订单可以退款，当前状态: ${order.status}`,
+          );
+        }
+
+        // 验证是否已经退款成功（防止重复退款）
+        if (order.refundId && order.status === 'REFUNDED') {
+          throw new BadRequestException('订单已退款成功，无需重复操作');
+        }
+
+        // 检查是否为免费订单
+        if (order.isFreeOrder || Number(order.price) === 0) {
+          throw new BadRequestException('免费订单无需退款');
+        }
+
+        // 验证订单是否锁定
+        if (order.isLocked) {
+          throw new BadRequestException('订单已锁定（结算中），无法退款');
+        }
+
+        // 导入退款队列服务
+        const { RefundQueue } = await import('../../scheduler/queues/refund.queue');
+        const refundQueue = ctx.app.get(RefundQueue);
+
+        // 生成退款单号
+        const refundNo = `manual_refund_${Date.now()}_${order.id}`;
+
+        // 更新订单状态为 REFUNDING
+        await ctx.prisma.order.update({
+          where: { id: orderId },
+          data: {
+            status: 'REFUNDING',
+            refundReason: reason,
+          },
+        });
+
+        // 推送退款任务到队列
+        await refundQueue.addRefundJob({
+          orderId: order.id,
+          orderNo: order.orderNo,
+          userId: order.userId,
+          price: Number(order.price),
+          reason: 'MANUAL',
+          refundNo,
+        });
+
+        return {
+          success: true,
+          message: '退款任务已提交到队列，预计 1-2 分钟内完成',
+          refundNo,
+        };
+      }),
+
+    // 批量退款（管理员操作）
+    batchRefund: permissionProcedure('order', 'update')
+      .input(z.object({
+        orderIds: z.array(z.string()).min(1, '请至少选择一个订单'),
+        reason: z.string().optional().default('管理员批量退款'),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const { orderIds, reason } = input;
+
+        // 查询所有订单
+        const orders = await ctx.prisma.order.findMany({
+          where: { id: { in: orderIds } },
+          include: { template: true },
+        });
+
+        if (orders.length !== orderIds.length) {
+          throw new BadRequestException('部分订单不存在');
+        }
+
+        // 验证所有订单状态
+        const invalidOrders: string[] = [];
+        const redeemedOrders: string[] = [];
+        const freeOrders: string[] = [];
+        const lockedOrders: string[] = [];
+
+        for (const order of orders) {
+          if (order.status !== 'EXPIRED') {
+            invalidOrders.push(order.orderNo);
+          }
+          if (order.redeemedAt || order.status === 'REDEEMED') {
+            redeemedOrders.push(order.orderNo);
+          }
+          if (order.isFreeOrder || Number(order.price) === 0) {
+            freeOrders.push(order.orderNo);
+          }
+          if (order.isLocked) {
+            lockedOrders.push(order.orderNo);
+          }
+        }
+
+        // 如果有任何不符合条件的订单，返回错误
+        if (invalidOrders.length > 0) {
+          throw new BadRequestException(
+            `以下订单不是过期状态，无法退款: ${invalidOrders.join(', ')}`,
+          );
+        }
+        if (redeemedOrders.length > 0) {
+          throw new BadRequestException(
+            `以下订单已核销，无法退款: ${redeemedOrders.join(', ')}`,
+          );
+        }
+        if (freeOrders.length > 0) {
+          throw new BadRequestException(
+            `以下订单为免费订单，无需退款: ${freeOrders.join(', ')}`,
+          );
+        }
+        if (lockedOrders.length > 0) {
+          throw new BadRequestException(
+            `以下订单已锁定（结算中），无法退款: ${lockedOrders.join(', ')}`,
+          );
+        }
+
+        // 导入退款队列服务
+        const { RefundQueue } = await import('../../scheduler/queues/refund.queue');
+        const refundQueue = ctx.app.get(RefundQueue);
+
+        // 批量更新订单状态为 REFUNDING
+        await ctx.prisma.order.updateMany({
+          where: { id: { in: orderIds } },
+          data: {
+            status: 'REFUNDING',
+            refundReason: reason,
+          },
+        });
+
+        // 批量推送退款任务到队列
+        const refundJobs = orders.map((order) => {
+          const refundNo = `batch_refund_${Date.now()}_${order.id}`;
+          return refundQueue.addRefundJob({
+            orderId: order.id,
+            orderNo: order.orderNo,
+            userId: order.userId,
+            price: Number(order.price),
+            reason: 'BATCH',
+            refundNo,
+          });
+        });
+
+        await Promise.all(refundJobs);
+
+        return {
+          success: true,
+          message: `已提交 ${orders.length} 个退款任务到队列，预计 2-5 分钟内完成`,
+          count: orders.length,
+        };
       }),
   }),
   {
