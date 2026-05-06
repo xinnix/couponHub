@@ -23,6 +23,7 @@ import { json } from "express";
 import { BullBoardSetup } from "./modules/scheduler/config/bull-board.setup";
 import { InjectQueue } from "@nestjs/bull";
 import { Queue } from "bull";
+import expressBasicAuth from "express-basic-auth";
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -95,8 +96,32 @@ async function bootstrap() {
     const bullBoardSetup = app.get(BullBoardSetup);
     const serverAdapter = bullBoardSetup.getServerAdapter();
 
-    app.use('/bull-board', serverAdapter.getRouter());
-    console.log(`📊 Bull Board 可视化面板: http://localhost:${port}/bull-board`);
+    // 生产环境添加 Basic Auth 保护
+    if (process.env.NODE_ENV === 'production') {
+      const bullBoardPassword = process.env.BULL_BOARD_PASSWORD;
+
+      if (!bullBoardPassword) {
+        console.warn('⚠️  生产环境未设置 BULL_BOARD_PASSWORD，Bull Board 已禁用');
+        console.warn('⚠️  请在 .env 中设置 BULL_BOARD_PASSWORD 以启用安全访问');
+      } else {
+        app.use('/bull-board',
+          expressBasicAuth({
+            users: {
+              admin: bullBoardPassword,
+            },
+            challenge: true,
+            realm: 'Bull Board Monitor',
+          }),
+          serverAdapter.getRouter()
+        );
+        console.log('📊 Bull Board (已启用 Basic Auth 保护): http://localhost:' + port + '/bull-board');
+        console.log('🔐 用户名: admin | 密码: 已配置');
+      }
+    } else {
+      // 开发环境无认证
+      app.use('/bull-board', serverAdapter.getRouter());
+      console.log(`📊 Bull Board 可视化面板: http://localhost:${port}/bull-board`);
+    }
   } catch (error) {
     console.warn('⚠️  Bull Board 配置失败（队列未初始化）:', error.message);
   }

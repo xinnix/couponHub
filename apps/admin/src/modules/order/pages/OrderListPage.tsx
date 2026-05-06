@@ -117,8 +117,9 @@ export const OrderListPage = () => {
     setFilters(filters, "replace");
   };
 
-  // 监听筛选条件变化
+  // 监听筛选条件变化，重置页码为 1
   React.useEffect(() => {
+    setCurrentPage(1);
     handleFilterChange();
   }, [searchText, statusFilter, dateRange]);
 
