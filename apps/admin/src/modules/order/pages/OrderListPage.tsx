@@ -23,6 +23,7 @@ import {
   ShoppingCartOutlined,
   CheckCircleOutlined,
   ClockCircleOutlined,
+  ReloadOutlined,
 } from "@ant-design/icons";
 import { OrderStatusTag } from "../components/OrderStatusTag";
 import { exportOrders } from "../../../shared/utils/export";
@@ -49,6 +50,7 @@ interface Order {
   price: number;
   faceValue: number;
   isLocked: boolean;
+  isFreeOrder: boolean; // 新增字段
   createdAt: Date;
   updatedAt: Date;
   user?: {
@@ -71,6 +73,7 @@ export const OrderListPage = () => {
   const [selectedRowKeys, setSelectedRowKeys] = useState<string[]>([]);
   const [searchText, setSearchText] = useState("");
   const [statusFilter, setStatusFilter] = useState<string | undefined>(undefined);
+  const [templateFilter, setTemplateFilter] = useState<string | undefined>(undefined);
   const [dateRange, setDateRange] = useState<[dayjs.Dayjs, dayjs.Dayjs] | null>(null);
 
   const {
@@ -108,6 +111,10 @@ export const OrderListPage = () => {
       filters.push({ field: "status", operator: "eq", value: statusFilter });
     }
 
+    if (templateFilter) {
+      filters.push({ field: "templateId", operator: "eq", value: templateFilter });
+    }
+
     if (dateRange && dateRange[0] && dateRange[1]) {
       filters.push({ field: "createdAt", operator: "gte", value: dateRange[0].startOf('day').toISOString() });
       filters.push({ field: "createdAt", operator: "lte", value: dateRange[1].endOf('day').toISOString() });
@@ -121,11 +128,22 @@ export const OrderListPage = () => {
   React.useEffect(() => {
     setCurrentPage(1);
     handleFilterChange();
-  }, [searchText, statusFilter, dateRange]);
+  }, [searchText, statusFilter, templateFilter, dateRange]);
 
   const result = tableQuery.data;
   const query = tableQuery;
   const orders = (result as any)?.data || [];
+
+  // 获取优惠券模板列表（用于筛选）
+  const { data: templatesData } = useTrpcQuery<any>(
+    "couponTemplate.getMany",
+    {
+      page: 1,
+      limit: 999,
+      select: { id: true, title: true },
+    },
+  );
+  const templatesList = (templatesData as any)?.items || [];
 
   // 统计数据（跟随筛选条件，聚合所有页）
   const { data: stats } = useTrpcQuery<any[]>(
@@ -133,6 +151,7 @@ export const OrderListPage = () => {
     {
       orderNo: searchText || undefined,
       status: statusFilter || undefined,
+      templateId: templateFilter || undefined,
       dateFrom: dateRange?.[0]?.startOf('day').toISOString(),
       dateTo: dateRange?.[1]?.endOf('day').toISOString(),
     },
@@ -156,6 +175,7 @@ export const OrderListPage = () => {
       const where: any = {};
       if (searchText) where.orderNo = { contains: searchText };
       if (statusFilter) where.status = statusFilter;
+      if (templateFilter) where.templateId = templateFilter;
       if (dateRange && dateRange[0] && dateRange[1]) {
         where.createdAt = {
           gte: dateRange[0].startOf('day').toISOString(),
@@ -186,6 +206,52 @@ export const OrderListPage = () => {
       message.error('导出失败');
     }
   };
+
+  // 手动退款
+  const handleManualRefund = async (orderId: string) => {
+    try {
+      const trpc = getTrpcClient();
+      const result = await (trpc as any).order.manualRefund.mutate({
+        orderId,
+        reason: '管理员手动退款',
+      });
+
+      message.success(result.message || '退款任务已提交');
+      // 刷新列表
+      tableQuery.refetch();
+    } catch (error: any) {
+      message.error(error.message || '退款失败');
+    }
+  };
+
+  // 批量退款
+  const handleBatchRefund = async () => {
+    try {
+      const trpc = getTrpcClient();
+      const result = await (trpc as any).order.batchRefund.mutate({
+        orderIds: selectedRowKeys,
+        reason: '管理员批量退款',
+      });
+
+      message.success(result.message || `已提交 ${result.count} 个退款任务`);
+      // 清空选择并刷新列表
+      setSelectedRowKeys([]);
+      tableQuery.refetch();
+    } catch (error: any) {
+      message.error(error.message || '批量退款失败');
+    }
+  };
+
+  // 检查选中的订单是否都符合退款条件
+  const selectedOrders = orders.filter((order: Order) => selectedRowKeys.includes(order.id));
+  const canBatchRefund = selectedOrders.length > 0 &&
+    selectedOrders.every((order: Order) =>
+      order.status === 'EXPIRED' &&
+      !order.redeemedAt &&
+      !order.isLocked &&
+      !order.isFreeOrder &&
+      Number(order.price) > 0
+    );
 
   const columns = [
     {
@@ -262,6 +328,30 @@ export const OrderListPage = () => {
       dataIndex: "createdAt",
       width: 160,
       render: (date: Date) => dayjs(date).format('YYYY-MM-DD HH:mm'),
+    },
+    {
+      title: "操作",
+      width: 100,
+      fixed: 'right',
+      render: (_: any, record: Order) => {
+        // 只有 EXPIRED 状态且未核销、未锁定的订单可以退款
+        const canRefund = record.status === 'EXPIRED' &&
+          !record.redeemedAt &&
+          !record.isLocked &&
+          !record.isFreeOrder &&
+          Number(record.price) > 0;
+
+        return canRefund ? (
+          <Button
+            type="link"
+            size="small"
+            icon={<ReloadOutlined />}
+            onClick={() => handleManualRefund(record.id)}
+          >
+            退款
+          </Button>
+        ) : null;
+      },
     },
   ];
 
@@ -376,6 +466,23 @@ export const OrderListPage = () => {
               <Select.Option value="EXPIRED">已过期</Select.Option>
               <Select.Option value="CANCELLED">已取消</Select.Option>
             </Select>
+            <Select
+              placeholder="筛选优惠券"
+              value={templateFilter}
+              onChange={setTemplateFilter}
+              style={{ width: 200 }}
+              allowClear
+              showSearch
+              filterOption={(input, option) =>
+                (option?.children as string)?.toLowerCase().includes(input.toLowerCase())
+              }
+            >
+              {templatesList.map((template: any) => (
+                <Select.Option key={template.id} value={template.id}>
+                  {template.title}
+                </Select.Option>
+              ))}
+            </Select>
             <RangePicker
               placeholder={['创建开始日期', '创建结束日期']}
               value={dateRange}
@@ -391,6 +498,16 @@ export const OrderListPage = () => {
               <Button size="small" onClick={() => setSelectedRowKeys([])}>
                 取消选择
               </Button>
+              {canBatchRefund && (
+                <Button
+                  type="primary"
+                  size="small"
+                  icon={<ReloadOutlined />}
+                  onClick={handleBatchRefund}
+                >
+                  批量退款
+                </Button>
+              )}
             </Space>
           )}
 

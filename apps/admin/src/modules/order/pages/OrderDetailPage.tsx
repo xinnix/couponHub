@@ -1,10 +1,11 @@
 // apps/admin/src/modules/order/pages/OrderDetailPage.tsx
 import { useParams, useNavigate } from "react-router-dom";
 import { useOne } from "@refinedev/core";
-import { Card, Descriptions, Tag, Button, Space, Spin, Empty, Timeline, Alert } from "antd";
-import { ArrowLeftOutlined, CheckCircleOutlined, CloseCircleOutlined, SyncOutlined, ClockCircleOutlined } from "@ant-design/icons";
+import { Card, Descriptions, Tag, Button, Space, Spin, Empty, Timeline, Alert, App } from "antd";
+import { ArrowLeftOutlined, CheckCircleOutlined, CloseCircleOutlined, SyncOutlined, ClockCircleOutlined, ReloadOutlined } from "@ant-design/icons";
 import { OrderStatusTag } from "../components/OrderStatusTag";
 import { formatCurrency } from "../../../shared/utils/decimal";
+import { getTrpcClient } from "../../../shared/trpc/trpcClient";
 import dayjs from "dayjs";
 
 interface Order {
@@ -45,11 +46,37 @@ interface Order {
 export const OrderDetailPage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { message } = App.useApp();
 
   const { result: order, isLoading } = useOne<Order>({
     resource: "order",
     id: id!,
   });
+
+  // 手动退款
+  const handleManualRefund = async () => {
+    if (!order) return;
+
+    try {
+      const trpc = getTrpcClient();
+      const result = await (trpc as any).order.manualRefund.mutate({
+        orderId: order.id,
+        reason: '管理员手动退款',
+      });
+
+      message.success(result.message || '退款任务已提交');
+      // 刷新页面数据
+      window.location.reload();
+    } catch (error: any) {
+      message.error(error.message || '退款失败');
+    }
+  };
+
+  // 判断是否可以退款（EXPIRED 状态且未核销、未锁定）
+  const canRefund = order &&
+    order.status === 'EXPIRED' &&
+    !order.redeemedAt &&
+    !order.isLocked;
 
   if (isLoading) {
     return (
@@ -174,6 +201,15 @@ export const OrderDetailPage = () => {
           <Button icon={<ArrowLeftOutlined />} onClick={() => navigate("/orders")}>
             返回列表
           </Button>
+          {canRefund && (
+            <Button
+              type="primary"
+              icon={<ReloadOutlined />}
+              onClick={handleManualRefund}
+            >
+              手动退款
+            </Button>
+          )}
         </Space>
 
         {order.isLocked && (
@@ -181,6 +217,20 @@ export const OrderDetailPage = () => {
             message="此订单已结算锁定"
             description="该订单已被结算单锁定，不能进行退款操作。"
             type="warning"
+            showIcon
+            style={{ marginBottom: 24 }}
+          />
+        )}
+
+        {order.status === 'EXPIRED' && !order.isLocked && (
+          <Alert
+            message="订单已过期，待退款审核"
+            description={
+              <span>
+                此订单使用期已过期。请确认退款后点击<strong>"手动退款"</strong>按钮发起退款。
+              </span>
+            }
+            type="info"
             showIcon
             style={{ marginBottom: 24 }}
           />
