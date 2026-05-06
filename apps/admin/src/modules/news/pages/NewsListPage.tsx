@@ -1,7 +1,7 @@
 // apps/admin/src/modules/news/pages/NewsListPage.tsx
 import { useState } from "react";
 import { useTable, useCreate, useUpdate, useDelete, useDeleteMany } from "@refinedev/core";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { List } from "@refinedev/antd";
 import {
   Table,
@@ -136,11 +136,20 @@ export const NewsListPage = () => {
   const query = tableQuery;
   const news = (result as any)?.data || [];
 
-  // 统计数据
-  const publishedCount = news.filter((n: News) => n.status === 'PUBLISHED').length;
-  const draftCount = news.filter((n: News) => n.status === 'DRAFT').length;
-  const popupCount = news.filter((n: News) => n.isPopup && n.status === 'PUBLISHED').length;
-  const totalViews = news.reduce((sum: number, n: News) => sum + n.viewCount, 0);
+  // 获取新闻统计数据（使用后端统计接口，获取全局准确数据）
+  const { data: statsData } = useQuery({
+    queryKey: ['newsStats'],
+    queryFn: async () => {
+      const trpcClient = await getTrpcClient();
+      return trpcClient.news.getStats.query();
+    },
+  });
+
+  // 使用后端返回的统计数据
+  const publishedCount = statsData?.publishedCount || 0;
+  const draftCount = statsData?.draftCount || 0;
+  const popupCount = statsData?.popupCount || 0;
+  const totalViews = statsData?.totalViews || 0;
 
   const handleCreate = () => {
     setEditingRecord(null);

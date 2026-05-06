@@ -136,4 +136,33 @@ export const newsRouter = router({
       const newsService = ctx.app.get(NewsService);
       return newsService.getOrGenerateQrcode(input.id);
     }),
+
+  // 获取新闻统计数据 - 需要权限
+  getStats: permissionProcedure('news', 'read')
+    .query(async ({ ctx }) => {
+      // 使用 groupBy 在数据库层面统计
+      const statusStats = await ctx.prisma.news.groupBy({
+        by: ['status'],
+        _count: { id: true },
+        _sum: { viewCount: true },
+      });
+
+      // 计算总浏览量
+      const totalViews = statusStats.reduce(
+        (sum, s) => sum + Number(s._sum.viewCount || 0),
+        0
+      );
+
+      // 弹窗新闻数量（需要单独查询，因为涉及两个字段条件）
+      const popupCount = await ctx.prisma.news.count({
+        where: { isPopup: true, status: 'PUBLISHED' },
+      });
+
+      return {
+        publishedCount: statusStats.find(s => s.status === 'PUBLISHED')?._count.id || 0,
+        draftCount: statusStats.find(s => s.status === 'DRAFT')?._count.id || 0,
+        popupCount,
+        totalViews,
+      };
+    }),
 });

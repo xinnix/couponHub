@@ -11,6 +11,10 @@ interface ExportOrder {
   template?: {
     title: string;
   };
+  merchant?: {
+    id: string;
+    name: string;
+  };
   price: number;
   faceValue: number;
   status: string;
@@ -36,6 +40,7 @@ export const convertToCSV = (orders: ExportOrder[]) => {
     '券标题',
     '购买价格',
     '面值',
+    '核销商户',
     '状态',
     '支付时间',
     '核销时间',
@@ -49,6 +54,7 @@ export const convertToCSV = (orders: ExportOrder[]) => {
     order.template?.title || '',
     toNumber(order.price).toFixed(2),
     toNumber(order.faceValue).toFixed(2),
+    order.merchant?.name || '', // 核销商户名称
     statusMap[order.status] || order.status,
     order.paidAt ? dayjs(order.paidAt).format('YYYY-MM-DD HH:mm:ss') : '',
     order.redeemedAt ? dayjs(order.redeemedAt).format('YYYY-MM-DD HH:mm:ss') : '',

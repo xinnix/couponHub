@@ -403,4 +403,37 @@ export class OrderService extends BaseService<'Order'> {
 
     return `${year}${month}${day}${hour}${minute}${second}${random}`;
   }
+
+  /**
+   * 获取券模板的订单状态统计
+   *
+   * 性能优化：
+   * - 使用 Prisma groupBy 在数据库层面统计
+   * - 避免全量数据传输（limit: 9999）
+   * - 不需要 JOIN 关联表
+   */
+  async getStatsByTemplate(templateId: string) {
+    const stats = await this.prisma.order.groupBy({
+      by: ['status'],
+      where: { templateId },
+      _count: { id: true },
+    });
+
+    // 将数组转换为对象格式，方便前端使用
+    const result = {
+      UNPAID: 0,
+      PAID: 0,
+      REDEEMED: 0,
+      REFUNDING: 0,
+      REFUNDED: 0,
+      EXPIRED: 0,
+      CANCELLED: 0,
+    };
+
+    stats.forEach((item) => {
+      result[item.status] = item._count.id;
+    });
+
+    return result;
+  }
 }

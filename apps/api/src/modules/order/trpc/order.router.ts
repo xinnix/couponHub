@@ -411,6 +411,37 @@ export const orderRouter = createCrudRouterWithCustom(
           isFree: order.isFreeOrder, // 是否免费券
         };
       }),
+
+    // 获取券模板的订单状态统计（性能优化）
+    getStatsByTemplate: permissionProcedure('order', 'read')
+      .input(z.object({ templateId: z.string() }))
+      .query(async ({ input, ctx }) => {
+        const { templateId } = input;
+
+        // 使用 Prisma groupBy 在数据库层面统计
+        const stats = await ctx.prisma.order.groupBy({
+          by: ['status'],
+          where: { templateId },
+          _count: { id: true },
+        });
+
+        // 将数组转换为对象格式，方便前端使用
+        const result = {
+          UNPAID: 0,
+          PAID: 0,
+          REDEEMED: 0,
+          REFUNDING: 0,
+          REFUNDED: 0,
+          EXPIRED: 0,
+          CANCELLED: 0,
+        };
+
+        stats.forEach((item) => {
+          result[item.status] = item._count.id;
+        });
+
+        return result;
+      }),
   }),
   {
     protectedCreate: true,

@@ -85,30 +85,27 @@ export const OrderListForTemplate: React.FC<OrderListForTemplateProps> = ({
     enabled: !!templateId,
   });
 
-  // 获取订单统计（不分页，获取全部订单用于统计）
+  // 获取订单状态统计（使用优化的统计接口）
   const { data: statsData } = useQuery({
     queryKey: ["orderStats", templateId],
     queryFn: async () => {
       const trpcClient = await getTrpcClient();
-      const result = await trpcClient.order.getMany.query({
-        page: 1,
-        limit: 9999, // 获取全部订单用于统计
-        where: {
-          templateId,
-        },
-        include: {
-          user: { select: { id: true } },
-          merchant: { select: { id: true } },
-        },
+      const result = await trpcClient.order.getStatsByTemplate.query({
+        templateId,
       });
-      return result?.items || [];
+      return result;
     },
     enabled: !!templateId,
   });
 
   const orders = data?.items || [];
   const total = data?.total || 0;
-  const allOrders = statsData || [];
+
+  // 直接使用后端返回的统计数据（不再需要前端计算）
+  const unpaidCount = statsData?.UNPAID || 0;
+  const paidCount = statsData?.PAID || 0;
+  const redeemedCount = statsData?.REDEEMED || 0;
+  const refundedCount = statsData?.REFUNDED || 0;
 
   if (isLoading) {
     return (
@@ -130,12 +127,6 @@ export const OrderListForTemplate: React.FC<OrderListForTemplateProps> = ({
       />
     );
   }
-
-  // 统计信息（基于全部订单）
-  const unpaidCount = allOrders.filter(o => o.status === 'UNPAID').length;
-  const paidCount = allOrders.filter(o => o.status === 'PAID').length;
-  const redeemedCount = allOrders.filter(o => o.status === 'REDEEMED').length;
-  const refundedCount = allOrders.filter(o => o.status === 'REFUNDED').length;
 
   const columns = [
     {
