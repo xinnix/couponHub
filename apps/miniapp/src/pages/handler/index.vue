@@ -202,11 +202,11 @@ function goHome() {
             </text>
           </view>
           <!-- 返回用户首页按钮 -->
-          <!-- <view class="home-button" hover-class="home-button-active" @click="goHome">
+          <view class="home-button" hover-class="home-button-active" @click="goHome">
             <text class="home-button-text">
               返回首页
             </text>
-          </view> -->
+          </view>
         </view>
       </view>
 

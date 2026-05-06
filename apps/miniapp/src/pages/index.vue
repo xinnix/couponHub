@@ -5,7 +5,7 @@ import { authApi } from '@/api/auth'
 import { couponApi, merchantApi, newsApi } from '@/api/business'
 import CustomTabBar from '@/components/CustomTabBar.vue'
 import NewsPopup from '@/components/NewsPopup.vue'
-import { getToken, setUserInfo, setHandlerInfo } from '@/utils/storage'
+import { getToken, setHandlerInfo, setUserInfo } from '@/utils/storage'
 
 definePage({
   type: 'home',
@@ -307,7 +307,7 @@ onMounted(() => {
 onLoad(() => {
   // 页面加载时刷新用户信息
 
-  checkHandlerIdentity()
+  // checkHandlerIdentity()
 })
 
 // 页面显示时刷新用户信息
