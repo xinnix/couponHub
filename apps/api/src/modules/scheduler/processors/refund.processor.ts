@@ -56,8 +56,17 @@ export class RefundProcessor {
         throw new Error(`订单不存在: ${orderId}`);
       }
 
-      // 状态检查：只有 PAID 或 EXPIRED 可以退款
-      if (order.status !== 'PAID' && order.status !== 'EXPIRED') {
+      // ⚠️ 检查是否已核销（已核销的订单不能退款）
+      if (order.redeemedAt || order.status === 'REDEEMED') {
+        this.logger.warn(
+          `订单已核销，跳过退款: ${orderNo}`,
+        );
+        return { success: false, reason: '已核销的订单无法退款' };
+      }
+
+      // 状态检查：REFUNDING 可以退款（手动退款时已更新为 REFUNDING）
+      // 也兼容 EXPIRED 状态（如果直接推送退款任务）
+      if (order.status !== 'REFUNDING' && order.status !== 'EXPIRED') {
         this.logger.warn(
           `订单状态异常，跳过退款: ${orderNo}, 当前状态: ${order.status}`,
         );

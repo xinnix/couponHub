@@ -1,13 +1,13 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { Cron } from '@nestjs/schedule';
-import { ConfigService } from '@nestjs/config';
-import { OrderExpirationService } from '../services/order-expiration.service';
+import { Injectable, Logger } from "@nestjs/common";
+import { Cron } from "@nestjs/schedule";
+import { ConfigService } from "@nestjs/config";
+import { OrderExpirationService } from "../services/order-expiration.service";
 
 /**
- * 订单过期自动退款定时任务
+ * 订单过期标记定时任务
  *
- * 执行频率：每小时执行一次
- * 说明：提升过期标记及时性，避免用户查看已过期但仍显示为可用的券
+ * 执行频率：每天凌晨 0 点执行一次
+ * 说明：批量标记过期订单，等待管理员审核退款
  */
 @Injectable()
 export class OrderExpirationTask {
@@ -18,18 +18,18 @@ export class OrderExpirationTask {
     private readonly expirationService: OrderExpirationService,
   ) {}
 
-  @Cron('0 0 * * * *', { timeZone: 'Asia/Shanghai' })
+  @Cron("0 0 0 * * *", { timeZone: "Asia/Shanghai" })
   async handleCron() {
     // 检查定时任务是否启用
     const schedulerEnabled =
-      this.configService.get('SCHEDULER_ENABLED') === 'true';
+      this.configService.get("SCHEDULER_ENABLED") === "true";
 
     if (!schedulerEnabled) {
-      this.logger.debug('定时任务已禁用，跳过执行');
+      this.logger.debug("定时任务已禁用，跳过执行");
       return;
     }
 
-    this.logger.log('开始检查过期订单...');
+    this.logger.log("开始检查过期订单...");
     const startTime = Date.now();
 
     try {
@@ -38,7 +38,7 @@ export class OrderExpirationTask {
       const duration = Date.now() - startTime;
       this.logger.log(`订单过期检查完成，耗时 ${duration}ms`);
     } catch (error) {
-      this.logger.error('订单过期检查失败', error);
+      this.logger.error("订单过期检查失败", error);
     }
   }
 }
