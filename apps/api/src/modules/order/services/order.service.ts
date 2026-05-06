@@ -224,10 +224,10 @@ export class OrderService extends BaseService<'Order'> {
   }
 
   /**
-   * 申请退款
+   * 申请退款（用户自助退款）
    *
    * 流程：
-   * 1. 验证订单状态
+   * 1. 验证订单状态（支持 PAID 和 EXPIRED）
    * 2. 检查退款条件
    * 3. 更新订单状态为 REFUNDING
    * 4. 调用退款接口
@@ -247,14 +247,24 @@ export class OrderService extends BaseService<'Order'> {
       throw new ForbiddenException('无权操作此订单');
     }
 
-    // 验证订单状态
-    if (order.status !== 'PAID') {
-      throw new BadRequestException('只有已支付的订单可以退款');
+    // 验证订单状态（支持 PAID 和 EXPIRED）
+    if (order.status !== 'PAID' && order.status !== 'EXPIRED') {
+      throw new BadRequestException('只有待使用或已过期的订单可以申请退款');
     }
 
-    // 验证是否已核销（核销是退款的关键判断条件）
+    // 验证是否已核销（已核销的订单不能退款）
     if (order.redeemedAt) {
       throw new BadRequestException('已核销的订单无法退款');
+    }
+
+    // 验证订单是否锁定（结算中）
+    if (order.isLocked) {
+      throw new BadRequestException('订单已锁定（结算中），无法退款');
+    }
+
+    // 检查是否为免费订单
+    if (order.isFreeOrder || Number(order.price) === 0) {
+      throw new BadRequestException('免费订单无需退款');
     }
 
     // 注意：过期不应该阻止退款
