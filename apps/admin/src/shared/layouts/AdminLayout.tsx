@@ -1,20 +1,12 @@
-import { Layout, Menu, Dropdown, Avatar, Button, Image } from "antd";
+import { Layout, Menu, Dropdown, Avatar, Button } from "antd";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import {
-  DashboardOutlined,
   UserOutlined,
   LogoutOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
-  ShopOutlined,
-  TagOutlined,
-  ShoppingCartOutlined,
-  AccountBookOutlined,
-  FileTextOutlined,
-  CheckCircleOutlined,
   SafetyCertificateOutlined,
   SettingOutlined,
-  AppstoreOutlined,
   EditOutlined,
   LockOutlined,
 } from "@ant-design/icons";
@@ -25,6 +17,37 @@ import { ChangePasswordModal } from "../components/ChangePasswordModal";
 
 const { Header, Sider, Content } = Layout;
 
+// 菜单配置 - genModule 会自动追加新模块到此数组
+// prettier-ignore
+const menuConfig = [
+  {
+    key: "demo",
+    label: "示例",
+    icon: "AppstoreOutlined",
+    children: [
+      { key: "/todos", label: "Todos", icon: "EditOutlined" },
+    ],
+  },
+  {
+    key: "system",
+    label: "系统管理",
+    icon: "SettingOutlined",
+    permission: null,
+    children: [
+      { key: "/admins", label: "管理员管理", icon: "SafetyCertificateOutlined", permission: "menu:admins" },
+      { key: "/roles", label: "角色管理", icon: "SafetyCertificateOutlined", permission: "menu:roles" },
+    ],
+  },
+];
+
+const iconMap: Record<string, React.ReactNode> = {
+  AppstoreOutlined: <SettingOutlined />,
+  EditOutlined: <EditOutlined />,
+  SafetyCertificateOutlined: <SafetyCertificateOutlined />,
+  SettingOutlined: <SettingOutlined />,
+  UserOutlined: <UserOutlined />,
+};
+
 export function AdminLayout() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -33,145 +56,37 @@ export function AdminLayout() {
   const [profileModalVisible, setProfileModalVisible] = useState(false);
   const [passwordModalVisible, setPasswordModalVisible] = useState(false);
 
-  // 菜单项配置（带权限标识）
-  const allMenuItems = [
-    {
-      key: "dashboard",
-      permission: "menu:dashboard",
-      icon: <DashboardOutlined />,
-      label: "仪表盘",
-      onClick: () => navigate("/dashboard"),
-    },
-    {
-      key: "business",
-      icon: <AppstoreOutlined />,
-      label: "业务管理",
-      children: [
-        {
-          key: "/merchants",
-          permission: "menu:merchants",
-          icon: <ShopOutlined />,
-          label: "商户管理",
-          onClick: () => navigate("/merchants"),
-        },
-        {
-          key: "/merchant-categories",
-          permission: "menu:merchant-categories",
-          icon: <AppstoreOutlined />,
-          label: "商户分类管理",
-          onClick: () => navigate("/merchant-categories"),
-        },
-        {
-          key: "/coupon-templates",
-          permission: "menu:coupon-templates",
-          icon: <TagOutlined />,
-          label: "券模板管理",
-          onClick: () => navigate("/coupon-templates"),
-        },
-        {
-          key: "/orders",
-          permission: "menu:orders",
-          icon: <ShoppingCartOutlined />,
-          label: "订单管理",
-          onClick: () => navigate("/orders"),
-        },
-        {
-          key: "/settlements",
-          permission: "menu:settlements",
-          icon: <AccountBookOutlined />,
-          label: "结算管理",
-          onClick: () => navigate("/settlements"),
-        },
-        {
-          key: "/redemptions",
-          permission: "menu:redemptions",
-          icon: <CheckCircleOutlined />,
-          label: "核销记录",
-          onClick: () => navigate("/redemptions"),
-        },
-        {
-          key: "/users",
-          permission: "menu:users",
-          icon: <UserOutlined />,
-          label: "用户管理",
-          onClick: () => navigate("/users"),
-        },
-      ],
-    },
-    {
-      key: "content",
-      icon: <FileTextOutlined />,
-      label: "内容管理",
-      children: [
-        {
-          key: "/news",
-          permission: "menu:news",
-          icon: <FileTextOutlined />,
-          label: "新闻管理",
-          onClick: () => navigate("/news"),
-        },
-      ],
-    },
-    {
-      key: "system",
-      icon: <SettingOutlined />,
-      label: "系统管理",
-      children: [
-        {
-          key: "/admins",
-          permission: "menu:admins",
-          icon: <SafetyCertificateOutlined />,
-          label: "管理员管理",
-          onClick: () => navigate("/admins"),
-        },
-        {
-          key: "/roles",
-          permission: "menu:roles",
-          icon: <SafetyCertificateOutlined />,
-          label: "角色管理",
-          onClick: () => navigate("/roles"),
-        },
-      ],
-    },
-  ];
+  const allMenuItems = menuConfig.map((group) => ({
+    key: group.key,
+    icon: iconMap[group.icon] || <SettingOutlined />,
+    label: group.label,
+    children: group.children.map((item) => ({
+      key: item.key,
+      permission: item.permission,
+      icon: iconMap[item.icon] || <SettingOutlined />,
+      label: item.label,
+      onClick: () => navigate(item.key),
+    })),
+  }));
 
-  // 权限过滤函数
   const filterMenuByPermission = (items: any[]): any[] => {
-    // Super Admin 拥有所有权限，直接返回所有菜单
     const hasSuperAdminRole = user?.roles?.some((r: any) => r?.role?.slug === 'super_admin') || false;
-    if (hasSuperAdminRole) {
-      console.log('Super Admin detected, showing all menus');
-      return items;
-    }
-
-    console.log('User permissions:', user?.permissions);
-    console.log('User roles:', user?.roles);
+    if (hasSuperAdminRole) return items;
 
     return items
       .filter(item => {
-        // 父菜单：至少有一个子菜单有权限才显示
         if (item.children) {
-          const filteredChildren = filterMenuByPermission(item.children);
-          return filteredChildren.length > 0;
+          return filterMenuByPermission(item.children).length > 0;
         }
-
-        // 子菜单：检查权限
-        if (!item.permission) return true; // 无权限要求的菜单项直接显示
+        if (!item.permission) return true;
         return user?.permissions?.includes(item.permission) || false;
       })
-      .map(item => {
-        // 如果有 children，返回修改后的对象（不污染原始数据）
-        if (item.children) {
-          return {
-            ...item,
-            children: filterMenuByPermission(item.children)
-          };
-        }
-        return item;
-      });
+      .map(item => ({
+        ...item,
+        ...(item.children ? { children: filterMenuByPermission(item.children) } : {}),
+      }));
   };
 
-  // 使用 useMemo 缓存过滤后的菜单，避免每次渲染都重新计算
   const menuItems = useMemo(
     () => filterMenuByPermission(allMenuItems),
     [user?.permissions, user?.roles]
@@ -190,9 +105,7 @@ export function AdminLayout() {
       label: "修改密码",
       onClick: () => setPasswordModalVisible(true),
     },
-    {
-      type: 'divider',
-    },
+    { type: 'divider' as const },
     {
       key: "logout",
       icon: <LogoutOutlined />,
@@ -208,35 +121,11 @@ export function AdminLayout() {
     },
   ];
 
-  // 获取当前选中的菜单项（用于子菜单中的项目）
-  const getSelectedKeys = () => {
-    const path = location.pathname;
-    // 返回当前路径作为选中的 key
-    return [path];
-  };
-
-  // 获取默认展开的子菜单
   const getDefaultOpenKeys = () => {
-    const path = location.pathname;
-    // 根据当前路径判断应该展开哪个子菜单
-    if (
-      [
-        "/merchants",
-        "/merchant-categories",
-        "/coupon-templates",
-        "/orders",
-        "/settlements",
-        "/redemptions",
-        "/users",
-      ].includes(path)
-    ) {
-      return ["business"];
-    }
-    if (["/news"].includes(path)) {
-      return ["content"];
-    }
-    if (["/admins", "/roles"].includes(path)) {
-      return ["system"];
+    for (const group of menuConfig) {
+      if (group.children.some((item) => location.pathname.startsWith(item.key))) {
+        return [group.key];
+      }
     }
     return [];
   };
@@ -256,7 +145,6 @@ export function AdminLayout() {
           bottom: 0,
         }}
       >
-        {/* Logo 区域 */}
         <div
           style={{
             height: 64,
@@ -272,15 +160,8 @@ export function AdminLayout() {
           ) : (
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
               <img src="../logo.png" alt="" width={36} height={36} />
-              <div
-                style={{
-                  color: "#fff",
-                  fontWeight: 600,
-                  fontSize: 16,
-                  whiteSpace: "nowrap",
-                }}
-              >
-                汉都天地
+              <div style={{ color: "#fff", fontWeight: 600, fontSize: 16, whiteSpace: "nowrap" }}>
+                OpenCode
               </div>
             </div>
           )}
@@ -289,14 +170,12 @@ export function AdminLayout() {
         <Menu
           theme="dark"
           mode="inline"
-          selectedKeys={getSelectedKeys()}
+          selectedKeys={[location.pathname]}
           defaultOpenKeys={getDefaultOpenKeys()}
           items={menuItems}
         />
       </Sider>
-      <Layout
-        style={{ marginLeft: collapsed ? 80 : 200, transition: "all 0.2s" }}
-      >
+      <Layout style={{ marginLeft: collapsed ? 80 : 200, transition: "all 0.2s" }}>
         <Header
           style={{
             padding: "0 24px",
@@ -315,19 +194,8 @@ export function AdminLayout() {
           />
           <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
             <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
-              <div
-                style={{
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 8,
-                }}
-              >
-                <Avatar
-                  size="small"
-                  icon={<UserOutlined />}
-                  src={user?.avatar}
-                />
+              <div style={{ cursor: "pointer", display: "flex", alignItems: "center", gap: 8 }}>
+                <Avatar size="small" icon={<UserOutlined />} src={user?.avatar} />
                 <span style={{ fontSize: 14 }}>{user?.username || "用户"}</span>
               </div>
             </Dropdown>
@@ -346,7 +214,6 @@ export function AdminLayout() {
         </Content>
       </Layout>
 
-      {/* Modals */}
       <ProfileModal
         visible={profileModalVisible}
         onCancel={() => setProfileModalVisible(false)}

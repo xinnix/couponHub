@@ -8,17 +8,10 @@ import { dataProvider } from "./shared/dataProvider";
 import { authProvider, AuthProvider } from "./shared/auth";
 import { LoginPage, SessionExpiredPage, NotFoundPage } from "./modules/auth";
 import { AdminLayout } from "./shared/layouts";
-import { DashboardPage } from "./modules/dashboard";
-import { RoleListPage, RoleDetailPage } from "./modules/role";
-import { UserListPage, UserDetailPage } from "./modules/user";
-import { MerchantListPage, MerchantDetailPage } from "./modules/merchant";
-import { MerchantCategoryListPage } from "./modules/merchantCategory";
-import { TemplateListPage, TemplateDetailPage } from "./modules/coupon-template";
-import { OrderListPage, OrderDetailPage } from "./modules/order";
-import { SettlementListPage, SettlementDetailPage } from "./modules/settlement";
-import { NewsListPage, NewsDetailPage } from "./modules/news";
-import { RedemptionRecordsPage } from "./modules/redemption";
 import { AdminListPage, AdminDetailPage } from "./modules/admin";
+import { UserListPage, UserDetailPage } from "./modules/user";
+import { RoleListPage, RoleDetailPage } from "./modules/role";
+import { TodoListPage } from "./modules/todo";
 import { useMessageInitializer } from "./shared/hooks/useMessageInitializer";
 
 // Create QueryClient outside component to prevent re-creation
@@ -53,10 +46,8 @@ function App() {
 }
 
 function AppContent() {
-  // Get context-aware message instance from AntApp
   const { message: messageApi } = AntApp.useApp();
 
-  // Initialize message instance for dataProvider
   useMessageInitializer();
 
   return (
@@ -81,73 +72,18 @@ function AppContent() {
                 },
               }}
               resources={[
-                {
-                  name: "dashboard",
-                  list: "/dashboard",
-                },
-                {
-                  name: "merchant",
-                  list: "/merchants",
-                },
-                {
-                  name: "merchantCategory",
-                  list: "/merchant-categories",
-                },
-                {
-                  name: "couponTemplate",
-                  list: "/coupon-templates",
-                },
-                {
-                  name: "order",
-                  list: "/orders",
-                },
-                {
-                  name: "settlement",
-                  list: "/settlements",
-                },
-                {
-                  name: "news",
-                  list: "/news",
-                },
-                {
-                  name: "redemption",
-                  list: "/redemptions",
-                },
-                {
-                  name: "user",
-                  list: "/users",
-                },
-                {
-                  name: "admin",
-                  list: "/admins",
-                },
-                {
-                  name: "role",
-                  list: "/roles",
-                },
-                {
-                  name: "handler",
-                },
+                { name: "todo", list: "/todos" },
+                { name: "user", list: "/users" },
+                { name: "admin", list: "/admins" },
+                { name: "role", list: "/roles" },
               ]}
             >
               <Routes>
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/unauthorized" element={<SessionExpiredPage />} />
                 <Route path="/" element={<AdminLayout />}>
-                  <Route index element={<Navigate to="/dashboard" replace />} />
-                  <Route path="dashboard" element={<DashboardPage />} />
-                  <Route path="merchants" element={<MerchantListPage />} />
-                  <Route path="merchants/:id" element={<MerchantDetailPage />} />
-                  <Route path="merchant-categories" element={<MerchantCategoryListPage />} />
-                  <Route path="coupon-templates" element={<TemplateListPage />} />
-                  <Route path="coupon-templates/:id" element={<TemplateDetailPage />} />
-                  <Route path="orders" element={<OrderListPage />} />
-                  <Route path="orders/:id" element={<OrderDetailPage />} />
-                  <Route path="settlements" element={<SettlementListPage />} />
-                  <Route path="settlements/:id" element={<SettlementDetailPage />} />
-                  <Route path="news" element={<NewsListPage />} />
-                  <Route path="news/:id" element={<NewsDetailPage />} />
-                  <Route path="redemptions" element={<RedemptionRecordsPage />} />
+                  <Route index element={<Navigate to="/todos" replace />} />
+                  <Route path="todos" element={<TodoListPage />} />
                   <Route path="users" element={<UserListPage />} />
                   <Route path="users/:id" element={<UserDetailPage />} />
                   <Route path="roles" element={<RoleListPage />} />
