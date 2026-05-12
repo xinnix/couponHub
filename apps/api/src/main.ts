@@ -19,9 +19,6 @@ import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import { ValidationPipe } from "@nestjs/common";
 import express from "express";
 import { json } from "express";
-import { BullBoardSetup } from "./modules/scheduler/config/bull-board.setup";
-import { InjectQueue } from "@nestjs/bull";
-import { Queue } from "bull";
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -45,10 +42,8 @@ async function bootstrap() {
   );
 
   // 配置静态文件服务（用于访问上传的文件）
-  // uploads 目录位于项目根目录
   const uploadPath = process.env.UPLOAD_PATH || path.resolve(__dirname, '../../../uploads');
   app.use(express.static(uploadPath));
-  console.log(`📁 静态文件服务: ${uploadPath}`);
 
   // Set global prefix for all REST API routes
   app.setGlobalPrefix('api');
@@ -65,14 +60,14 @@ async function bootstrap() {
   // Global exception filter
   app.useGlobalFilters(new AllExceptionsFilter());
 
-  // Set up tRPC middleware (tRPC handles body parsing internally)
+  // Set up tRPC middleware
   const prismaService = app.get(PrismaService);
-  setPrismaService(prismaService); // 设置 PrismaService 实例
+  setPrismaService(prismaService);
 
   const fileStorageService = app.get(FileStorageService);
-  setFileStorageService(fileStorageService); // 设置 FileStorageService 实例
+  setFileStorageService(fileStorageService);
 
-  setAppInstance(app); // 设置 NestJS app 实例
+  setAppInstance(app);
 
   (app as any).use(
     "/trpc",
@@ -84,18 +79,6 @@ async function bootstrap() {
       },
     })
   );
-
-  // 🎯 配置 Bull Board 可视化面板
-  try {
-    // 获取 BullBoardSetup 服务（它已经自动配置好了队列）
-    const bullBoardSetup = app.get(BullBoardSetup);
-    const serverAdapter = bullBoardSetup.getServerAdapter();
-
-    app.use('/bull-board', serverAdapter.getRouter());
-    console.log(`📊 Bull Board 可视化面板: http://localhost:${port}/bull-board`);
-  } catch (error) {
-    console.warn('⚠️  Bull Board 配置失败（队列未初始化）:', error.message);
-  }
 
   // Set up Swagger/OpenAPI documentation
   const config = new DocumentBuilder()

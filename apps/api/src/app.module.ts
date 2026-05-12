@@ -8,19 +8,11 @@ import { PrismaModule } from "./prisma/prisma.module";
 import { AuthModule } from "./modules/auth/module";
 import { TodoModule } from "./modules/todo/module";
 import { UserModule } from "./modules/user/module";
-import { MerchantModule } from "./modules/merchant/module";
-import { MerchantCategoryModule } from "./modules/merchantCategory/module";
-import { NewsModule } from "./modules/news/module";
-import { CouponModule } from "./modules/coupon/module";
 import { RoleModule } from "./modules/role/module";
 import { PermissionModule } from "./modules/permission/module";
-import { OrderModule } from "./modules/order/module";
-import { PaymentModule } from "./modules/payment/module";
-import { RedemptionModule } from "./modules/redemption/module";
-import { SettlementModule } from "./modules/settlement/module";
 import { UploadModule } from "./modules/upload/module";
-import { HandlerModule } from "./modules/handler/module";
-import { SchedulerModule } from "./modules/scheduler/module";
+import { WechatModule } from "./modules/wechat/wechat.module";
+import { PaymentModule } from "./modules/payment/module";
 
 // 全局过滤器/拦截器
 import { APP_FILTER, APP_INTERCEPTOR } from "@nestjs/core";
@@ -40,19 +32,11 @@ import { FileStorageService } from "./shared/services/file-storage.service";
     AuthModule,
     TodoModule,
     UserModule,
-    MerchantModule,
-    MerchantCategoryModule,
-    NewsModule,
-    CouponModule,
     RoleModule,
     PermissionModule,
-    OrderModule,
-    PaymentModule,
-    RedemptionModule,
-    SettlementModule,
     UploadModule,
-    HandlerModule,
-    SchedulerModule,
+    WechatModule,
+    PaymentModule,
   ],
   providers: [
     Reflector,

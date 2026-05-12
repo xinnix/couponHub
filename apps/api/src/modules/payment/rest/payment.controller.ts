@@ -1,36 +1,21 @@
 import {
-  BadRequestException,
-  Body,
   Controller,
-  ForbiddenException,
   Get,
-  Headers,
-  Param,
   Post,
+  Param,
   Req,
   Res,
-  UseGuards,
+  Headers,
   Logger,
-  RawBodyRequest,
+  BadRequestException,
 } from '@nestjs/common';
 import {
-  ApiBearerAuth,
   ApiOperation,
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
 import { Request, Response } from 'express';
-import { z } from 'zod';
-import { JwtAuthGuard } from '../../../core/guards/jwt.guard';
-import { CurrentUser } from '../../auth/decorators/decorators';
-import { PrismaService } from '../../../prisma/prisma.service';
 import { WechatPayService } from '../services/wechat-pay.service';
-import { OrderService } from '../../order/services/order.service';
-import { RedisService } from '../../../shared/services/redis.service';
-
-const CreatePaymentSchema = z.object({
-  orderId: z.string().min(1, '订单ID不能为空'),
-});
 
 @ApiTags('payments')
 @Controller('payments')
@@ -38,97 +23,13 @@ export class PaymentController {
   private readonly logger = new Logger(PaymentController.name);
 
   constructor(
-    private readonly prisma: PrismaService,
     private readonly wechatPayService: WechatPayService,
-    private readonly orderService: OrderService,
-    private readonly redisService: RedisService,
   ) {}
 
   /**
-   * 创建支付（小程序 JSAPI 支付）
-   *
-   * 流程：
-   * 1. 查找订单和用户 openid
-   * 2. 调用微信 JSAPI 下单获取 prepay_id
-   * 3. 签名生成小程序支付参数返回
-   */
-  @Post('create')
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: '创建微信支付订单' })
-  @ApiResponse({ status: 200, description: '创建成功，返回支付参数' })
-  async create(
-    @Body() body: any,
-    @CurrentUser() user: any,
-  ) {
-    const { orderId } = CreatePaymentSchema.parse(body);
-
-    // 获取分布式锁，防止并发支付请求
-    const lockKey = `payment:create:${orderId}`;
-    const lock = await this.redisService.acquireLock(lockKey, 5000);
-    if (!lock) {
-      throw new BadRequestException('订单正在处理中，请勿重复支付');
-    }
-
-    try {
-      const order = await this.prisma.order.findUnique({
-        where: { id: orderId },
-        include: { template: true },
-      });
-
-      if (!order) {
-        throw new BadRequestException('订单不存在');
-      }
-
-      if (user?.type === 'user' && order.userId !== user.id) {
-        throw new ForbiddenException('无权操作该订单');
-      }
-
-      if (order.status !== 'UNPAID') {
-        throw new BadRequestException('订单状态异常，可能已支付或已取消');
-      }
-
-      // 获取用户 openid
-      const userInfo = await this.prisma.user.findUnique({
-        where: { id: order.userId },
-        select: { openid: true },
-      });
-
-      if (!userInfo?.openid) {
-        throw new BadRequestException('用户未绑定微信，无法支付');
-      }
-
-      // 调用微信支付下单
-      const prepayId = await this.wechatPayService.createOrder({
-        orderId: order.id,
-        orderNo: order.orderNo,
-        amount: Number(order.price),
-        description: order.template.title,
-        openid: userInfo.openid,
-      });
-
-      // 生成小程序支付参数
-      const payParams = this.wechatPayService.getPayParams(prepayId);
-
-      return {
-        success: true,
-        prepayId,
-        payParams,
-      };
-    } finally {
-      await this.redisService.releaseLock(lockKey, lock);
-    }
-  }
-
-  /**
    * 微信支付回调通知
-   *
    * 微信服务器在用户支付成功后主动调用此接口。
    * 无需 JWT 认证，通过签名验证确保请求来自微信。
-   *
-   * 应答规范（官方文档）：
-   * - 验签通过：返回 HTTP 200/204，无需返回应答报文
-   * - 验签不通过：返回 HTTP 5XX/4XX + {"code":"FAIL","message":"失败"}
    */
   @Post('wechat/callback')
   @ApiOperation({ summary: '微信支付回调通知（微信服务器调用）' })
@@ -141,12 +42,10 @@ export class PaymentController {
 
     if (!rawBody) {
       this.logger.error('回调缺少 rawBody');
-      // 验签失败，返回 500
       return res.status(500).json({ code: 'FAIL', message: '缺少请求体' });
     }
 
     try {
-      // 解密回调数据（验签）
       const payment = await this.wechatPayService.handleCallback(
         rawBody,
         {
@@ -157,79 +56,12 @@ export class PaymentController {
         },
       );
 
-      // 验签成功，先应答 200（微信要求立即应答，避免超时）
       res.status(200).send();
 
-      // 获取分布式锁，防止并发回调重复处理
-      const lockKey = `payment:callback:${payment.orderId}`;
-      const lock = await this.redisService.acquireLock(lockKey, 5000);
-      if (!lock) {
-        this.logger.warn(`订单 ${payment.orderId} 回调正在处理中，跳过`);
-        return;
-      }
-
-      try {
-        // 查询订单和模板信息
-        const order = await this.prisma.order.findUnique({
-          where: { id: payment.orderId },
-        });
-
-        if (!order) {
-          this.logger.error(`回调对应的订单不存在: ${payment.orderId}`);
-          return;
-        }
-
-        if (order.status !== 'UNPAID') {
-          this.logger.warn(
-            `订单状态已变更，跳过更新: ${payment.orderNo}, 当前状态: ${order.status}`,
-          );
-          return;
-        }
-
-        const template = await this.prisma.couponTemplate.findUnique({
-          where: { id: order.templateId },
-        });
-
-        if (!template) {
-          this.logger.error(`订单关联的券模板不存在: ${order.templateId}`);
-          return;
-        }
-
-        // 计算过期时间：min(useUntil, paidAt + validDays)
-        const paidAt = payment.paidAt || new Date();
-        let expireAt: Date;
-
-        if (template.validDays && template.validDays > 0) {
-          const relativeExpireAt = new Date(paidAt);
-          relativeExpireAt.setDate(relativeExpireAt.getDate() + template.validDays);
-          expireAt = relativeExpireAt < template.useUntil ? relativeExpireAt : template.useUntil;
-        } else {
-          expireAt = template.useUntil;
-        }
-
-        // 使用数据库事务更新订单状态，保证一致性
-        await this.prisma.$transaction(async (tx) => {
-          await tx.order.update({
-            where: { id: payment.orderId },
-            data: {
-              status: 'PAID',
-              payId: payment.transactionId,
-              paidAt: paidAt,
-              expireAt: expireAt,
-            },
-          });
-          // 未来可在此事务中添加优惠券发放、库存扣减等逻辑
-        });
-
-        this.logger.log(
-          `支付回调处理成功: ${payment.orderNo} → ${payment.transactionId}, 过期时间: ${expireAt.toISOString()}`,
-        );
-      } finally {
-        await this.redisService.releaseLock(lockKey, lock);
-      }
+      // 业务方在此处实现支付成功后的业务逻辑
+      this.logger.log(`支付回调验签成功: ${payment.orderId} → ${payment.transactionId}`);
     } catch (error: any) {
       this.logger.error('支付回调处理失败', error);
-      // 验签失败或处理异常，返回 500 + 失败信息
       if (!res.headersSent) {
         res.status(500).json({ code: 'FAIL', message: '处理失败' });
       }
@@ -238,13 +70,6 @@ export class PaymentController {
 
   /**
    * 微信退款回调通知
-   *
-   * 微信服务器在退款状态变更后主动调用此接口。
-   * 无需 JWT 认证，通过签名验证确保请求来自微信。
-   *
-   * 应答规范（官方文档）：
-   * - 验签通过：返回 HTTP 200/204，无需返回应答报文
-   * - 验签不通过：返回 HTTP 5XX/4XX + {"code":"FAIL","message":"失败"}
    */
   @Post('wechat/refund-callback')
   @ApiOperation({ summary: '微信退款回调通知（微信服务器调用）' })
@@ -257,12 +82,10 @@ export class PaymentController {
 
     if (!rawBody) {
       this.logger.error('退款回调缺少 rawBody');
-      // 验签失败，返回 500
       return res.status(500).json({ code: 'FAIL', message: '缺少请求体' });
     }
 
     try {
-      // 解密回调数据（验签）
       const refund = await this.wechatPayService.handleRefundCallback(
         rawBody,
         {
@@ -273,43 +96,12 @@ export class PaymentController {
         },
       );
 
-      // 验签成功，先应答 200（微信要求立即应答，避免超时）
       res.status(200).send();
 
-      // 异步处理业务逻辑（订单状态更新）
-      const order = await this.prisma.order.findUnique({
-        where: { orderNo: refund.orderNo },
-      });
-
-      if (!order) {
-        this.logger.error(`退款回调对应的订单不存在: ${refund.orderNo}`);
-        return; // 已应答，记录日志后续人工处理
-      }
-
-      if (order.status !== 'REFUNDING') {
-        this.logger.warn(
-          `订单状态非退款中，跳过更新: ${refund.orderNo}, 当前状态: ${order.status}`,
-        );
-        return; // 幂等性保护
-      }
-
-      // 根据退款状态更新订单
-      if (refund.refundStatus === 'SUCCESS') {
-        await this.orderService.confirmRefund(order.id, refund.refundId);
-        this.logger.log(`退款回调处理成功: ${refund.orderNo} → ${refund.refundId}`);
-      } else if (refund.refundStatus === 'CLOSED' || refund.refundStatus === 'ABNORMAL') {
-        await this.prisma.order.update({
-          where: { id: order.id },
-          data: {
-            status: 'PAID',
-            refundReason: `退款失败: ${refund.refundStatus}`,
-          },
-        });
-        this.logger.warn(`退款异常: ${refund.orderNo}, 状态: ${refund.refundStatus}`);
-      }
+      // 业务方在此处实现退款成功后的业务逻辑
+      this.logger.log(`退款回调验签成功: ${refund.orderNo}`);
     } catch (error: any) {
       this.logger.error('退款回调处理失败', error);
-      // 验签失败或处理异常，返回 500 + 失败信息
       if (!res.headersSent) {
         res.status(500).json({ code: 'FAIL', message: '处理失败' });
       }
@@ -317,37 +109,22 @@ export class PaymentController {
   }
 
   /**
-   * 查询支付状态
+   * 主动查询微信支付订单状态
    */
-  @Get('status/:orderId')
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: '查询订单支付状态' })
+  @Get('status/:orderNo')
+  @ApiOperation({ summary: '查询微信支付订单状态' })
   @ApiResponse({ status: 200, description: '查询成功' })
-  async getStatus(@Param('orderId') orderId: string, @CurrentUser() user: any) {
-    const order = await this.prisma.order.findUnique({
-      where: { id: orderId },
-    });
-
-    if (!order) {
-      throw new BadRequestException('订单不存在');
+  async getStatus(@Param('orderNo') orderNo: string) {
+    if (!orderNo) {
+      throw new BadRequestException('订单号不能为空');
     }
 
-    if (user?.type === 'user' && order.userId !== user.id) {
-      throw new ForbiddenException('无权操作该订单');
-    }
-
-    // 如果已经支付，直接返回
-    if (order.status === 'PAID') {
-      return { status: 'SUCCESS', order };
-    }
-
-    // 主动查询微信
     try {
-      const result = await this.wechatPayService.queryOrder(order.orderNo);
+      const result = await this.wechatPayService.queryOrder(orderNo);
       return { status: result.status, transactionId: result.transactionId };
-    } catch {
-      return { status: order.status };
+    } catch (error: any) {
+      this.logger.error(`查询订单状态失败: ${orderNo}`, error);
+      throw new BadRequestException('查询订单状态失败');
     }
   }
 }

@@ -1,11 +1,10 @@
-import { Module, forwardRef } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { WechatPayService } from './services/wechat-pay.service';
 import { PaymentController } from './rest/payment.controller';
-import { OrderModule } from '../order/module';
 import { RedisService } from '../../shared/services/redis.service';
 
 @Module({
-  imports: [forwardRef(() => OrderModule)],
+  imports: [],
   controllers: [PaymentController],
   providers: [WechatPayService, RedisService],
   exports: [WechatPayService],

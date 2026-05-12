@@ -69,26 +69,6 @@ export class AuthController {
     return this.authService.loginWithWechat(code);
   }
 
-  @Post('getPhoneNumber')
-  @UseGuards(JwtAuthGuard)
-  @HttpCode(HttpStatus.OK)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: '获取微信手机号并关联核销员身份' })
-  @ApiResponse({
-    status: 200,
-    description: '手机号获取成功',
-  })
-  @ApiResponse({
-    status: 401,
-    description: '未授权',
-  })
-  async getPhoneNumber(
-    @CurrentUser() user: any,
-    @Body('code') code: string,
-  ) {
-    return this.authService.getPhoneNumber(user.id, code);
-  }
-
   @Public()
   @Post('admin/login')
   @HttpCode(HttpStatus.OK)
@@ -169,19 +149,4 @@ export class AuthController {
     return this.authService.logout(user.id, validatedData.refreshToken);
   }
 
-  @Get('checkHandlerStatus')
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: '检查核销员身份' })
-  @ApiResponse({
-    status: 200,
-    description: '返回核销员身份信息',
-  })
-  @ApiResponse({
-    status: 401,
-    description: '未授权',
-  })
-  async checkHandlerStatus(@CurrentUser() user: any) {
-    return this.authService.checkHandlerStatus(user.id);
-  }
 }
