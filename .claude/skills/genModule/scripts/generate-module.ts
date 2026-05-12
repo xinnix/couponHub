@@ -1085,25 +1085,17 @@ function updateAdminLayout(moduleName: string): void {
 
   let content = fs.readFileSync(layoutPath, 'utf-8');
 
-  if (!content.includes('FolderOutlined')) {
-    content = content.replace(
-      'import {\n  DashboardOutlined,',
-      'import {\n  DashboardOutlined,\n  FolderOutlined,'
-    );
-  }
-
-  const menuItem = `    {
-      key: "/${pluralName}",
-      icon: <FolderOutlined />,
-      label: "${toLabel(moduleName)}管理",
-      onClick: () => navigate("/${pluralName}"),
-    },`;
+  const menuItem = `    { key: "/${pluralName}", label: "${toLabel(moduleName)}管理", icon: "FolderOutlined" },`;
 
   if (!content.includes(`key: "/${pluralName}"`)) {
-    const userMenuIndex = content.indexOf('const userMenuItems');
-    if (userMenuIndex !== -1) {
-      const menuItemsEnd = content.lastIndexOf('  ];', userMenuIndex);
-      content = content.slice(0, menuItemsEnd) + menuItem + '\n' + content.slice(menuItemsEnd);
+    // Find the menuConfig array and append to the appropriate group
+    const menuConfigMatch = content.match(/const menuConfig = \[([\s\S]*?)\];/);
+    if (menuConfigMatch) {
+      // Find the "demo" group children and append there
+      const childrenEndIdx = content.lastIndexOf('];', content.indexOf('menuConfig'));
+      if (childrenEndIdx !== -1) {
+        content = content.slice(0, childrenEndIdx - 4) + '\n' + menuItem + '\n    ' + content.slice(childrenEndIdx - 4);
+      }
     }
   }
 

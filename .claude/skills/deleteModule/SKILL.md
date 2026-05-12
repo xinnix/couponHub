@@ -45,7 +45,7 @@ node .claude/skills/deleteModule/delete-module.ts product --force
 ### 配置文件更新
 - `apps/api/src/trpc/app.router.ts` - 移除 router 导入和注册
 - `apps/admin/src/App.tsx` - 移除页面导入、路由和资源配置
-- `apps/admin/src/shared/layouts/AdminLayout.tsx` - 移除菜单项
+- `apps/admin/src/shared/layouts/AdminLayout.tsx` - 从 menuConfig 中移除菜单项
 
 ### 数据库
 - Prisma schema 中的模型（需要手动执行迁移）

@@ -117,39 +117,6 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
-   * 原子扣减库存
-   *
-   * @param templateId 券模板 ID
-   * @param quantity 扣减数量
-   * @returns 扣减后的库存（-1 表示库存不足）
-   */
-  async decrStock(templateId: string, quantity: number = 1): Promise<number> {
-    const stockKey = `stock:${templateId}`;
-
-    try {
-      // TODO: 实际使用 Lua 脚本确保原子性
-      // const script = `
-      //   local stock = redis.call("GET", KEYS[1])
-      //   if not stock then
-      //     return -1
-      //   end
-      //   stock = tonumber(stock)
-      //   if stock < ARGV[1] then
-      //     return -1
-      //   end
-      //   return redis.call("DECRBY", KEYS[1], ARGV[1])
-      // `;
-      // const result = await this.client.eval(script, 1, stockKey, quantity);
-
-      this.logger.debug(`扣减库存: ${templateId}, 数量: ${quantity}`);
-      return 0; // 模拟返回
-    } catch (error) {
-      this.logger.error(`扣减库存失败: ${templateId}`, error);
-      return -1;
-    }
-  }
-
-  /**
    * 设置缓存
    */
   async set(key: string, value: any, ttl?: number): Promise<void> {

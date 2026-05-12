@@ -166,8 +166,8 @@ function updateAdminLayout(moduleName: string, dryRun: boolean): void {
   let content = fs.readFileSync(layoutPath, 'utf-8');
   let modified = false;
 
-  // Remove menu item
-  const menuPattern = new RegExp(`\\{\\s*key: ["']/${pluralName}["'],[\\s\\S]*?onClick: \\(\\) => navigate\\(["']/${pluralName}["']\\),[\\s\\S]*?\\},\\n`);
+  // Remove menu item from menuConfig array
+  const menuPattern = new RegExp(`\\{\\s*key:\\s*["']/${pluralName}["']\\s*,\\s*label:[^}]*\\}\\s*,?\\s*\\n`);
   if (menuPattern.test(content)) {
     content = content.replace(menuPattern, '');
     modified = true;
