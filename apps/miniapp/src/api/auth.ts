@@ -24,12 +24,6 @@ export interface UserInfo {
   avatar?: string
 }
 
-export interface WechatLoginResponse {
-  user: UserInfo;
-  accessToken: string;
-  refreshToken: string;
-}
-
 export interface AuthResponse {
   user: UserInfo;
   accessToken: string;
@@ -71,16 +65,5 @@ export const authApi = {
    * 微信登录
    */
   wechatLogin: (code: string) =>
-    http.post<WechatLoginResponse>(API_ENDPOINTS.wechatLogin, { code }),
-
-  /**
-   * 获取微信手机号
-   */
-  getPhoneNumber: (code: string) =>
-    http.post(API_ENDPOINTS.getPhoneNumber, { code }),
-
-  /**
-   * 检查核销员身份
-   */
-  checkHandlerStatus: () => http.get(API_ENDPOINTS.checkHandlerStatus),
+    http.post<AuthResponse>(API_ENDPOINTS.wechatLogin, { code }),
 }

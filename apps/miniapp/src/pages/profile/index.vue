@@ -14,7 +14,15 @@ definePage({
 
 const statusBarHeight = ref(0)
 const loading = ref(false)
-const userInfo = ref({
+const userInfo = ref<{
+  username?: string
+  email?: string
+  nickname?: string
+  phone?: string
+  avatar?: string
+}>({
+  username: '',
+  email: '',
   nickname: '',
   phone: '',
   avatar: '',

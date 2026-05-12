@@ -17,19 +17,17 @@ export const API_CONFIG: ApiConfig = {
   timeout: 10000,
 }
 
-// API 端点
+// API 端点 - genModule 生成的模块会自动追加到此对象
 export const API_ENDPOINTS = {
   // 用户相关
   login: '/auth/login',
   logout: '/auth/logout',
   register: '/auth/register',
   profile: '/auth/me',
-  refresh: '/auth/refresh', // Token 刷新接口
+  refresh: '/auth/refresh',
   wechatLogin: '/auth/wechat/login',
-  getPhoneNumber: '/auth/getPhoneNumber',
-  checkHandlerStatus: '/auth/checkHandlerStatus',
 
-  // TODO 相关
+  // TODO 相关（示例模块）
   todos: '/todo',
   todoDetail: (id: string) => `/todo/${id}`,
 } as const

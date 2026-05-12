@@ -50,13 +50,8 @@ async function onLoginTap() {
     uni.setStorageSync('refreshToken', res.data.refreshToken)
     uni.setStorageSync('userInfo', res.data.user)
 
-    // 如果用户已有手机号，跳过第二步直接进入
-    if (res.data.user.phone) {
-      navigateAfterLogin()
-    }
-    else {
-      step.value = 2
-    }
+    // 用户已有手机号则跳过第二步，否则进入第二步获取手机号
+    step.value = 2
   }
   catch (error: any) {
     uni.showToast({ title: error.message || '登录失败', icon: 'none' })
@@ -76,7 +71,8 @@ async function handleGetPhoneNumber(event: any) {
 
   loading.value = true
   try {
-    await authApi.getPhoneNumber(event.detail.code)
+    // 手机号获取 - 留空供业务方实现
+    console.log('手机号授权:', event.detail.code)
   }
   catch (error) {
     console.error('手机号授权失败', error)
@@ -93,39 +89,16 @@ function skipPhoneNumber() {
 }
 
 async function navigateAfterLogin() {
-  try {
-    const handlerRes = await authApi.checkHandlerStatus()
-    uni.setStorageSync('isHandler', handlerRes.data.isHandler)
-    uni.setStorageSync('handlerInfo', handlerRes.data.handler)
+  uni.showToast({ title: '登录成功', icon: 'success' })
 
-    uni.showToast({ title: '登录成功', icon: 'success' })
-
-    // 如果有指定的跳转目标，使用 navigateBack 返回上一页
-    if (redirectUrl.value) {
-      setTimeout(() => {
-        uni.navigateBack({ delta: 1 })
-      }, 1000)
-    }
-    else {
-      // 没有指定跳转目标时，使用 reLaunch（因为是直接打开登录页）
-      setTimeout(() => {
-        if (handlerRes.data.isHandler) {
-          uni.reLaunch({ url: '/pages/handler/index' })
-        }
-        else {
-          uni.reLaunch({ url: '/pages/index' })
-        }
-      }, 1000)
-    }
-  }
-  catch (error) {
-    // 如果有指定的跳转目标，使用 navigateBack 返回上一页
-    if (redirectUrl.value) {
+  if (redirectUrl.value) {
+    setTimeout(() => {
       uni.navigateBack({ delta: 1 })
-    }
-    else {
+    }, 1000)
+  } else {
+    setTimeout(() => {
       uni.reLaunch({ url: '/pages/index' })
-    }
+    }, 1000)
   }
 }
 
