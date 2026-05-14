@@ -12,7 +12,6 @@ import {
   DatePicker,
   Statistic,
   Tag,
-  Empty,
   Button,
 } from "antd";
 import {
@@ -22,6 +21,7 @@ import {
 } from "@ant-design/icons";
 import { toNumber, formatCurrency } from "../../../shared/utils/decimal";
 import { useTrpcQuery } from "../../../shared/hooks/useTrpcQuery";
+import { MerchantSelector } from "../../../shared/components/MerchantSelector";
 import { ManualRedeemModal } from "../components/ManualRedeemModal";
 import dayjs from "dayjs";
 
@@ -123,14 +123,6 @@ export const RedemptionRecordsPage = () => {
   const totalFaceValue = stats?.totalFaceValue || 0;
   const totalSettlementAmount = stats?.totalSettlement || 0;
   const merchantCount = stats?.merchantCount || 0;
-
-  // 获取商户列表用于筛选（加载全部商户以支持搜索）
-  const { result: merchantsResult } = useList({
-    resource: "merchant",
-    pagination: { pageSize: 1000 }, // 加载更多商户以支持完整搜索
-  });
-
-  const merchants = (merchantsResult as any)?.data || [];
 
   // 获取优惠券模板列表用于筛选
   const { result: templatesResult } = useList({
@@ -311,7 +303,7 @@ export const RedemptionRecordsPage = () => {
               showSearch
               optionFilterProp="label"
               filterOption={(input, option) =>
-                (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                String(option?.label ?? '').toLowerCase().includes(input.toLowerCase())
               }
             >
               {templates.map((t: any) => (
@@ -320,24 +312,12 @@ export const RedemptionRecordsPage = () => {
                 </Select.Option>
               ))}
             </Select>
-            <Select
+            <MerchantSelector
               placeholder="筛选商户"
               value={merchantFilter}
-              onChange={setMerchantFilter}
+              onChange={(val) => setMerchantFilter(val as string | undefined)}
               style={{ width: 200 }}
-              allowClear
-              showSearch
-              optionFilterProp="label"
-              filterOption={(input, option) =>
-                (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
-              }
-            >
-              {merchants.map((m: any) => (
-                <Select.Option key={m.id} value={m.id} label={m.name}>
-                  {m.name}
-                </Select.Option>
-              ))}
-            </Select>
+            />
             <RangePicker
               placeholder={['核销开始日期', '核销结束日期']}
               value={dateRange}
