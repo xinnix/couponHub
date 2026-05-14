@@ -1,6 +1,6 @@
 // apps/admin/src/modules/settlement/pages/SettlementListPage.tsx
 import { useState } from "react";
-import { useTable, useList, useCreate, useUpdate, useDelete, useDeleteMany } from "@refinedev/core";
+import { useTable, useCreate, useUpdate, useDelete, useDeleteMany } from "@refinedev/core";
 import { List } from "@refinedev/antd";
 import {
   Table,
@@ -16,7 +16,6 @@ import {
   Col,
   Input,
   Select,
-  DatePicker,
   Statistic,
 } from "antd";
 import {
@@ -29,12 +28,11 @@ import {
   PayCircleOutlined,
 } from "@ant-design/icons";
 import { SettlementForm } from "../components/SettlementForm";
+import { MerchantSelector } from "../../../shared/components";
 import { useNavigate } from "react-router-dom";
-import { formatCurrency, toNumber } from "../../../shared/utils/decimal";
+import { formatCurrency } from "../../../shared/utils/decimal";
 import { useTrpcQuery } from "../../../shared/hooks/useTrpcQuery";
 import dayjs from "dayjs";
-
-const { MonthPicker } = DatePicker;
 
 interface Settlement {
   id: string;
@@ -157,14 +155,6 @@ export const SettlementListPage = () => {
   const result = tableQuery.data;
   const query = tableQuery;
   const settlements = (result as any)?.data || [];
-
-  // 获取商户列表用于筛选
-  const { result: merchantsResult } = useList({
-    resource: "merchant",
-    pagination: { pageSize: 100 },
-  });
-
-  const merchants = (merchantsResult as any)?.data || [];
 
   // 统计数据（跟随筛选条件，聚合所有页）
   const { data: stats } = useTrpcQuery<any>(
@@ -452,23 +442,12 @@ export const SettlementListPage = () => {
               <Select.Option value="CONFIRMED">已确认</Select.Option>
               <Select.Option value="PAID">已支付</Select.Option>
             </Select>
-            <Select
+            <MerchantSelector
               placeholder="筛选商户"
               value={merchantFilter}
-              onChange={setMerchantFilter}
+              onChange={(val) => setMerchantFilter(val as string)}
               style={{ width: 200 }}
-              allowClear
-              showSearch
-              filterOption={(input, option) =>
-                (option?.children as string)?.toLowerCase().includes(input.toLowerCase())
-              }
-            >
-              {merchants.map((m: any) => (
-                <Select.Option key={m.id} value={m.id}>
-                  {m.name}
-                </Select.Option>
-              ))}
-            </Select>
+            />
           </Space>
 
           {/* Batch Actions */}
@@ -525,7 +504,7 @@ export const SettlementListPage = () => {
             cancelText="取消"
             width={600}
           >
-            <SettlementForm form={form} merchants={merchants} />
+            <SettlementForm form={form} />
           </Modal>
         </Card>
       </List>

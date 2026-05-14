@@ -1,2 +1,1 @@
-// Shared components will be added here
-export {};
+export { MerchantSelector } from "./MerchantSelector";

@@ -1,15 +1,12 @@
-// apps/admin/src/modules/settlement/components/SettlementForm.tsx
-import { Form, Select, DatePicker, Alert } from "antd";
-import dayjs from 'dayjs';
-
-const { MonthPicker } = DatePicker;
+import { Form, DatePicker, Alert } from "antd";
+import dayjs from "dayjs";
+import { MerchantSelector } from "../../../shared/components";
 
 interface SettlementFormProps {
   form: any;
-  merchants: any[];
 }
 
-export const SettlementForm: React.FC<SettlementFormProps> = ({ form, merchants }) => {
+export const SettlementForm: React.FC<SettlementFormProps> = ({ form }) => {
   return (
     <Form form={form} layout="vertical">
       <Alert
@@ -25,19 +22,7 @@ export const SettlementForm: React.FC<SettlementFormProps> = ({ form, merchants 
         label="选择商户"
         rules={[{ required: true, message: "请选择商户" }]}
       >
-        <Select
-          placeholder="请选择商户"
-          showSearch
-          filterOption={(input, option) =>
-            (option?.children as string)?.toLowerCase().includes(input.toLowerCase())
-          }
-        >
-          {merchants.map((m) => (
-            <Select.Option key={m.id} value={m.id}>
-              {m.category ? `${m.name} (${m.category.name})` : m.name}
-            </Select.Option>
-          ))}
-        </Select>
+        <MerchantSelector placeholder="请选择商户" />
       </Form.Item>
 
       <Form.Item
@@ -49,12 +34,9 @@ export const SettlementForm: React.FC<SettlementFormProps> = ({ form, merchants 
         <DatePicker
           picker="month"
           placeholder="请选择月份"
-          style={{ width: '100%' }}
+          style={{ width: "100%" }}
           format="YYYY-MM"
-          disabledDate={(current) => {
-            // 不能选择未来月份
-            return current && current > dayjs().endOf('month');
-          }}
+          disabledDate={(current) => current && current > dayjs().endOf("month")}
         />
       </Form.Item>
     </Form>
