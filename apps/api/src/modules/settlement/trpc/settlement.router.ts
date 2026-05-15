@@ -335,9 +335,9 @@ export const settlementRouter = createCrudRouterWithCustom(
         workbook.creator = 'OpenCode';
         workbook.created = new Date();
 
-        // 添加结算单信息工作表
-        const infoSheet = workbook.addWorksheet('结算单信息');
-        infoSheet.columns = [
+        // 添加封面工作表（结算单信息 + 签字确认）
+        const coverSheet = workbook.addWorksheet('结算单');
+        coverSheet.columns = [
           { header: '项目', key: 'item', width: 20 },
           { header: '内容', key: 'content', width: 40 },
         ];
@@ -349,7 +349,7 @@ export const settlementRouter = createCrudRouterWithCustom(
           PAID: '已支付',
         };
 
-        infoSheet.addRows([
+        coverSheet.addRows([
           { item: '结算期间', content: settlement.period },
           { item: '商户名称', content: settlement.merchant?.name || '-' },
           { item: '商户分类', content: settlement.merchant?.category?.name || '-' },
@@ -361,12 +361,35 @@ export const settlementRouter = createCrudRouterWithCustom(
         ]);
 
         // 设置表头样式
-        infoSheet.getRow(1).font = { bold: true, size: 12 };
-        infoSheet.getRow(1).fill = {
+        coverSheet.getRow(1).font = { bold: true, size: 12 };
+        coverSheet.getRow(1).fill = {
           type: 'pattern',
           pattern: 'solid',
           fgColor: { argb: 'FFE0E0E0' },
         };
+
+        // 空行分隔
+        coverSheet.addRow({ item: '', content: '' });
+
+        // 签字确认标题
+        const signTitleRow = coverSheet.addRow({ item: '签字确认', content: '' });
+        signTitleRow.font = { bold: true, size: 12 };
+        signTitleRow.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FFE0E0E0' },
+        };
+
+        coverSheet.addRows([
+          { item: '商户确认以上订单明细无误', content: '' },
+          { item: '商户签字：', content: '' },
+          { item: '', content: '' },
+          { item: '签字日期：', content: '' },
+          { item: '', content: '' },
+          { item: '平台审核人签字：', content: '' },
+          { item: '', content: '' },
+          { item: '审核日期：', content: '' },
+        ]);
 
         // 添加订单明细工作表
         const ordersSheet = workbook.addWorksheet('订单明细');
@@ -424,26 +447,6 @@ export const settlementRouter = createCrudRouterWithCustom(
           pattern: 'solid',
           fgColor: { argb: 'FFFFF2CC' },
         };
-
-        // 添加签字区域工作表
-        const signSheet = workbook.addWorksheet('签字确认');
-        signSheet.columns = [
-          { header: '确认事项', key: 'item', width: 50 },
-          { header: '签字', key: 'sign', width: 30 },
-        ];
-
-        signSheet.addRows([
-          { item: '商户确认以上订单明细无误', sign: '' },
-          { item: '商户签字：', sign: '' },
-          { item: '', sign: '' },
-          { item: '签字日期：', sign: '' },
-          { item: '', sign: '' },
-          { item: '平台审核人签字：', sign: '' },
-          { item: '', sign: '' },
-          { item: '审核日期：', sign: '' },
-        ]);
-
-        signSheet.getRow(1).font = { bold: true, size: 12 };
 
         // 生成 Excel 文件的 Buffer
         const buffer = await workbook.xlsx.writeBuffer();
