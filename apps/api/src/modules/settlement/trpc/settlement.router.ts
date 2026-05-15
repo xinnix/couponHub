@@ -320,7 +320,13 @@ export const settlementRouter = createCrudRouterWithCustom(
 
         const settlement = await ctx.prisma.settlement.findUnique({
           where: { id: settlementId },
-          include: { merchant: true },
+          include: {
+            merchant: {
+              include: {
+                category: { select: { name: true } },
+              },
+            },
+          },
         });
 
         if (!settlement) {
@@ -335,7 +341,7 @@ export const settlementRouter = createCrudRouterWithCustom(
         workbook.creator = 'OpenCode';
         workbook.created = new Date();
 
-        // 添加封面工作表（结算单信息 + 签字确认）
+        // 添加封面工作表（结算单信息）
         const coverSheet = workbook.addWorksheet('结算单');
         coverSheet.columns = [
           { header: '项目', key: 'item', width: 20 },
@@ -368,40 +374,17 @@ export const settlementRouter = createCrudRouterWithCustom(
           fgColor: { argb: 'FFE0E0E0' },
         };
 
-        // 空行分隔
-        coverSheet.addRow({ item: '', content: '' });
-
-        // 签字确认标题
-        const signTitleRow = coverSheet.addRow({ item: '签字确认', content: '' });
-        signTitleRow.font = { bold: true, size: 12 };
-        signTitleRow.fill = {
-          type: 'pattern',
-          pattern: 'solid',
-          fgColor: { argb: 'FFE0E0E0' },
-        };
-
-        coverSheet.addRows([
-          { item: '商户确认以上订单明细无误', content: '' },
-          { item: '商户签字：', content: '' },
-          { item: '', content: '' },
-          { item: '签字日期：', content: '' },
-          { item: '', content: '' },
-          { item: '平台审核人签字：', content: '' },
-          { item: '', content: '' },
-          { item: '审核日期：', content: '' },
-        ]);
 
         // 添加订单明细工作表
         const ordersSheet = workbook.addWorksheet('订单明细');
         ordersSheet.columns = [
-          { header: '序号', key: 'index', width: 8 },
-          { header: '订单号', key: 'orderNo', width: 20 },
-          { header: '优惠券', key: 'templateTitle', width: 25 },
-          { header: '用户', key: 'userNickname', width: 15 },
-          { header: '购买价格(元)', key: 'price', width: 15 },
-          { header: '面值(元)', key: 'faceValue', width: 15 },
-          { header: '结算金额(元)', key: 'settlementAmount', width: 15 },
-          { header: '核销时间', key: 'redeemedAt', width: 20 },
+          { header: '序号', key: 'index', width: 5 },
+          { header: '订单号', key: 'orderNo', width: 16 },
+          { header: '优惠券', key: 'templateTitle', width: 14 },
+          { header: '购买价(元)', key: 'price', width: 10 },
+          { header: '面值(元)', key: 'faceValue', width: 10 },
+          { header: '结算额(元)', key: 'settlementAmount', width: 10 },
+          { header: '核销时间', key: 'redeemedAt', width: 15 },
         ];
 
         // 设置订单明细表头样式
@@ -421,7 +404,6 @@ export const settlementRouter = createCrudRouterWithCustom(
               index: index + 1,
               orderNo: order.orderNo,
               templateTitle: order.templateTitle,
-              userNickname: order.userNickname,
               price: Number(order.price).toFixed(2),
               faceValue: Number(order.faceValue).toFixed(2),
               settlementAmount: Number(order.settlementAmount).toFixed(2),
@@ -435,7 +417,6 @@ export const settlementRouter = createCrudRouterWithCustom(
           index: '合计',
           orderNo: `${settlement.orderCount} 笔`,
           templateTitle: '',
-          userNickname: '',
           price: snapshotData?.orders?.reduce((sum: number, o: any) => sum + Number(o.price), 0).toFixed(2),
           faceValue: snapshotData?.orders?.reduce((sum: number, o: any) => sum + Number(o.faceValue), 0).toFixed(2),
           settlementAmount: Number(settlement.totalAmount).toFixed(2),
@@ -447,6 +428,24 @@ export const settlementRouter = createCrudRouterWithCustom(
           pattern: 'solid',
           fgColor: { argb: 'FFFFF2CC' },
         };
+
+        // 签字确认部分
+        ordersSheet.addRow([]); // 空行分隔
+        const signTitleRow = ordersSheet.addRow(['签字确认']);
+        signTitleRow.font = { bold: true, size: 12 };
+        signTitleRow.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FFE0E0E0' },
+        };
+        ordersSheet.addRow(['商户确认以上订单明细无误']);
+        ordersSheet.addRow(['商户签字：']);
+        ordersSheet.addRow([]); // 留白
+        ordersSheet.addRow(['签字日期：']);
+        ordersSheet.addRow([]); // 留白
+        ordersSheet.addRow(['平台审核人签字：']);
+        ordersSheet.addRow([]); // 留白
+        ordersSheet.addRow(['审核日期：']);
 
         // 生成 Excel 文件的 Buffer
         const buffer = await workbook.xlsx.writeBuffer();
